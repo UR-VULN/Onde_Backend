@@ -171,7 +171,7 @@ public class PaymentService {
                 .orElseThrow(() -> new IllegalArgumentException("연관된 예약 정보가 존재하지 않습니다."));
 
         boolean isBuyer = payment.getUserId().equals(userId);
-        boolean isSeller = reservation.getSellerId().equals(userId);
+        boolean isSeller = reservation.getMember().getId().equals(userId);
 
         if (!isBuyer && !isSeller) {
             throw new IllegalArgumentException("해당 예약을 취소할 권한이 없습니다.");

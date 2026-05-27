@@ -256,8 +256,8 @@ X-User-Id: 1
 Content-Type: application/json
 
 {
-  "impUid": "imp_1234567890",
-  "merchantUid": "ORDER-2026-137787bf", 
+  "impUid": "imp_1234567890_1",
+  "merchantUid": "ORDER-2026-74157b73", 
   "pgAmount": 95000
 }
 

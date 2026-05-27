@@ -54,7 +54,7 @@ public class SettlementService {
             Long sellerId = proj.getSellerId();
             Long grossAmount = proj.getGrossAmount();
 
-            if (grossAmount == null || grossAmount == 0)
+            if (sellerId == null || grossAmount == null || grossAmount == 0)
                 continue;
 
             // 4. 플랫폼 중개 수수료 3% 계산 및 최종 지급액(netAmount = grossAmount - 수수료) 산정

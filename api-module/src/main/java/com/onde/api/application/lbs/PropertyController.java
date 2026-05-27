@@ -33,10 +33,10 @@ public class PropertyController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<PropertyMarkerDto>>> getProperties(
-            @RequestParam Double swLat,
-            @RequestParam Double swLng,
-            @RequestParam Double neLat,
-            @RequestParam Double neLng) {
+            @RequestParam("swLat") Double swLat,
+            @RequestParam("swLng") Double swLng,
+            @RequestParam("neLat") Double neLat,
+            @RequestParam("neLng") Double neLng) {
 
         PropertySearchResponse response = propertyService.getPropertiesByBoundingBox(swLat, swLng, neLat, neLng);
         // 프론트엔드의 properties.map() 호출 실패(TypeError)를 원천 차단하기 위해 배열 자체를 바로 리턴

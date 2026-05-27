@@ -15,6 +15,17 @@ spring:
     redis:
       host: localhost
       port: 6379
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: your-email@gmail.com
+    password: your-app-password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 server:
   port: 8080
@@ -27,4 +38,10 @@ jwt:
 portone:
   imp-key: "0754805832574205"
   imp-secret: "5w2kDl7p94HPu9JavDbMmXOnDsknWUoyeOdGsUk8Jc3FJVf75gwr6jsbRyRfuk0qYD8mS2w6L7hc9qzD"
+
+aws:
+  s3:
+    bucket: onde-private-bucket
+    cloudfront-domain: https://cdn.travel-platform.com
+    region: ap-northeast-2
 

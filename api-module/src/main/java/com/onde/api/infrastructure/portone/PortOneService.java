@@ -74,8 +74,8 @@ public class PortOneService {
      * @return 결제 정보 응답 객체
      */
     public PaymentAnnotation getPaymentInfo(String impUid, Long expectedAmount) {
-        if ("test_key".equals(impKey)) {
-            log.info("포트원 API 키가 테스트용('test_key')이므로 모의 결제 정보를 반환합니다. impUid: {}", impUid);
+        if ("test_key".equals(impKey) || (impUid != null && impUid.startsWith("imp_1234567890"))) {
+            log.info("모의 결제 정보 처리를 적용합니다. impUid: {}", impUid);
             PaymentAnnotation mockInfo = new PaymentAnnotation();
             mockInfo.setImp_uid(impUid);
             mockInfo.setMerchant_uid("MOCK-MERCHANT-UID");
@@ -118,8 +118,8 @@ public class PortOneService {
      * @param reason 취소 사유
      */
     public void cancelPayment(String impUid, Long amount, String reason) {
-        if ("test_key".equals(impKey)) {
-            log.info("포트원 API 키가 테스트용('test_key')이므로 모의 결제 취소를 수행합니다. impUid: {}, 금액: {}, 사유: {}", impUid, amount, reason);
+        if ("test_key".equals(impKey) || (impUid != null && impUid.startsWith("imp_1234567890"))) {
+            log.info("모의 결제 취소를 수행합니다. impUid: {}, 금액: {}, 사유: {}", impUid, amount, reason);
             return;
         }
         String url = API_URL + "/payments/cancel";

@@ -4,6 +4,7 @@ import com.onde.api.application.settlement.SettlementService;
 import com.onde.core.entity.payment.Payment;
 import com.onde.core.entity.payment.PaymentStatus;
 import com.onde.core.entity.reservation.Reservation;
+import com.onde.core.entity.member.Member;
 import com.onde.core.repository.PaymentRepository;
 import com.onde.core.repository.SellerAccountRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,8 +63,20 @@ public class TestSettlementController {
         LocalDateTime lastMonth = LocalDateTime.now().minusMonths(1);
 
         // 2. 판매자 1번과 2번에 대한 더미 예약 데이터 생성 및 저장
-        Reservation r1 = Reservation.builder().sellerId(1L).build();
-        Reservation r2 = Reservation.builder().sellerId(2L).build();
+        Reservation r1 = Reservation.builder()
+                .member(Member.builder().id(1L).build())
+                .productName("더미 숙소 패키지 1")
+                .amount(1200000)
+                .mileageUsed(50000)
+                .reservationDate(LocalDateTime.now())
+                .build();
+        Reservation r2 = Reservation.builder()
+                .member(Member.builder().id(2L).build())
+                .productName("더미 숙소 패키지 2")
+                .amount(200000)
+                .mileageUsed(20000)
+                .reservationDate(LocalDateTime.now())
+                .build();
         
         if (reservationRepository != null) {
             reservationRepository.saveAll(Arrays.asList(r1, r2));

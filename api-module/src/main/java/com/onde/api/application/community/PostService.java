@@ -30,7 +30,6 @@ import java.util.concurrent.Executor;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PostService {
 
@@ -38,9 +37,21 @@ public class PostService {
     private final PostImageRepository postImageRepository;
     private final MemberRepository memberRepository;
     private final MockS3Uploader s3Uploader;
-
-    @Qualifier("imageUploadExecutor")
     private final Executor imageUploadExecutor;
+
+    public PostService(
+            PostRepository postRepository,
+            PostImageRepository postImageRepository,
+            MemberRepository memberRepository,
+            MockS3Uploader s3Uploader,
+            @Qualifier("imageUploadExecutor") Executor imageUploadExecutor
+    ) {
+        this.postRepository = postRepository;
+        this.postImageRepository = postImageRepository;
+        this.memberRepository = memberRepository;
+        this.s3Uploader = s3Uploader;
+        this.imageUploadExecutor = imageUploadExecutor;
+    }
 
     @Transactional
     public PostCreateResponse createPost(PostCreateRequest req, List<MultipartFile> images, Long memberId) {

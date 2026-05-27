@@ -33,14 +33,14 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      * @param end    집계 대상 종료 일시 (미포함)
      * @return 판매자 식별자 및 총 매출액을 담은 프로젝션 목록
      */
-    @Query("SELECT r.sellerId AS sellerId, " +
+    @Query("SELECT r.member.id AS sellerId, " +
             "SUM(p.totalAmount) AS grossAmount " +
             "FROM Payment p " +
             "JOIN Reservation r ON p.reservationId = r.id " +
             "WHERE p.status = :status " +
             "AND p.createdAt >= :start " +
             "AND p.createdAt < :end " +
-            "GROUP BY r.sellerId")
+            "GROUP BY r.member.id")
     List<SettlementProjection> calculateSettlementAmounts(
             @Param("status") PaymentStatus status,
             @Param("start") LocalDateTime start,
