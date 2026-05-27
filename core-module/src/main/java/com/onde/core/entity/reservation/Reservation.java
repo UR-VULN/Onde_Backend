@@ -1,12 +1,11 @@
 package com.onde.core.entity.reservation;
 
+import com.onde.core.entity.BaseEntity;
+import com.onde.core.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDateTime;
 
-/**
- * 예약 정보를 담고 있는 엔티티입니다.
- * 결제 및 정산 대상이 되는 거래의 핵심 단위이며, 특정 판매자(sellerId)와 연계됩니다.
- */
 @Entity
 @Table(name = "reservations")
 @Getter
@@ -14,20 +13,26 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class Reservation {
+public class Reservation extends BaseEntity {
 
-    /**
-     * 예약 고유 식별자 (PK)
-     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * 예약을 제공한 판매자(호스트/파트너)의 식별자
-     * 결제 완료 후 정산 데이터 집계 및 생성 시 이 sellerId를 기준으로 계좌 정보를 조회합니다.
-     */
-    @Column(name = "seller_id")
-    private Long sellerId;
-}
+    // 논리 FK 형태로 DB 물리 외래키 제약조건 제거
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
+    private Member member;
 
+    @Column(name = "product_name", nullable = false, length = 300)
+    private String productName;
+
+    @Column(nullable = false)
+    private Integer amount;
+
+    @Column(name = "mileage_used", nullable = false)
+    private Integer mileageUsed;
+
+    @Column(name = "reservation_date", nullable = false)
+    private LocalDateTime reservationDate;
+}

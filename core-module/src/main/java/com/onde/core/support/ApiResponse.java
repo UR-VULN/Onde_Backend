@@ -65,4 +65,3 @@ public class ApiResponse<T> {
         return success(data, "작업이 성공적으로 완료되었습니다.");
     }
 }
-
