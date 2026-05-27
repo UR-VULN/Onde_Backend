@@ -45,4 +45,24 @@ public class JwtTokenProvider {
     public long getRefreshTokenValidTimeInSeconds() {
         return refreshTokenValidTime / 1000;
     }
+
+    // 토큰의 유효성 및 만료일자 확인
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // 토큰에서 이메일(Subject) 추출
+    public String getEmail(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
 }
