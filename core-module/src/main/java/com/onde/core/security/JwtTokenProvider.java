@@ -15,6 +15,7 @@ public class JwtTokenProvider {
     // 실무에서는 application.yml에서 @Value("${jwt.secret}") 로 주입받는 것이 안전합니다.
     private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256); 
     private final long accessTokenValidTime = 30 * 60 * 1000L; // 30분 유효기간
+    private final long refreshTokenValidTime = 14 * 24 * 60 * 60 * 1000L; // 14일 유효기간
 
     // Access Token 생성 메서드
     public String createAccessToken(String email, String role) {
@@ -28,5 +29,20 @@ public class JwtTokenProvider {
                 .setExpiration(new Date(now.getTime() + accessTokenValidTime)) // 만료 시간
                 .signWith(key) // 시크릿 키와 암호화 알고리즘 셋팅
                 .compact();
+    }
+
+    public String createRefreshToken(String email) {
+        Date now = new Date();
+        return Jwts.builder()
+                .setSubject(email)
+                .setIssuedAt(now)
+                .setExpiration(new Date(now.getTime() + refreshTokenValidTime))
+                .signWith(key)
+                .compact();
+    }
+
+    // Redis TTL 설정을 위해 초 단위로 반환하는 유틸리티 메서드
+    public long getRefreshTokenValidTimeInSeconds() {
+        return refreshTokenValidTime / 1000;
     }
 }
