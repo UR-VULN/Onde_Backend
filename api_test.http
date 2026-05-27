@@ -1,0 +1,88 @@
+### 0. 포트원 외부 API 연동 연결성 단독 테스트
+GET http://localhost:8080/api/test/settlement/test-connection
+Content-Type: application/json
+
+### 1. 테스트용 정산/결제 더미 데이터 생성 (TestSettlementController)
+POST http://localhost:8080/api/test/settlement/dummy
+Content-Type: application/json
+
+### 2. 정산 스케줄러 강제 실행 (매월 1일 배치 시뮬레이션)
+POST http://localhost:8080/api/test/settlement/execute
+Content-Type: application/json
+
+### 3. [Phase 1] 내 마일리지 요약 조회
+GET http://localhost:8080/api/v1/members/me/mileage
+X-User-Id: 1
+
+### 4. [Phase 1] 내 마일리지 이력 조회
+GET http://localhost:8080/api/v1/members/me/mileage/history?page=0&size=10
+X-User-Id: 1
+
+### 5. [Phase 2] 결제 사전 검증 (마일리지 차감)
+POST http://localhost:8080/api/v1/payments/prepare
+X-User-Id: 1
+Content-Type: application/json
+
+{
+  "reservationId": 1,
+  "reservationType": "ROOM",
+  "usedMileage": 5000,
+  "totalAmount": 100000
+}
+
+### 6. [Phase 2] 결제 사후 검증 및 최종 승인
+# 주의: 위의 5번(prepare) 응답에서 받은 merchantUid와 pgAmount를 사용해야 합니다.
+POST http://localhost:8080/api/v1/payments/validate
+X-User-Id: 1
+Content-Type: application/json
+
+{
+  "impUid": "imp_1234567890",
+  "merchantUid": "ORDER-2026-137787bf", 
+  "pgAmount": 95000
+}
+
+### 7. [Phase 3] 결제 취소 및 환불
+# 주의: 위의 6번(validate) 응답에서 받은 paymentId를 URL에 넣어야 합니다.
+POST http://localhost:8080/api/v1/payments/46/cancel
+X-User-Id: 1
+Content-Type: application/json
+
+{
+  "reason": "고객 변심"
+}
+
+### 8. [Phase 5] 판매자 내 정산 내역 조회
+GET http://localhost:8080/api/v1/sellers/settlements?page=0&size=10
+X-Seller-Id: 1
+
+### 9. [Phase 5] 판매자 정산 신청
+POST http://localhost:8080/api/v1/sellers/settlements/1/request
+X-Seller-Id: 1
+
+### 10. [Phase 6] 본사 정산 리스트 조회
+GET http://localhost:8080/api/v1/admin/settlements
+
+### 11. [Phase 6] 본사 정산 1차 승인
+POST http://localhost:8080/api/v1/admin/settlements/1/approve-first
+Content-Type: application/json
+
+{
+  "comment": "1차 검토 완료"
+}
+
+### 12. [Phase 6] 본사 정산 최종 확정
+POST http://localhost:8080/api/v1/admin/settlements/1/finalize
+Content-Type: application/json
+
+{
+  "comment": "송금 완료"
+}
+
+### 13. [Phase 7] 판매자 누적 매출 통계 조회
+GET http://localhost:8080/api/v1/sellers/settlements/statistics
+X-Seller-Id: 1
+
+### 14. [Phase 7] 플랫폼 전사 매출 통계 조회
+GET http://localhost:8080/api/v1/admin/settlements/statistics
+
