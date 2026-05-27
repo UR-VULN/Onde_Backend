@@ -5,7 +5,7 @@ CREATE TABLE members (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '회원 고유 식별자 (PK)',
     email VARCHAR(100) NOT NULL UNIQUE COMMENT '로그인 이메일 아이디',
     password VARCHAR(255) NOT NULL COMMENT 'BCrypt 암호화된 비밀번호',
-    name VARCHAR(50) NOT NULL COMMENT '사용자 이름 또는 업체명',
+    name VARCHAR(50) COMMENT '사용자 이름 또는 업체명',
     phone_number VARCHAR(20) COMMENT '연락처',
     role VARCHAR(20) NOT NULL COMMENT '권한 등급 (USER, SELLER, ADMIN 등)',
     status VARCHAR(20) NOT NULL COMMENT '계정 상태 (ACTIVE, DORMANT, WITHDRAWN)',

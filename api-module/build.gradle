@@ -3,6 +3,7 @@ apply plugin: 'org.springframework.boot'
 dependencies {
     implementation project(':core-module')
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
@@ -18,4 +19,9 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+// 한글 깨짐 방지 및 UTF-8 인코딩 강제 설정
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
 }
