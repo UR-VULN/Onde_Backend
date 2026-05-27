@@ -37,6 +37,12 @@ public class Member extends BaseEntity {
     @Column(nullable = false, length = 20)
     private MemberStatus status;
 
+    // 가입 출처 필드 (기본값 LOCAL 세팅)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private AuthProvider provider = AuthProvider.LOCAL;
+
     // --- 비즈니스 편의 메서드 ---
     public void updateRole(MemberRole newRole) {
         this.role = newRole;
