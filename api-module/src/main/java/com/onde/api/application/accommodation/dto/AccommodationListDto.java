@@ -1,3 +1,19 @@
 package com.onde.api.application.accommodation.dto;
 
-public class AccommodationListDto {}
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import java.util.List;
+
+@Getter @Builder
+@NoArgsConstructor @AllArgsConstructor
+public class AccommodationListDto {
+    private Long accommodationId;
+    private String name;
+    private String region;
+    private String city;
+    private Integer starRating;
+    private List<String> amenities;
+    private Integer minPrice;
+}

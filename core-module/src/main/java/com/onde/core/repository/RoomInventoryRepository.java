@@ -1,5 +1,14 @@
 package com.onde.core.repository;
 
+import com.onde.core.entity.accommodation.RoomInventory;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 
-public interface RoomInventoryRepository {}
+@Repository
+public interface RoomInventoryRepository extends JpaRepository<RoomInventory, Long> {
+    List<RoomInventory> findByRoom_RoomIdAndInventoryDateBetween(Long roomId, LocalDate startDate, LocalDate endDate);
+    Optional<RoomInventory> findByRoom_RoomIdAndInventoryDate(Long roomId, LocalDate inventoryDate);
+}

@@ -1,3 +1,7 @@
 package com.onde.core.entity.reservation;
 
-public class ReservationTarget {}
+public enum ReservationTarget {
+    STAY,
+    CAR,
+    FLIGHT
+}
