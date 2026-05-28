@@ -33,7 +33,7 @@ public class FlightService {
     private final SeatInventoryRepository seatInventoryRepository;
     private final FlightBookingRepository flightBookingRepository;
 
-    @Cacheable(value = "flightSearch", key = "#req.toString()", unless = "#result == null")
+    @Cacheable(value = "flightSearch", key = "#a0", unless = "#result == null")
     public FlightSearchResponse searchFlights(FlightSearchRequest req) {
         log.info("✈️ Real-time flight search triggered with query parameters: {}", req);
 

@@ -8,7 +8,7 @@
 ### 1.1. 항공권 실시간 통합 검색 (GET)
 # - Redis 캐시 연동 (TTL 10분)
 # - departure, arrival, departureDate 조건 검색
-GET {{host}}/api/v1/flights/search?departureAirport=ICN&arrivalAirport=NRT&departureDate=2026-06-15
+GET {{host}}/api/v1/flights/search?departures=ICN&arrivals=NRT&dates=2026-06-15
 Accept: application/json
 
 ###
@@ -25,7 +25,9 @@ X-Member-Id: 1
   "scheduleId": 1,
   "seatClass": "ECONOMY",
   "passengerName": "홍길동",
-  "passportNumber": "M12345678"
+  "passengerPassport": "M12345678",
+  "passengerBirthdate": "1995-08-15",
+  "totalPrice": 120000
 }
 
 ###
@@ -62,9 +64,11 @@ POST {{host}}/api/v1/insurance/calculate
 Content-Type: application/json
 
 {
-  "birthDate": "1995-08-15",
-  "coverageLevel": "DELUXE",
-  "travelDays": 5
+  "insuranceProductId": 1,
+  "birthdate": "1995-08-15",
+  "startDate": "2026-06-01",
+  "endDate": "2026-06-05",
+  "coverageLevel": "DELUXE"
 }
 
 ###
@@ -77,10 +81,12 @@ X-Member-Id: 1
 
 {
   "insuranceProductId": 1,
-  "birthDate": "1995-08-15",
+  "insuredName": "홍길동",
+  "insuredBirthdate": "1995-08-15",
+  "startDate": "2026-06-01",
+  "endDate": "2026-06-07",
   "coverageLevel": "PREMIUM",
-  "travelDays": 7,
-  "appliedPremium": 15400
+  "totalPremium": 18480
 }
 
 ###
@@ -90,26 +96,35 @@ X-Member-Id: 1
 ### 2. 판매자 (입점사)용 API 테스트
 ### ==========================================
 
-### 2.1. 항공 노선/스케줄 일괄 배치 등록 제안 (POST)
-# - 요일 체크박스(operatingDays) 매핑 기반 한달 치 Bulk Insert
-# - FIRST/BUSINESS/ECONOMY 좌석 재고 행 자동 동시 물리 삽입
 POST {{host}}/api/v1/seller/flights
 Content-Type: application/json
 X-Member-Id: 2
 
 {
+  "routeId": 1,
   "flightNumber": "OZ302",
-  "departureAirport": "ICN",
-  "arrivalAirport": "NRT",
   "startDate": "2026-06-01",
   "endDate": "2026-06-30",
   "operatingDays": [1, 3, 5],
-  "firstClassPrice": 500000,
-  "businessClassPrice": 300000,
-  "economyClassPrice": 120000,
-  "firstClassSeatCount": 12,
-  "businessClassSeatCount": 24,
-  "economyClassSeatCount": 150
+  "departureTime": "09:00:00",
+  "durationMinutes": 150,
+  "seatSetup": [
+    {
+      "classType": "FIRST",
+      "totalSeats": 12,
+      "basePrice": 500000
+    },
+    {
+      "classType": "BUSINESS",
+      "totalSeats": 24,
+      "basePrice": 300000
+    },
+    {
+      "classType": "ECONOMY",
+      "totalSeats": 150,
+      "basePrice": 120000
+    }
+  ]
 }
 
 ###
@@ -129,9 +144,10 @@ Content-Type: application/json
 X-Member-Id: 2
 
 {
+  "controlType": "PRICE_OVERRIDE",
   "classType": "ECONOMY",
-  "price": 135000,
-  "seatCount": 140
+  "overridePrice": 135000,
+  "remainingSeats": 140
 }
 
 ###
@@ -144,7 +160,7 @@ X-Member-Id: 2
 {
   "productName": "온데 안심 여행자 보험 v2",
   "baseDailyRate": 1500,
-  "description": "2026년 여름 맞이 특가 보장 상품 요율안"
+  "coverageDetails": "{\"medical\": 60000000, \"liability\": 30000000, \"baggage\": 1500000}"
 }
 
 ###
@@ -154,8 +170,10 @@ X-Member-Id: 2
 ### 3. 본사 관리자 (Admin)용 API 테스트
 ### ==========================================
 
+@adminHost = http://localhost:8081
+
 ### 3.1. 상품 검수 대기(PENDING) 목록 조회 (GET)
-GET {{host}}/api/v1/admin/approvals/pending
+GET {{adminHost}}/api/v1/admin/approvals/pending
 X-Admin-Role: MASTER
 Accept: application/json
 
@@ -163,11 +181,13 @@ Accept: application/json
 
 ### 3.2. 상품 검수 승인/반려 제어 (POST)
 # - 승인(APPROVED) 처리 시 관련 노선의 Redis 캐시 와일드카드 Evict 일괄 파괴
-POST {{host}}/api/v1/admin/approvals/1
+POST {{adminHost}}/api/v1/admin/approvals/1
 Content-Type: application/json
 X-Admin-Role: MASTER
 
 {
+  "category": "FLIGHT",
+  "decision": "APPROVED",
   "status": "APPROVED",
   "rejectReason": ""
 }
@@ -178,7 +198,7 @@ X-Admin-Role: MASTER
 # - JPA Stream + StreamingResponseBody OOM 영구 차단
 # - Excel 깨짐 방지용 UTF-8 BOM (\uFEFF) 전두 강제 출력
 # - URL 및 경로 변수 스네이크 케이스 준수 (schedule_id)
-GET {{host}}/api/v1/admin/bookings/flights/1/export
+GET {{adminHost}}/api/v1/admin/bookings/flights/1/export
 X-Admin-Role: MASTER
 Accept: text/csv
 
@@ -187,6 +207,6 @@ Accept: text/csv
 ### 3.4. 관리자 직권 수동 예약 강제 취소 (POST)
 # - 비관적 락 좌석 복원 (+1) 및 D팀 환불 FeignClient 연동 시뮬레이션
 # - URL 및 경로 변수 스네이크 케이스 준수 (booking_id)
-POST {{host}}/api/v1/admin/bookings/1/cancel
+POST {{adminHost}}/api/v1/admin/bookings/1/cancel
 X-Admin-Role: MASTER
 Content-Type: application/json

@@ -49,6 +49,8 @@ public class DistributedLockExecutor {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("분산 락 획득 대기 중 인터럽트 발생", e);
+        } catch (com.onde.core.exception.BusinessException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("분산 락 트랜잭션 비즈니스 로직 실행 중 예외 발생", e);
         } finally {
