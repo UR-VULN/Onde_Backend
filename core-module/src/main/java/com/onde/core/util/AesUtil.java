@@ -14,7 +14,7 @@ public class AesUtil {
     private final SecretKeySpec secretKey;
     private final IvParameterSpec iv;
 
-    public AesUtil(@Value("${encryption.aes.secret-key}") String key) {
+    public AesUtil(@Value("${encryption.aes.secret-key:ThisIsLocalTestSecretKey12345678}") String key) {
         // 32바이트 키 생성
         this.secretKey = new SecretKeySpec(key.getBytes(), "AES");
         // CBC 모드에 필요한 16바이트 IV (여기서는 키의 앞 16자리 사용)

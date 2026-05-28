@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -55,7 +56,29 @@ try {
                     System.out.println("▶️ 4. 인증 완료! 부여된 권한: " + userDetails.getAuthorities());
                 }
             } else {
-                System.out.println("▶️ 🚨 요청에 토큰이 아예 존재하지 않습니다!");
+                // [테스트 헬퍼] 토큰이 없지만 어드민 테스트용 HTTP 헤더 정보가 넘어온 경우 모의 인증 처리
+                String adminId = request.getHeader("X-Admin-Id");
+                String adminRole = request.getHeader("X-Admin-Role");
+
+                if (adminRole != null && !adminRole.isBlank()) {
+                    if (adminId == null || adminId.isBlank()) {
+                        adminId = "AD-999";
+                    }
+                    String roleName = adminRole.toUpperCase().startsWith("ROLE_") ? adminRole.toUpperCase() : "ROLE_" + adminRole.toUpperCase();
+                    java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities = java.util.List.of(
+                            new SimpleGrantedAuthority(roleName),
+                            new SimpleGrantedAuthority("ROLE_ADMIN")
+                    );
+                    
+                    UserDetails principal = new org.springframework.security.core.userdetails.User(adminId, "", authorities);
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(principal, null, authorities);
+                    
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    System.out.println("▶️ [어드민 테스트 헬퍼] 인증 완료! 부여된 권한: " + authorities);
+                } else {
+                    System.out.println("▶️ 🚨 요청에 토큰이 아예 존재하지 않습니다!");
+                }
             }
             System.out.println("==================================\n");
             

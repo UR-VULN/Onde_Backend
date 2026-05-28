@@ -32,14 +32,6 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
-    /**
-     * 회원가입 시 비밀번호 암호화를 담당할 인코더 빈 추가 (우리의 필수 코드 이식)
-     */
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -64,6 +56,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/flights/search").permitAll()
                         .requestMatchers("/api/v1/insurance/calculate").permitAll() // 👈 우리 보험 경로 추가
                         .requestMatchers("/api/v1/accommodations/**", "/api/v1/cars/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/properties", "/api/v1/property").permitAll()
+                        .requestMatchers("/api/v1/members/test").permitAll()
+                        .requestMatchers("/api/test/settlement/**").permitAll()
 
                         // SELLER (판매자만 접근 가능)
                         .requestMatchers("/api/v1/seller/**").hasRole("SELLER")

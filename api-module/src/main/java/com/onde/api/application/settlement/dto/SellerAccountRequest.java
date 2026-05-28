@@ -1,7 +1,6 @@
 package com.onde.api.application.settlement.dto;
 
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Getter
 @Setter

@@ -1,5 +1,6 @@
 package com.onde.api.application.settlement;
 
+import com.onde.core.entity.member.Member;
 import com.onde.core.entity.payment.PaymentStatus;
 import com.onde.core.entity.settlement.SellerAccount;
 import com.onde.core.entity.settlement.Settlement;
@@ -101,7 +102,7 @@ public class SettlementService {
         }
  
         // 4. 계좌 정보 검증: 정산 지급을 받기 위해 계좌 정보(사업자 번호 포함)가 반드시 디비에 존재해야 함
-        SellerAccount account = sellerAccountRepository.findBySellerId(sellerId)
+        SellerAccount account = sellerAccountRepository.findByMemberId(sellerId)
                  .orElseThrow(() -> new IllegalArgumentException("정산 계좌가 등록되지 않았습니다."));
 
         if (account.getBusinessNumber() == null || account.getBusinessNumber().isEmpty()
@@ -179,8 +180,8 @@ public class SettlementService {
             throw new IllegalArgumentException("국세청 검증 실패 - 유효하지 않은 사업자 번호");
         }
 
-        SellerAccount account = sellerAccountRepository.findBySellerId(sellerId)
-                .orElse(SellerAccount.builder().sellerId(sellerId).build());
+        SellerAccount account = sellerAccountRepository.findByMemberId(sellerId)
+                .orElse(SellerAccount.builder().member(Member.builder().id(sellerId).build()).build());
 
         account.setBankName(req.getBankName());
         account.setAccountNumber(req.getAccountNumber()); // 실제 암호화 처리는 다른 작업자 몫이므로 테스트용으로 그대로 담음
@@ -197,7 +198,7 @@ public class SettlementService {
      */
     @Transactional(readOnly = true)
     public SellerAccount getAccount(Long sellerId) {
-        return sellerAccountRepository.findBySellerId(sellerId)
+        return sellerAccountRepository.findByMemberId(sellerId)
                 .orElseThrow(() -> new IllegalArgumentException("등록된 계좌 없음"));
     }
 

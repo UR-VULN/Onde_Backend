@@ -62,7 +62,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     Member newMember = Member.builder()
                             .email(oAuth2User.getAttribute("email") != null ? oAuth2User.getAttribute("email") : (String)((Map<String, Object>)attributes.get("kakao_account")).get("email"))
                             .password(dummyPassword)
-                            .name(finalName)
                             .role(MemberRole.USER) // 초기 역할 USER 할당
                             .status(MemberStatus.ACTIVE)
                             .provider(finalProvider) // member 엔티티에 provider 정보 저장

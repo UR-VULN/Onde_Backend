@@ -126,8 +126,8 @@ public class NotificationService {
             addTableCell(infoTable, "Date:", true);
             addTableCell(infoTable, LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")), false);
 
-            addTableCell(infoTable, "Customer Name:", true);
-            addTableCell(infoTable, reservation.getMember().getName(), false);
+            addTableCell(infoTable, "Customer Email:", true);
+            addTableCell(infoTable, reservation.getMember().getEmail(), false);
 
             document.add(infoTable);
 

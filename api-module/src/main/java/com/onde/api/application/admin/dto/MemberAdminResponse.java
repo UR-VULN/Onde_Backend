@@ -21,7 +21,7 @@ public class MemberAdminResponse {
         return MemberAdminResponse.builder()
                 .id(member.getId())
                 .email(member.getEmail())
-                .name(member.getName())
+                .name(member.getEmail())
                 .role(member.getRole() != null ? member.getRole().name() : null)
                 .status(member.getStatus() != null ? member.getStatus().name() : null)
                 .createdAt(member.getCreatedAt())

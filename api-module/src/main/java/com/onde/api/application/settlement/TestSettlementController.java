@@ -56,22 +56,24 @@ public class TestSettlementController {
      * @return 더미 생성 완료 안내 메시지
      */
     @PostMapping("/dummy")
-    public ResponseEntity<String> createDummyData() {
+    public ResponseEntity<String> createDummyData(
+            @RequestParam(name = "userId", required = false, defaultValue = "1") Long userId,
+            @RequestParam(name = "sellerId", required = false, defaultValue = "1") Long sellerId) {
         // 1. 결제 발생 일시를 전일(어제)로 설정하여 일간 정산 조건 충족
         LocalDate yesterday = LocalDate.now().minusDays(1);
         LocalDateTime yesterdayMidday = yesterday.atTime(12, 0);
         LocalDateTime lastMonth = LocalDateTime.now().minusMonths(1);
 
-        // 2. 판매자 1번과 2번에 대한 더미 예약 데이터 생성 및 저장
+        // 2. 판매자 및 사용자 ID에 대한 더미 예약 데이터 생성 및 저장
         Reservation r1 = Reservation.builder()
-                .member(Member.builder().id(1L).build())
+                .member(Member.builder().id(userId).build())
                 .productName("더미 숙소 패키지 1")
                 .amount(1200000)
                 .mileageUsed(50000)
                 .reservationDate(LocalDateTime.now())
                 .build();
         Reservation r2 = Reservation.builder()
-                .member(Member.builder().id(2L).build())
+                .member(Member.builder().id(sellerId).build())
                 .productName("더미 숙소 패키지 2")
                 .amount(200000)
                 .mileageUsed(20000)
@@ -84,9 +86,9 @@ public class TestSettlementController {
 
         // 3. 결제 완료 상태(PAID)의 결제 내역 더미 데이터 리스트 생성
         List<Payment> dummies = Arrays.asList(
-                // 판매자 1번 대상의 첫 번째 결제 건 (총 120만원, 마일리지 5만원 사용, PG 실 결제 115만원, 적립 1.15만 마일리지)
+                // 판매자 대상의 첫 번째 결제 건 (총 120만원, 마일리지 5만원 사용, PG 실 결제 115만원, 적립 1.15만 마일리지)
                 Payment.builder()
-                        .userId(1L)
+                        .userId(userId)
                         .reservationId(r1.getId() != null ? r1.getId() : 1L)
                         .totalAmount(1200000L).pgAmount(1150000L).usedMileage(50000L).accumulatedMileage(11500L)
                         .impUid("imp_0001_" + java.util.UUID.randomUUID().toString().substring(0, 8))
@@ -94,7 +96,7 @@ public class TestSettlementController {
                         .status(PaymentStatus.PAID)
                         .createdAt(lastMonth)
                         .build(),
-                // 판매자 1번 대상의 두 번째 결제 건 (총 5만원)
+                // 판매자 대상의 두 번째 결제 건 (총 5만원)
                 Payment.builder()
                         .userId(101L)
                         .reservationId(r1.getId() != null ? r1.getId() : 1L)
@@ -103,7 +105,7 @@ public class TestSettlementController {
                         .merchantUid("merchant_0002_" + java.util.UUID.randomUUID().toString().substring(0, 8))
                         .status(PaymentStatus.PAID)
                         .createdAt(lastMonth)
-                        .build(), // => 판매자 1번의 총 전일 매출(grossAmount)은 125만원
+                        .build(),
                 // 판매자 2번 대상의 세 번째 결제 건 (총 20만원, 마일리지 2만원 사용, PG 실 결제 18만원)
                 Payment.builder()
                         .userId(102L)
@@ -113,25 +115,29 @@ public class TestSettlementController {
                         .merchantUid("merchant_0003_" + java.util.UUID.randomUUID().toString().substring(0, 8))
                         .status(PaymentStatus.PAID)
                         .createdAt(lastMonth)
-                        .build()  // => 판매자 2번의 총 전일 매출(grossAmount)은 20만원
+                        .build()
         );
 
         paymentRepository.saveAll(dummies);
 
         // 4. 판매자 1번에 대한 정산 계좌 정보 생성 및 저장 (9번 API인 정산 신청 단계에서 필수 검증됨)
-        if (!sellerAccountRepository.findBySellerId(1L).isPresent()) {
+        if (!sellerAccountRepository.findByMemberId(sellerId).isPresent()) {
             sellerAccountRepository.save(com.onde.core.entity.settlement.SellerAccount.builder()
-                    .sellerId(1L)
+                    .member(Member.builder().id(sellerId).build())
                     .bankName("신한은행")
                     .accountNumber("110-123-456789")
+                    .accountHolder("홍길동")
+                    .businessNumber("123-45-67890")
+                    .representativeName("홍길동")
+                    .openedAt("20200101")
                     .build());
         }
 
-        // 5. 테스트 대상인 1번 사용자(X-User-Id = 1)의 마일리지 변동 이력(MileageLog) 적재
+        // 5. 테스트 대상인 사용자(userId)의 마일리지 변동 이력(MileageLog) 적재
         List<com.onde.core.entity.payment.MileageLog> mileageDummies = Arrays.asList(
                 // 5만원 웰컴 적립
                 com.onde.core.entity.payment.MileageLog.builder()
-                        .userId(1L)
+                        .userId(userId)
                         .amount(50000)
                         .logType(com.onde.core.entity.payment.MileageLogType.EARN)
                         .description("회원가입 기념 웰컴 마일리지 적립")
@@ -139,7 +145,7 @@ public class TestSettlementController {
                         .build(),
                 // 1만원 사용 차감
                 com.onde.core.entity.payment.MileageLog.builder()
-                        .userId(1L)
+                        .userId(userId)
                         .amount(-10000)
                         .logType(com.onde.core.entity.payment.MileageLogType.USE)
                         .description("숙소 예약 시 마일리지 사용")
@@ -147,7 +153,7 @@ public class TestSettlementController {
                         .build(),
                 // 위 결제 1번 건에 대한 적립분 (1.15만)
                 com.onde.core.entity.payment.MileageLog.builder()
-                        .userId(1L)
+                        .userId(userId)
                         .amount(11500)
                         .logType(com.onde.core.entity.payment.MileageLogType.EARN)
                         .description("숙소 이용 완료 결제 적립 (1.0%)")
@@ -156,7 +162,7 @@ public class TestSettlementController {
         );
         mileageLogRepository.saveAll(mileageDummies);
 
-        return ResponseEntity.ok("더미 데이터 생성 완료 (유저 1번 누적 결제액 115만원으로 설정 -> GOLD 등급 및 마일리지 로그 추가, 판매자 1번 정산 계좌 등록 완료)");
+        return ResponseEntity.ok("더미 데이터 생성 완료 (유저 " + userId + "번 누적 결제액 115만원으로 설정 -> GOLD 등급 및 마일리지 로그 추가, 판매자 " + sellerId + "번 정산 계좌 등록 완료)");
     }
 
     /**

@@ -18,7 +18,7 @@ public class CommentDto {
     public static CommentDto of(Comment comment) {
         return CommentDto.builder()
                 .commentId(comment.getId())
-                .memberName(comment.getMember() != null ? comment.getMember().getName() : "익명")
+                .memberName(comment.getMember() != null ? comment.getMember().getEmail() : "익명")
                 .content(comment.getContent())
                 .createdAt(comment.getCreatedAt())
                 .build();

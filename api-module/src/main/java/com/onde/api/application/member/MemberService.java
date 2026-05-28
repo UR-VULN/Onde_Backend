@@ -19,10 +19,9 @@ public class MemberService {
     private final ReservationRepository reservationRepository;
 
     @Transactional
-    public Member createTestMember(Long id, String name, MemberRole role, String email, String password) {
+    public Member createTestMember(Long id, MemberRole role, String email, String password) {
         Member member = Member.builder()
                 .id(id)
-                .name(name != null ? name : "테스트유저")
                 .role(role)
                 .email(email != null ? email : (role.name().toLowerCase() + (id != null ? id : "") + "@onde.com"))
                 .password(password != null ? password : "testpassword123")

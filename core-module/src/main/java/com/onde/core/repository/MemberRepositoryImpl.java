@@ -58,8 +58,7 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
 
     private BooleanExpression keywordContains(String keyword) {
         if (!StringUtils.hasText(keyword)) return null;
-        return member.name.containsIgnoreCase(keyword)
-                .or(member.email.containsIgnoreCase(keyword));
+        return member.email.containsIgnoreCase(keyword);
     }
 
     private BooleanExpression createdBetween(LocalDate startDate, LocalDate endDate) {

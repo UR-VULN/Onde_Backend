@@ -61,7 +61,6 @@ class PropertyServiceTest {
 
         Member seller = Member.builder()
                 .id(sellerId)
-                .name("판매자")
                 .role(MemberRole.SELLER)
                 .build();
 
