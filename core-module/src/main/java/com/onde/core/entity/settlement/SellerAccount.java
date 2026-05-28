@@ -39,9 +39,20 @@ public class SellerAccount extends BaseEntity {
     @Column(nullable = false, length = 8) // 개업일자 (YYYYMMDD)
     private String openedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false) 
+    private AccountStatus status;
+
     public void updateAccount(String bankName, String accountNumber, String accountHolder) {
         this.bankName = bankName;
         this.accountNumber = accountNumber;
         this.accountHolder = accountHolder;
+    }
+
+    public void approveAccount() {
+    this.status = AccountStatus.APPROVED;
+}
+    public void rejectAccount() {
+        this.status = AccountStatus.REJECTED;
     }
 }

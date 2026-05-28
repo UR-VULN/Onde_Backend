@@ -51,4 +51,8 @@ public class Member extends BaseEntity {
     public void updateStatus(MemberStatus newStatus) {
         this.status = newStatus;
     }
+
+    public void updatePassword(String encryptedPassword) {
+    this.password = encryptedPassword;
+    }
 }
