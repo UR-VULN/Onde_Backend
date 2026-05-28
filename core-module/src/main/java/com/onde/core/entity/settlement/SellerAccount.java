@@ -40,5 +40,31 @@ public class SellerAccount {
      */
     @Column(name = "account_number", nullable = false)
     private String accountNumber;
+
+    /**
+     * 사업자등록번호 (예: 123-45-67890)
+     */
+    @Column(name = "business_number")
+    private String businessNumber;
+
+    /**
+     * 대표자 성명
+     */
+    @Column(name = "representative_name")
+    private String representativeName;
+
+    /**
+     * 개업 일자 (예: 20200101)
+     */
+    @Column(name = "opened_at")
+    private String openedAt;
+
+    /**
+     * 예금주 성명
+     */
+    @Column(name = "account_holder")
+    private String accountHolder;
 }
+
+
 

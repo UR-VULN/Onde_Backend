@@ -72,11 +72,30 @@ public class Settlement {
     private SettlementStatus status = SettlementStatus.PENDING;
 
     /**
+     * 정산금 지급 신청 일시
+     */
+    @Column(name = "requested_at")
+    private LocalDateTime requestedAt;
+
+    /**
+     * 1차 승인 일시
+     */
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    /**
+     * 최종 지급 확정 일시
+     */
+    @Column(name = "finalized_at")
+    private LocalDateTime finalizedAt;
+
+    /**
      * 정산 레코드가 생성된 일시 (자동 등록)
      */
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
 
     /**
      * 정산 정보가 최종 수정(상태 변경 등)된 일시 (자동 갱신)

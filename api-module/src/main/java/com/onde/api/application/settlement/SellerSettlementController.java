@@ -65,22 +65,86 @@ public class SellerSettlementController {
         Map<String, Object> data = new HashMap<>();
         data.put("settlementId", updated.getId());
         data.put("status", updated.getStatus());
+        data.put("requestedAt", updated.getRequestedAt());
 
         return ResponseEntity.ok(ApiResponse.success(data, "정산 신청이 접수되었습니다."));
     }
 
     /**
-     * 판매자의 일별/월별 누적 매출 추이 통계를 조회합니다.
-     *
-     * @param sellerId 판매자 식별자 (임시로 X-Seller-Id 헤더에서 추출)
-     * @return 판매자 통계 응답 DTO
+     * 정산 계좌 등록/수정 API
      */
-    @GetMapping("/statistics")
-    public ResponseEntity<ApiResponse<com.onde.api.application.payment.dto.response.SellerStatisticsResponse>> getSellerStatistics(
+    @PutMapping("/accounts")
+    public ResponseEntity<ApiResponse<com.onde.api.application.settlement.dto.SellerAccountResponse>> registerOrUpdateAccount(
+            @RequestHeader("X-Seller-Id") Long sellerId,
+            @RequestBody com.onde.api.application.settlement.dto.SellerAccountRequest request) {
+
+        com.onde.core.entity.settlement.SellerAccount account = settlementService.registerOrUpdateAccount(sellerId, request);
+        
+        com.onde.api.application.settlement.dto.SellerAccountResponse response = com.onde.api.application.settlement.dto.SellerAccountResponse.builder()
+                .sellerId(account.getSellerId())
+                .bankName(account.getBankName())
+                .accountNumber(settlementService.maskAccountNumber(account.getAccountNumber()))
+                .accountHolder(account.getAccountHolder())
+                .businessNumber(account.getBusinessNumber())
+                .representativeName(account.getRepresentativeName())
+                .openedAt(account.getOpenedAt())
+                .createdAt(java.time.LocalDateTime.now())
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.success(response, "정산 계좌가 등록/수정되었습니다."));
+    }
+
+    /**
+     * 정산 계좌 조회 API
+     */
+    @GetMapping("/accounts")
+    public ResponseEntity<ApiResponse<com.onde.api.application.settlement.dto.SellerAccountResponse>> getAccount(
             @RequestHeader("X-Seller-Id") Long sellerId) {
 
-        com.onde.api.application.payment.dto.response.SellerStatisticsResponse result = settlementService
-                .getSellerStatistics(sellerId);
-        return ResponseEntity.ok(ApiResponse.success(result, "판매자 누적 매출 통계 조회 성공"));
+        com.onde.core.entity.settlement.SellerAccount account = settlementService.getAccount(sellerId);
+
+        com.onde.api.application.settlement.dto.SellerAccountResponse response = com.onde.api.application.settlement.dto.SellerAccountResponse.builder()
+                .sellerId(account.getSellerId())
+                .bankName(account.getBankName())
+                .accountNumber(settlementService.maskAccountNumber(account.getAccountNumber()))
+                .accountHolder(account.getAccountHolder())
+                .businessNumber(account.getBusinessNumber())
+                .representativeName(account.getRepresentativeName())
+                .openedAt(account.getOpenedAt())
+                .createdAt(java.time.LocalDateTime.now())
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.success(response, "정산 계좌 조회 성공."));
+    }
+
+    /**
+     * 판매자 대시보드 매출 통계 조회 API
+     */
+    @GetMapping("/dashboard/statistics")
+    public ResponseEntity<ApiResponse<com.onde.api.application.settlement.dto.SellerDashboardResponse>> getSellerDashboardStatistics(
+            @RequestHeader("X-Seller-Id") Long sellerId,
+            @RequestParam(name = "period", defaultValue = "MONTHLY") String period,
+            @RequestParam(name = "startDate") String startDate,
+            @RequestParam(name = "endDate") String endDate) {
+
+        com.onde.api.application.payment.dto.response.SellerStatisticsResponse stats = settlementService.getSellerStatistics(sellerId);
+        
+        java.util.List<com.onde.api.application.settlement.dto.SellerDashboardResponse.RevenueBreakdown> breakdown = new java.util.ArrayList<>();
+        for (com.onde.api.application.payment.dto.response.SellerStatisticsResponse.RevenueTrend trend : stats.getMonthlyTrends()) {
+            breakdown.add(com.onde.api.application.settlement.dto.SellerDashboardResponse.RevenueBreakdown.builder()
+                    .month(trend.getLabel())
+                    .revenue(trend.getGrossAmount())
+                    .bookingCount(1) // 테스트용 가상 카운트
+                    .build());
+        }
+
+        com.onde.api.application.settlement.dto.SellerDashboardResponse response = com.onde.api.application.settlement.dto.SellerDashboardResponse.builder()
+                .period(period)
+                .totalRevenue(stats.getMonthlyTrends().stream().mapToLong(t -> t.getGrossAmount()).sum())
+                .breakdown(breakdown)
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
+

@@ -275,12 +275,30 @@ Content-Type: application/json
 GET http://localhost:8080/api/v1/seller/settlements?page=0&size=10
 X-Seller-Id: 1
 
+### 8.1 [Phase 5-New] 판매자 정산 계좌 등록/수정
+PUT http://localhost:8080/api/v1/seller/settlements/accounts
+X-Seller-Id: 1
+Content-Type: application/json
+
+{
+  "bankName": "KB국민은행",
+  "accountNumber": "123-456-789012",
+  "accountHolder": "홍길동",
+  "businessNumber": "123-45-67890",
+  "representativeName": "홍길동",
+  "openedAt": "20200101"
+}
+
+### 8.2 [Phase 5-New] 판매자 정산 계좌 조회
+GET http://localhost:8080/api/v1/seller/settlements/accounts
+X-Seller-Id: 1
+
 ### 9. [Phase 5] 판매자 정산 신청
 POST http://localhost:8080/api/v1/seller/settlements/1/request
 X-Seller-Id: 1
 
 ### 10. [Phase 6] 본사 정산 리스트 조회
-GET http://localhost:8080/api/v1/admin/settlements
+GET http://localhost:8080/api/v1/admin/settlements?status=REQUESTED&page=0&size=20
 
 ### 11. [Phase 6] 본사 정산 1차 승인
 POST http://localhost:8080/api/v1/admin/settlements/1/approve-first
@@ -298,9 +316,13 @@ Content-Type: application/json
   "comment": "송금 완료"
 }
 
-### 13. [Phase 7] 판매자 누적 매출 통계 조회
-GET http://localhost:8080/api/v1/seller/settlements/statistics
+### 13. [Phase 7] 판매자 대시보드 매출 통계 조회
+GET http://localhost:8080/api/v1/seller/dashboard/statistics?period=MONTHLY&startDate=2026-01-01&endDate=2026-05-31
 X-Seller-Id: 1
 
-### 14. [Phase 7] 플랫폼 전사 매출 통계 조회
-GET http://localhost:8080/api/v1/admin/settlements/statistics
+### 14. [Phase 7] 플랫폼 전사 매출 통계 요약 조회 (Admin Dashboard Summary)
+GET http://localhost:8080/api/v1/admin/dashboard/summary?month=2026-05
+
+### 15. [Phase 7] 플랫폼 도메인별 매출 비중 차트 조회 (Admin Dashboard Charts)
+GET http://localhost:8080/api/v1/admin/dashboard/charts?month=2026-05
+
