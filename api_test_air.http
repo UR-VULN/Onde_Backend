@@ -17,7 +17,7 @@ Accept: application/json
 # - Redisson 분산 락 및 JPA 비관적 쓰기 락 가동
 # - 10분간 안전하게 선점, 결제 미완료 시 1분 배치에 의해 자동 회수(+1)
 # - X-Member-Id 헤더 기반 인증 처리 (미존재 시 1L Fallback)
-POST {{host}}/api/v1/flights/bookings
+POST {{host}}/api/v1/reservations/flights
 Content-Type: application/json
 X-Member-Id: 1
 
@@ -35,7 +35,7 @@ X-Member-Id: 1
 ### 1.3. SAGA 패턴 결제 성공 확정 & 상태 갱신 (POST)
 # - 외부 PG 결제 승인 완료 후 로컬 DB 갱신 시도
 # - pgTransactionId에 "FAIL" 포함 시 고의 장애 상황 시뮬레이션 및 외부 결제 취소 보상 트랜잭션 자동 작동
-POST {{host}}/api/v1/flights/bookings/BK-20260528-999/confirm
+POST {{host}}/api/v1/reservations/flights/BK-20260528-999/confirm
 Content-Type: application/json
 
 {
@@ -47,7 +47,7 @@ Content-Type: application/json
 
 ### 1.4. 결제 실패 시뮬레이션 (SAGA 보상 트랜잭션 테스트)
 # - pgTransactionId에 FAIL 문자 주입 시 DB 트랜잭션 에러 유발 및 PG 환불 자동 보상 호출
-POST {{host}}/api/v1/flights/bookings/BK-20260528-999/confirm
+POST {{host}}/api/v1/reservations/flights/BK-20260528-999/confirm
 Content-Type: application/json
 
 {
@@ -75,7 +75,7 @@ Content-Type: application/json
 
 ### 1.6. 여행자 보험 최종 가입 신청 (POST)
 # - 동적 보험 요율 백엔드 2중 금액 검증(Cross-Verification) 및 가입 처리
-POST {{host}}/api/v1/insurance/policies
+POST {{host}}/api/v1/reservations/insurances
 Content-Type: application/json
 X-Member-Id: 1
 
@@ -207,6 +207,6 @@ Accept: text/csv
 ### 3.4. 관리자 직권 수동 예약 강제 취소 (POST)
 # - 비관적 락 좌석 복원 (+1) 및 D팀 환불 FeignClient 연동 시뮬레이션
 # - URL 및 경로 변수 스네이크 케이스 준수 (booking_id)
-POST {{adminHost}}/api/v1/admin/bookings/1/cancel
+POST {{adminHost}}/api/v1/admin/bookings/2/cancel
 X-Admin-Role: MASTER
 Content-Type: application/json

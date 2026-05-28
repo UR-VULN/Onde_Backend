@@ -11,13 +11,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/insurance")
+@RequestMapping("/api/v1")
 @RequiredArgsConstructor
 public class InsuranceController {
 
     private final InsuranceService insuranceService;
 
-    @PostMapping("/calculate")
+    @PostMapping("/insurance/calculate")
     public ResponseEntity<ApiResponse<InsuranceCalculateResponse>> calculatePremium(
             @RequestBody InsuranceCalculateRequest req) {
         
@@ -25,7 +25,7 @@ public class InsuranceController {
         return ResponseEntity.ok(ApiResponse.success(response, "실시간 동적 보험 요율 사전 계산 결과를 조회했습니다."));
     }
 
-    @PostMapping("/policies")
+    @PostMapping("/reservations/insurances")
     public ResponseEntity<ApiResponse<InsurancePolicyResponse>> applyPolicy(
             @RequestBody InsurancePolicyRequest req,
             @RequestHeader(value = "X-Member-Id", required = false) String memberIdHeader) {
