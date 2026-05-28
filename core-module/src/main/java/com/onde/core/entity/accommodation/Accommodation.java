@@ -1,41 +1,45 @@
 package com.onde.core.entity.accommodation;
 
+import com.onde.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import java.util.List;
+import java.time.LocalDateTime;
 
 @Entity
-@Getter
-@Setter
-@NoArgsConstructor
-public class Accommodation {
+@Table(name = "accommodations")
+@Getter @Setter @NoArgsConstructor
+public class Accommodation extends BaseEntity {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "AccommodationId")
-    private Long accommodationId;
+    @Column(name = "accommodation_id")
+    private Long id;
 
-    @Column(name = "SellerId")
+    @Column(name = "seller_id")
     private Long sellerId;
 
     private String name;
 
     @Column(columnDefinition = "TEXT")
-    private String description; 
+    private String description;
 
-    private String region;
-    private String city;
-    private Integer starRating;
+    private String category;
+    private String location;
 
-    private Double latitude;
-    private Double longitude;
+    private Double rating;
 
-    @ElementCollection
-    @CollectionTable(name = "accommodation_amenities", joinColumns = @JoinColumn(name = "AccommodationId"))
-    @Column(name = "amenity")
-    private List<String> amenities;
+    @Column(name = "business_license")
+    private String businessLicense;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "approval_status")
     private ApprovalStatus approvalStatus;
+
+    @Column(name = "thumbnail_url")
+    private String thumbnailUrl;
+
+    @Column(name = "submit_date")
+    private LocalDateTime submitDate;
 }

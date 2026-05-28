@@ -1,26 +1,33 @@
 package com.onde.core.entity.accommodation;
 
+import com.onde.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Entity
-@Getter @Setter
-@NoArgsConstructor
-public class Room {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "RoomId")
-    private Long roomId;
+import java.math.BigDecimal;
 
-    // Accommodation과 N:1 관계 매핑
+@Entity
+@Table(name = "rooms")
+@Getter @Setter @NoArgsConstructor
+public class Room extends BaseEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "room_id")
+    private Long id;
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "AccommodationId")
+    @JoinColumn(name = "accommodation_id")
     private Accommodation accommodation;
 
-    private String roomType; // 예: 스탠다드, 디럭스, 스위트
-    private Integer baseCapacity; // 기준 인원
-    private Integer maxCapacity; // 최대 인원
-    private Integer defaultPrice; // 기본 요금
-    private Integer totalQuantity; // 전체 객실 수
+    private String name;
+
+    private Integer capacity;
+
+    @Column(name = "base_capacity")
+    private Integer baseCapacity;
+
+    @Column(name = "extra_person_fee", precision = 19, scale = 2)
+    private BigDecimal extraPersonFee;
 }

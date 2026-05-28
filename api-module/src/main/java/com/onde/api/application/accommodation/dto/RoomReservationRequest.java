@@ -10,5 +10,5 @@ public class RoomReservationRequest {
     private Long roomId;
     private LocalDate checkInDate;
     private LocalDate checkOutDate;
-    private Integer totalPrice;
+    private Integer guests;
 }

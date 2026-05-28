@@ -12,5 +12,7 @@ public class AccommodationSearchRequest {
     private LocalDate checkOut;
     private Integer guests;
     private Integer starRating;
+    private String category;
+    private String sort;
     private List<String> amenities;
 }

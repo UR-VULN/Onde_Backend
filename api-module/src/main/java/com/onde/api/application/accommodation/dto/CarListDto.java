@@ -8,9 +8,10 @@ import lombok.NoArgsConstructor;
 @Getter @Builder
 @NoArgsConstructor @AllArgsConstructor
 public class CarListDto {
-    private Long carId;
+    private Long id;
     private String modelName;
     private String carType;
-    private String location;
+    private String fuelType;
+    private Integer capacity;
     private Integer price;
 }

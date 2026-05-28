@@ -1,31 +1,38 @@
 package com.onde.core.entity.accommodation;
 
+import com.onde.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Getter @Setter
-@NoArgsConstructor
-public class Car {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "CarId")
-    private Long carId;
+@Table(name = "rental_cars")
+@Getter @Setter @NoArgsConstructor
+public class Car extends BaseEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "car_id")
+    private Long id;
 
-    @Column(name = "SellerId")
+    @Column(name = "seller_id")
     private Long sellerId;
 
-    private String modelName; // 예: 아반떼, 쏘렌토
-    private String carType; // 경형, 세단, SUV
+    @Column(name = "model_name")
+    private String modelName;
 
-    private String location; // 렌터카 대여/반납 장소(검색용)
+    @Column(name = "license_plate")
+    private String licensePlate;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
+    @Column(name = "car_type")
+    private String carType;
 
-    private Integer totalQuantity;
+    @Column(name = "fuel_type")
+    private String fuelType;
+
+    private Integer capacity;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "approval_status")
     private ApprovalStatus approvalStatus;
 }

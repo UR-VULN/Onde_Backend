@@ -2,7 +2,7 @@ package com.onde.api.application.accommodation;
 
 import com.onde.api.application.accommodation.dto.RoomInventoryUpdateRequest;
 import com.onde.api.application.accommodation.dto.SellerAccommodationRegisterRequest;
-import com.onde.core.entity.accommodation.RoomInventory;
+import com.onde.core.entity.accommodation.Inventory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -23,7 +23,7 @@ public class SellerAccommodationController {
     }
 
     @GetMapping("/rooms/{roomId}/inventory")
-    public ResponseEntity<List<RoomInventory>> getInventories(
+    public ResponseEntity<List<Inventory>> getInventories(
             @PathVariable Long roomId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {

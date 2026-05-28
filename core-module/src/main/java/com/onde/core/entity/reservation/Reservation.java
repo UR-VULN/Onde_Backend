@@ -1,32 +1,43 @@
 package com.onde.core.entity.reservation;
 
+import com.onde.core.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import java.time.LocalDate;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Getter @Setter
-@NoArgsConstructor
-public class Reservation {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+@Table(name = "reservations")
+@Getter @Setter @NoArgsConstructor
+public class Reservation extends BaseEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "reservation_id")
     private Long id;
 
-    private Long memberId;
+    @Column(name = "user_id")
+    private Long userId;
 
     @Enumerated(EnumType.STRING)
-    private ReservationTarget targetType; // STAY, CAR, FLIGHT
+    @Column(name = "target_type", length = 10)
+    private ReservationTarget targetType;
 
-    private Long targetId; // RoomId, CarId, etc.
+    @Column(name = "target_id")
+    private Long targetId;
 
-    private LocalDate startDate;
-    private LocalDate endDate;
+    @Column(name = "check_in")
+    private LocalDateTime checkIn;
+
+    @Column(name = "check_out")
+    private LocalDateTime checkOut;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 20)
     private ReservationStatus status;
 
-    private Integer totalPrice;
-    private LocalDateTime createdAt;
+    @Column(name = "total_price", precision = 19, scale = 2)
+    private BigDecimal totalPrice;
 }
