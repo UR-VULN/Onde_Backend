@@ -18,8 +18,8 @@ POST {{api_host}}/api/v1/members/test
 Content-Type: application/json
 
 {
-  "id": 1,
-  "name": "홍길동",
+  "email": "hong@aa.com",
+  "password": "hong1111",
   "role": "USER"
 }
 
@@ -299,9 +299,13 @@ X-Seller-Id: 1
 
 ### 10. [Phase 6] 본사 정산 리스트 조회
 GET http://localhost:8080/api/v1/admin/settlements?status=REQUESTED&page=0&size=20
+X-Admin-Id: AD-001
+X-Admin-Role: SUPER_ADMIN
 
 ### 11. [Phase 6] 본사 정산 1차 승인
 POST http://localhost:8080/api/v1/admin/settlements/1/approve-first
+X-Admin-Id: AD-001
+X-Admin-Role: SUPER_ADMIN
 Content-Type: application/json
 
 {
@@ -310,6 +314,8 @@ Content-Type: application/json
 
 ### 12. [Phase 6] 본사 정산 최종 확정
 POST http://localhost:8080/api/v1/admin/settlements/1/finalize
+X-Admin-Id: AD-001
+X-Admin-Role: SUPER_ADMIN
 Content-Type: application/json
 
 {

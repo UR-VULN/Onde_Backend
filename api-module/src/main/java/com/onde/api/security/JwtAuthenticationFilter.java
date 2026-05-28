@@ -44,6 +44,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } else {
             // 로컬 편의상 HTTP 헤더 기반의 테스트용 가상 인증 처리
             String memberIdHeader = request.getHeader("X-Member-Id");
+            String sellerIdHeader = request.getHeader("X-Seller-Id");
             String adminRoleHeader = request.getHeader("X-Admin-Role");
 
             if (memberIdHeader != null && !memberIdHeader.isBlank()) {
@@ -53,6 +54,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
                 List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
                 UserDetails principal = new User("user" + memberIdHeader + "@onde.com", "", authorities);
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(principal, null, authorities);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            } else if (sellerIdHeader != null && !sellerIdHeader.isBlank()) {
+                List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_SELLER"));
+                UserDetails principal = new User("seller" + sellerIdHeader + "@onde.com", "", authorities);
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(principal, null, authorities);
                 SecurityContextHolder.getContext().setAuthentication(authentication);

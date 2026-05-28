@@ -1,6 +1,7 @@
 package com.onde.admin.exception;
 
 import com.onde.core.exception.BusinessException;
+import com.onde.core.exception.ErrorCode;
 import com.onde.core.support.ErrorDetail;
 import com.onde.core.support.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -32,10 +33,8 @@ public class GlobalAdminExceptionHandler {
         }
 
         ErrorResponse response = ErrorResponse.of(
-                e.getErrorCode().getMessage(),
-                e.getErrorCode().getCode(),
-                e.getMessage(),
-                null
+                e.getErrorCode(),
+                e.getMessage()
         );
 
         return ResponseEntity.status(status).body(response);
@@ -55,8 +54,8 @@ public class GlobalAdminExceptionHandler {
         }
 
         ErrorResponse response = ErrorResponse.of(
+                ErrorCode.INVALID_INPUT_VALUE,
                 "어드민 입력값이 올바르지 않습니다.",
-                "VAL-4000",
                 e.getClass().getSimpleName() + ": Admin Validation failed for object='" + e.getBindingResult().getObjectName() + "'",
                 details
         );
@@ -69,8 +68,8 @@ public class GlobalAdminExceptionHandler {
         log.error("Unhandled admin server exception occurred: {}", e.getMessage(), e);
         
         ErrorResponse response = ErrorResponse.of(
+                ErrorCode.INTERNAL_SERVER_ERROR,
                 "어드민 서버 내부 오류가 발생했습니다.",
-                "SYS-5000",
                 e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName(),
                 null
         );
@@ -78,3 +77,4 @@ public class GlobalAdminExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 }
+

@@ -19,16 +19,18 @@ public class MemberService {
     private final ReservationRepository reservationRepository;
 
     @Transactional
-    public Member createTestMember(Long id, String name, MemberRole role) {
+    public Member createTestMember(Long id, String name, MemberRole role, String email, String password) {
         Member member = Member.builder()
                 .id(id)
-                .name(name)
+                .name(name != null ? name : "테스트유저")
                 .role(role)
+                .email(email != null ? email : (role.name().toLowerCase() + (id != null ? id : "") + "@onde.com"))
+                .password(password != null ? password : "testpassword123")
                 .build();
         Member savedMember = memberRepository.save(member);
 
         // 테스트 편의성을 위해 USER(ID=1) 생성 시, 영수증 다운로드 테스트용 dummy reservation도 함께 삽입
-        if (id == 1L) {
+        if (id != null && id == 1L) {
             Reservation reservation = Reservation.builder()
                     .id(1L)
                     .member(savedMember)

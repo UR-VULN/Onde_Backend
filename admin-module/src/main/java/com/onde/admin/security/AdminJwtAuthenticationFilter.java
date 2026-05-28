@@ -49,10 +49,16 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
             String adminId = request.getHeader("X-Admin-Id");
             String adminRole = request.getHeader("X-Admin-Role");
 
-            if (adminId != null && !adminId.isBlank() && adminRole != null && !adminRole.isBlank()) {
+            if (adminRole != null && !adminRole.isBlank()) {
+                if (adminId == null || adminId.isBlank()) {
+                    adminId = "AD-999";
+                }
                 // 권한 식별자 포맷 통일 (ROLE_ADMIN, ROLE_SUPER_ADMIN 등)
                 String roleName = adminRole.toUpperCase().startsWith("ROLE_") ? adminRole.toUpperCase() : "ROLE_" + adminRole.toUpperCase();
-                List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(roleName));
+                List<SimpleGrantedAuthority> authorities = List.of(
+                        new SimpleGrantedAuthority(roleName),
+                        new SimpleGrantedAuthority("ROLE_ADMIN")
+                );
                 
                 // 첫 번째 필터와 두 번째 필터의 Principal 타입을 UserDetails(User) 구체 클래스로 통일하여 캐스팅 에러 방지
                 UserDetails principal = new User(adminId, "", authorities);

@@ -27,13 +27,8 @@ public class GlobalExceptionHandler {
                 ErrorCode errorCode = e.getErrorCode();
                 String systemMessage = e.getMessage() != null ? e.getMessage() : errorCode.getMessage();
 
-                // 👈 순정 ErrorResponse.of(message, code, systemMessage, details) 스펙 준수
-                ErrorResponse response = ErrorResponse.of(
-                                errorCode.getMessage(), // 1. String message
-                                errorCode.getCode(), // 2. String code
-                                systemMessage, // 3. String systemMessage
-                                null // 4. List<ErrorDetail> details (비즈니스 예외는 하부 필드가 없으므로 null)
-                );
+                // 👈 순정 ErrorResponse.of(errorCode, systemMessage) 스펙 준수
+                ErrorResponse response = ErrorResponse.of(errorCode, systemMessage);
 
                 return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
         }
@@ -58,14 +53,12 @@ public class GlobalExceptionHandler {
                         defaultMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
                 }
 
-                // 👈 순정 ErrorResponse.of(message, code, systemMessage, details) 스펙 준수
+                // 👈 순정 ErrorResponse.of(errorCode, customUserMessage, systemMessage, details) 스펙 준수
                 ErrorResponse response = ErrorResponse.of(
-                                defaultMessage, // 1. String message
-                                ErrorCode.INVALID_INPUT_VALUE.getCode(), // 2. String code
-                                "Validation failed for object='" + e.getBindingResult().getObjectName() + "'", // 3.
-                                                                                                               // String
-                                                                                                               // systemMessage
-                                details // 4. List<ErrorDetail> details
+                                ErrorCode.INVALID_INPUT_VALUE,
+                                defaultMessage,
+                                "Validation failed for object='" + e.getBindingResult().getObjectName() + "'",
+                                details
                 );
 
                 return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus()).body(response);
@@ -81,12 +74,12 @@ public class GlobalExceptionHandler {
                 String systemMessage = String.format("%s: %s", e.getClass().getName(),
                                 e.getMessage() != null ? e.getMessage() : "No detailed message");
 
-                // 👈 순정 ErrorResponse.of(message, code, systemMessage, details) 스펙 준수
+                // 👈 순정 ErrorResponse.of(errorCode, customUserMessage, systemMessage, details) 스펙 준수
                 ErrorResponse response = ErrorResponse.of(
-                                "서버 내부 오류가 발생했습니다. 관리자에게 문의하세요.", // 1. String message
-                                ErrorCode.INTERNAL_SERVER_ERROR.getCode(), // 2. String code
-                                systemMessage, // 3. String systemMessage
-                                null // 4. List<ErrorDetail> details
+                                ErrorCode.INTERNAL_SERVER_ERROR,
+                                "서버 내부 오류가 발생했습니다. 관리자에게 문의하세요.",
+                                systemMessage,
+                                null
                 );
 
                 return ResponseEntity.status(ErrorCode.INTERNAL_SERVER_ERROR.getHttpStatus()).body(response);
