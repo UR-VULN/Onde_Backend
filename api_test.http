@@ -53,11 +53,11 @@ Content-Type: application/json
 }
 
 ### 8. [Phase 5] 판매자 내 정산 내역 조회
-GET http://localhost:8080/api/v1/sellers/settlements?page=0&size=10
+GET http://localhost:8080/api/v1/seller/settlements?page=0&size=10
 X-Seller-Id: 1
 
 ### 9. [Phase 5] 판매자 정산 신청
-POST http://localhost:8080/api/v1/sellers/settlements/1/request
+POST http://localhost:8080/api/v1/seller/settlements/1/request
 X-Seller-Id: 1
 
 ### 10. [Phase 6] 본사 정산 리스트 조회
@@ -80,9 +80,8 @@ Content-Type: application/json
 }
 
 ### 13. [Phase 7] 판매자 누적 매출 통계 조회
-GET http://localhost:8080/api/v1/sellers/settlements/statistics
+GET http://localhost:8080/api/v1/seller/settlements/statistics
 X-Seller-Id: 1
 
 ### 14. [Phase 7] 플랫폼 전사 매출 통계 조회
 GET http://localhost:8080/api/v1/admin/settlements/statistics
-
