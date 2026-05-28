@@ -88,27 +88,34 @@ public class SettlementService {
     public Settlement requestSettlement(Long settlementId, Long sellerId) {
         // 1. 대상 정산 건 조회
         Settlement settlement = settlementRepository.findById(settlementId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 정산 건이 존재하지 않습니다."));
-
+                 .orElseThrow(() -> new IllegalArgumentException("해당 정산 건이 존재하지 않습니다."));
+ 
         // 2. 권한 검증: 본인 점포의 정산 건인지 확인
         if (!settlement.getSellerId().equals(sellerId)) {
             throw new IllegalArgumentException("본인의 정산 건만 신청 가능합니다.");
         }
-
+ 
         // 3. 상태 검증: 오직 PENDING 상태에서만 신청 가능
         if (settlement.getStatus() != SettlementStatus.PENDING) {
             throw new IllegalStateException("정산 대기(PENDING) 상태일 때만 신청 가능합니다.");
         }
-
-        // 4. 계좌 정보 검증: 정산 지급을 받기 위해 계좌 정보가 반드시 디비에 존재해야 함
+ 
+        // 4. 계좌 정보 검증: 정산 지급을 받기 위해 계좌 정보(사업자 번호 포함)가 반드시 디비에 존재해야 함
         SellerAccount account = sellerAccountRepository.findBySellerId(sellerId)
-                .orElseThrow(() -> new IllegalStateException("정산 계좌가 등록되지 않았습니다."));
+                 .orElseThrow(() -> new IllegalArgumentException("정산 계좌가 등록되지 않았습니다."));
 
-        // 5. 정산 요청 상태(REQUESTED)로 변경
+        if (account.getBusinessNumber() == null || account.getBusinessNumber().isEmpty()
+                || account.getRepresentativeName() == null || account.getRepresentativeName().isEmpty()
+                || account.getOpenedAt() == null || account.getOpenedAt().isEmpty()) {
+            throw new IllegalArgumentException("정산 계좌의 사업자 정보(사업자등록번호, 대표자명, 개업일자)가 미등록 상태입니다.");
+        }
+ 
+        // 5. 정산 요청 상태(REQUESTED) 및 요청시각 설정
         settlement.setStatus(SettlementStatus.REQUESTED);
+        settlement.setRequestedAt(LocalDateTime.now());
         return settlement;
     }
-
+ 
     /**
      * 본사의 1차 정산 담당자(SALES_ADMIN)가 판매자의 지급 신청(REQUESTED) 건을 검토한 후 승인합니다.
      * 상태가 APPROVED_1ST로 전이됩니다.
@@ -121,19 +128,19 @@ public class SettlementService {
     public Settlement approveFirstSettlement(Long settlementId, String comment) {
         // 1. 대상 정산 건 조회
         Settlement settlement = settlementRepository.findById(settlementId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 정산 건이 존재하지 않습니다."));
-
+                 .orElseThrow(() -> new IllegalArgumentException("해당 정산 건이 존재하지 않습니다."));
+ 
         // 2. 상태 검증: 오직 REQUESTED 상태에서만 1차 승인 가능
         if (settlement.getStatus() != SettlementStatus.REQUESTED) {
             throw new IllegalStateException("정산 요청(REQUESTED) 상태에서만 1차 승인이 가능합니다.");
         }
-
-        // 3. 1차 승인 상태(APPROVED_1ST)로 변경
+ 
+        // 3. 1차 승인 상태(APPROVED_1ST)로 변경 및 일시 기록
         settlement.setStatus(SettlementStatus.APPROVED_1ST);
-        // comment 처리 로직 생략 (실무에서는 히스토리 테이블 저장 혹은 알림 메일 전송 등에 사용)
+        settlement.setApprovedAt(LocalDateTime.now());
         return settlement;
     }
-
+ 
     /**
      * 본사 최고 관리자(SUPER_ADMIN)가 1차 검토 완료(APPROVED_1ST)된 정산 건을 최종 승인 및 지급 완료 처리합니다.
      * 상태가 COMPLETED로 전이되며 정산 프로세스가 종결됩니다.
@@ -146,18 +153,79 @@ public class SettlementService {
     public Settlement finalizeSettlement(Long settlementId, String comment) {
         // 1. 대상 정산 건 조회
         Settlement settlement = settlementRepository.findById(settlementId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 정산 건이 존재하지 않습니다."));
-
+                 .orElseThrow(() -> new IllegalArgumentException("해당 정산 건이 존재하지 않습니다."));
+ 
         // 2. 상태 검증: 오직 APPROVED_1ST 상태에서만 최종 지급 확정 가능
         if (settlement.getStatus() != SettlementStatus.APPROVED_1ST) {
             throw new IllegalStateException("1차 승인(APPROVED_1ST) 상태에서만 최종 확정이 가능합니다.");
         }
-
-        // 3. 정산 완료 상태(COMPLETED)로 변경
+ 
+        // 3. 정산 완료 상태(COMPLETED)로 변경 및 일시 기록
         settlement.setStatus(SettlementStatus.COMPLETED);
-        // 실제 뱅킹 API를 통한 자동 이체 연동 및 comment 처리 로직 생략 (알림이나 이력 관리에 사용 가능)
+        settlement.setFinalizedAt(LocalDateTime.now());
         return settlement;
     }
+
+    /**
+     * 테스트용 정산 계좌 등록/수정 비즈니스 로직입니다.
+     */
+    @Transactional
+    public SellerAccount registerOrUpdateAccount(Long sellerId, com.onde.api.application.settlement.dto.SellerAccountRequest req) {
+        if (req.getBankName() == null || req.getAccountNumber() == null || req.getAccountHolder() == null) {
+            throw new IllegalArgumentException("필수값 누락");
+        }
+        // 간단한 국세청 검증 Mocking
+        if (req.getBusinessNumber() == null || req.getBusinessNumber().isEmpty()) {
+            throw new IllegalArgumentException("국세청 검증 실패 - 유효하지 않은 사업자 번호");
+        }
+
+        SellerAccount account = sellerAccountRepository.findBySellerId(sellerId)
+                .orElse(SellerAccount.builder().sellerId(sellerId).build());
+
+        account.setBankName(req.getBankName());
+        account.setAccountNumber(req.getAccountNumber()); // 실제 암호화 처리는 다른 작업자 몫이므로 테스트용으로 그대로 담음
+        account.setAccountHolder(req.getAccountHolder());
+        account.setBusinessNumber(req.getBusinessNumber());
+        account.setRepresentativeName(req.getRepresentativeName());
+        account.setOpenedAt(req.getOpenedAt());
+
+        return sellerAccountRepository.save(account);
+    }
+
+    /**
+     * 테스트용 정산 계좌 조회 비즈니스 로직입니다.
+     */
+    @Transactional(readOnly = true)
+    public SellerAccount getAccount(Long sellerId) {
+        return sellerAccountRepository.findBySellerId(sellerId)
+                .orElseThrow(() -> new IllegalArgumentException("등록된 계좌 없음"));
+    }
+
+    /**
+     * 계좌번호 마스킹 유틸리티 (예: 123-456-789012 -> 123-***-***012)
+     */
+    public String maskAccountNumber(String accountNumber) {
+        if (accountNumber == null || accountNumber.length() < 8) {
+            return accountNumber;
+        }
+        // 하이픈이 있는 포맷인 경우: 123-456-789012 -> 123-***-***012
+        if (accountNumber.contains("-")) {
+            String[] parts = accountNumber.split("-");
+            if (parts.length >= 3) {
+                StringBuilder sb = new StringBuilder();
+                sb.append(parts[0]).append("-");
+                for (int i = 1; i < parts.length - 1; i++) {
+                    sb.append("*".repeat(parts[i].length())).append("-");
+                }
+                sb.append(parts[parts.length - 1]);
+                return sb.toString();
+            }
+        }
+        // 일반 숫자인 경우 가운데 영역 마스킹
+        int len = accountNumber.length();
+        return accountNumber.substring(0, 3) + "***" + accountNumber.substring(len - 3);
+    }
+
 
     /**
      * 특정 판매자의 일별/월별 매출 및 누적 매출 추이 통계를 조회합니다.

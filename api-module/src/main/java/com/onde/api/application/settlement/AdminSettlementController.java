@@ -47,8 +47,27 @@ public class AdminSettlementController {
             result = settlementRepository.findAll(PageRequest.of(page, size));
         }
         
+        java.util.List<Map<String, Object>> settlementList = new java.util.ArrayList<>();
+        for (Settlement s : result.getContent()) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("settlementId", s.getId());
+            map.put("settlementMonth", s.getSettlementDate().toString());
+            map.put("grossAmount", s.getGrossAmount());
+            map.put("commission", s.getCommission());
+            map.put("netAmount", s.getNetAmount());
+            map.put("status", s.getStatus());
+            
+            // 판매자 계좌 정보 함께 결합 반환 (명세 요구사항: sellerName, bankName, accountNumber)
+            com.onde.core.entity.settlement.SellerAccount account = settlementService.getAccount(s.getSellerId());
+            map.put("sellerName", account.getAccountHolder()); // 대표자명을 sellerName 대용 혹은 별도 지정
+            map.put("bankName", account.getBankName());
+            map.put("accountNumber", settlementService.maskAccountNumber(account.getAccountNumber()));
+            
+            settlementList.add(map);
+        }
+
         Map<String, Object> data = new HashMap<>();
-        data.put("settlements", result.getContent());
+        data.put("settlements", settlementList);
         data.put("totalCount", result.getTotalElements());
         
         return ResponseEntity.ok(ApiResponse.success(data));
@@ -71,6 +90,7 @@ public class AdminSettlementController {
         Map<String, Object> data = new HashMap<>();
         data.put("settlementId", updated.getId());
         data.put("status", updated.getStatus());
+        data.put("approvedAt", updated.getApprovedAt());
         
         return ResponseEntity.ok(ApiResponse.success(data, "1차 승인 처리되었습니다."));
     }
@@ -92,19 +112,10 @@ public class AdminSettlementController {
         Map<String, Object> data = new HashMap<>();
         data.put("settlementId", updated.getId());
         data.put("status", updated.getStatus());
+        data.put("finalizedAt", updated.getFinalizedAt());
         
         return ResponseEntity.ok(ApiResponse.success(data, "정산이 최종 확정되었습니다."));
     }
-
-    /**
-     * 플랫폼 전체 총거래액(GMV), 수수료 순이익 및 서비스별 매출 비중 통계를 조회합니다.
-     *
-     * @return 플랫폼 전체 매출 통계 응답 DTO
-     */
-    @GetMapping("/statistics")
-    public ResponseEntity<ApiResponse<com.onde.api.application.payment.dto.response.PlatformStatisticsResponse>> getPlatformStatistics() {
-        com.onde.api.application.payment.dto.response.PlatformStatisticsResponse result = settlementService.getPlatformStatistics();
-        return ResponseEntity.ok(ApiResponse.success(result, "플랫폼 전체 매출 통계 조회 성공"));
-    }
 }
+
 
