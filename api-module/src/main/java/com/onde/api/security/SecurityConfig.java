@@ -43,12 +43,21 @@ public class SecurityConfig {
 
             // URL 경로별 접근 권한 세팅
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/auth/**").permitAll()    // 회원가입, 로그인은 누구나
-                .requestMatchers("/api/v1/flights/search").permitAll() // 항공권 검색 누구나
-                .requestMatchers("/api/v1/accommodations/**", "/api/v1/cars/**").permitAll() // 숙소/렌터카 검색 누구나
-                .requestMatchers("/api/v1/seller/**").hasRole("SELLER") // 판매자 페이지는 SELLER만
-                .requestMatchers("/api/v1/admin/**").hasAnyRole("GENERAL_ADMIN", "SALES_ADMIN", "SUPER_ADMIN") // 관리자 페이지
-                .anyRequest().authenticated() // 그 외의 모든 요청은 로그인(인증)된 사용자만 접근 가능
+                // ALL (누구나 접근 가능)
+                .requestMatchers("/error").permitAll()
+                .requestMatchers("/api/v1/auth/**").permitAll() 
+                .requestMatchers("/api/v1/flights/search").permitAll() 
+                .requestMatchers("/api/v1/accommodations/**", "/api/v1/cars/**").permitAll() 
+                
+                // SELLER (판매자만 접근 가능 - 명세서 기준 단수형 seller)
+                .requestMatchers("/api/v1/seller/**").hasRole("SELLER") 
+                
+                // ADMIN & SUPER_ADMIN (관리자 페이지)
+                // (Patch 권한 등 세부적인 것은 컨트롤러의 @PreAuthorize 로 추가 제어 가능)
+                .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "GENERAL_ADMIN", "SUPER_ADMIN") 
+                
+                // 그 외의 모든 요청은 로그인(인증)된 사용자만 (ALL - O(AT))
+                .anyRequest().authenticated() 
             )
 
             // OAuth2 소셜 로그인 파이프라인 조립

@@ -17,7 +17,7 @@ public class SellerSettlementController {
     private final SellerSettlementService sellerSettlementService;
 
     // 판매자 정산 계좌 및 사업자 정보 등록/수정 
-    @PostMapping("/account")
+    @PutMapping("/accounts")
     @PreAuthorize("hasRole('SELLER')")
     public ResponseEntity<Void> registerAccount(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -29,7 +29,7 @@ public class SellerSettlementController {
     }
 
     // 판매자 정산 계좌 및 사업자 정보 조회
-    @GetMapping("/account")
+    @GetMapping("/accounts")
     @PreAuthorize("hasRole('SELLER')")
     public ResponseEntity<SellerAccountResponse> getAccount(
             @AuthenticationPrincipal UserDetails userDetails) {

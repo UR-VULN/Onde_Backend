@@ -26,30 +26,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         
-        try {
+try {
+            System.out.println("\n===== [JWT 필터 디버깅 시작] =====");
+            
             // 1. 헤더에서 토큰 추출
             String token = resolveTokenFromHeader(request);
+            System.out.println("▶️ 1. 헤더 토큰: " + (token != null ? "발견됨 (길이: " + token.length() + ")" : "없음"));
 
-            // 2. 만약 헤더에 없다면 쿠키에서 토큰 추출
+            // 2. 쿠키에서 토큰 추출 (헤더에 없을 경우)
             if (token == null) {
                 token = resolveTokenFromCookie(request, "accessToken");
+                System.out.println("▶️ 2. 쿠키 토큰: " + (token != null ? "발견됨" : "없음"));
             }
 
-            // 3. 토큰이 존재하고 유효하다면 인증 정보 세팅
-            if (token != null && jwtTokenProvider.validateToken(token)) {
-                String email = jwtTokenProvider.getEmail(token);
-                UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+            // 3. 토큰 검증 및 인증 처리
+            if (token != null) {
+                boolean isValid = jwtTokenProvider.validateToken(token);
+                System.out.println("▶️ 3. 토큰 유효성 검사 결과: " + (isValid ? "✅ 통과" : "❌ 실패 (만료 또는 훼손)"));
                 
-                UsernamePasswordAuthenticationToken authentication = 
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                
-                // SecurityContext에 인증 객체 저장 -> 이후 컨트롤러에서 로그인된 유저로 인식함
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                if (isValid) {
+                    String email = jwtTokenProvider.getEmail(token);
+                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+                    
+                    UsernamePasswordAuthenticationToken authentication = 
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    System.out.println("▶️ 4. 인증 완료! 부여된 권한: " + userDetails.getAuthorities());
+                }
+            } else {
+                System.out.println("▶️ 🚨 요청에 토큰이 아예 존재하지 않습니다!");
             }
+            System.out.println("==================================\n");
+            
         } catch (Exception e) {
-            // 401 에러의 진짜 원인을 터미널에 출력해 주는 디버깅 코드
-            System.out.println("❌ JWT 필터 통과 실패 (인증 에러): " + e.getMessage());
-            e.printStackTrace();
+            System.out.println("❌ JWT 필터 통과 중 에러 발생: " + e.getMessage());
         }
 
         // 다음 필터로 이동
