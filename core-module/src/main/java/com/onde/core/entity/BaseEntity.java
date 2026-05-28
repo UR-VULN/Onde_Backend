@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 // 모든 엔티티의 createdAt, updatedAt 공통화
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
-abstract class BaseEntity {
+public abstract class BaseEntity {
     @CreatedDate
     private LocalDateTime createdAt;
 

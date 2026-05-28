@@ -1,3 +1,8 @@
 package com.onde.core.entity.flight;
 
-public class ApprovalStatus {}
+public enum ApprovalStatus {
+    PENDING_APPROVAL,
+    APPROVED,
+    REJECTED,
+    CANCELLED
+}

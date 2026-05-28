@@ -1,3 +1,7 @@
 package com.onde.core.entity.flight;
 
-public class SeatClass {}
+public enum SeatClass {
+    FIRST,
+    BUSINESS,
+    ECONOMY
+}
