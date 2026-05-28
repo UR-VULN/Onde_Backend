@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/onde_db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&createDatabaseIfNotExist=true
+    url: jdbc:mysql://localhost:3306/onde_db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&createDatabaseIfNotExist=true&zeroDateTimeBehavior=convertToNull
     username: root
     password: maria
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -15,6 +15,17 @@ spring:
     redis:
       host: localhost
       port: 6379
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: your-email@gmail.com
+    password: your-app-password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 server:
   port: 8080
@@ -23,3 +34,14 @@ jwt:
   secret: your-secret-key-here-must-be-very-long-and-secure-with-more-than-256-bits-length-spec
   access-token-expiration: 1800000    # 30분
   refresh-token-expiration: 1209600000 # 14일
+
+portone:
+  imp-key: "0754805832574205"
+  imp-secret: "5w2kDl7p94HPu9JavDbMmXOnDsknWUoyeOdGsUk8Jc3FJVf75gwr6jsbRyRfuk0qYD8mS2w6L7hc9qzD"
+
+aws:
+  s3:
+    bucket: onde-private-bucket
+    cloudfront-domain: https://cdn.travel-platform.com
+    region: ap-northeast-2
+

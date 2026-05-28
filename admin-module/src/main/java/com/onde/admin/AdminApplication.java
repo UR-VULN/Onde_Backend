@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
-@SpringBootApplication(scanBasePackages = "com.onde")
+@SpringBootApplication(scanBasePackages = {"com.onde.admin", "com.onde.core"})
 @EnableJpaRepositories(basePackages = "com.onde.core.repository")
 @EntityScan(basePackages = "com.onde.core.entity")
 public class AdminApplication {
@@ -13,4 +13,3 @@ public class AdminApplication {
         SpringApplication.run(AdminApplication.class, args);
     }
 }
-
