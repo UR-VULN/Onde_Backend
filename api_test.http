@@ -321,8 +321,12 @@ GET http://localhost:8080/api/v1/seller/dashboard/statistics?period=MONTHLY&star
 X-Seller-Id: 1
 
 ### 14. [Phase 7] 플랫폼 전사 매출 통계 요약 조회 (Admin Dashboard Summary)
-GET http://localhost:8080/api/v1/admin/dashboard/summary?month=2026-05
+GET http://localhost:8081/api/v1/admin/dashboard/summary?month=2026-05
+X-Admin-Id: AD-001
+X-Admin-Role: SUPER_ADMIN
 
 ### 15. [Phase 7] 플랫폼 도메인별 매출 비중 차트 조회 (Admin Dashboard Charts)
-GET http://localhost:8080/api/v1/admin/dashboard/charts?month=2026-05
+GET http://localhost:8081/api/v1/admin/dashboard/charts?month=2026-05
+X-Admin-Id: AD-001
+X-Admin-Role: SUPER_ADMIN
 

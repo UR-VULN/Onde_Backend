@@ -116,35 +116,4 @@ public class SellerSettlementController {
 
         return ResponseEntity.ok(ApiResponse.success(response, "정산 계좌 조회 성공."));
     }
-
-    /**
-     * 판매자 대시보드 매출 통계 조회 API
-     */
-    @GetMapping("/dashboard/statistics")
-    public ResponseEntity<ApiResponse<com.onde.api.application.settlement.dto.SellerDashboardResponse>> getSellerDashboardStatistics(
-            @RequestHeader("X-Seller-Id") Long sellerId,
-            @RequestParam(name = "period", defaultValue = "MONTHLY") String period,
-            @RequestParam(name = "startDate") String startDate,
-            @RequestParam(name = "endDate") String endDate) {
-
-        com.onde.api.application.payment.dto.response.SellerStatisticsResponse stats = settlementService.getSellerStatistics(sellerId);
-        
-        java.util.List<com.onde.api.application.settlement.dto.SellerDashboardResponse.RevenueBreakdown> breakdown = new java.util.ArrayList<>();
-        for (com.onde.api.application.payment.dto.response.SellerStatisticsResponse.RevenueTrend trend : stats.getMonthlyTrends()) {
-            breakdown.add(com.onde.api.application.settlement.dto.SellerDashboardResponse.RevenueBreakdown.builder()
-                    .month(trend.getLabel())
-                    .revenue(trend.getGrossAmount())
-                    .bookingCount(1) // 테스트용 가상 카운트
-                    .build());
-        }
-
-        com.onde.api.application.settlement.dto.SellerDashboardResponse response = com.onde.api.application.settlement.dto.SellerDashboardResponse.builder()
-                .period(period)
-                .totalRevenue(stats.getMonthlyTrends().stream().mapToLong(t -> t.getGrossAmount()).sum())
-                .breakdown(breakdown)
-                .build();
-
-        return ResponseEntity.ok(ApiResponse.success(response));
-    }
 }
-
