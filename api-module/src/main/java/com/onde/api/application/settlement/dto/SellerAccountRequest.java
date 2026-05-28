@@ -1,3 +1,15 @@
 package com.onde.api.application.settlement.dto;
 
-public class SellerAccountRequest {}
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter
+@NoArgsConstructor
+public class SellerAccountRequest {
+    private String bankName; // 은행명
+    private String accountNumber; // 계좌번호
+    private String accountHolder; // 예금주명
+    private String businessNumber; // 사업자등록번호
+    private String representativeName; // 대표자명
+    private String openedAt; // 개업일자
+}
