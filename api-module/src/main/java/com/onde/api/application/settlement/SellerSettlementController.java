@@ -18,7 +18,7 @@ import java.util.Map;
  * 판매자가 본인의 정산 내역을 확인하거나 정산금을 신청(REQUESTED)하는 기능을 제공합니다.
  */
 @RestController
-@RequestMapping("/api/v1/sellers/settlements")
+@RequestMapping("/api/v1/seller/settlements")
 @RequiredArgsConstructor
 public class SellerSettlementController {
 
@@ -79,8 +79,8 @@ public class SellerSettlementController {
     public ResponseEntity<ApiResponse<com.onde.api.application.payment.dto.response.SellerStatisticsResponse>> getSellerStatistics(
             @RequestHeader("X-Seller-Id") Long sellerId) {
 
-        com.onde.api.application.payment.dto.response.SellerStatisticsResponse result = settlementService.getSellerStatistics(sellerId);
+        com.onde.api.application.payment.dto.response.SellerStatisticsResponse result = settlementService
+                .getSellerStatistics(sellerId);
         return ResponseEntity.ok(ApiResponse.success(result, "판매자 누적 매출 통계 조회 성공"));
     }
 }
-
