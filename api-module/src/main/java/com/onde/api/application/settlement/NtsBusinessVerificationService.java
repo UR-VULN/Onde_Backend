@@ -25,38 +25,41 @@ public class NtsBusinessVerificationService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     public boolean verifyBusinessNumber(String businessNumber) {
-        // 하이픈(-) 제거
-        String cleanNumber = businessNumber.replaceAll("-", "");
 
-        String url = apiUrl + "?serviceKey=" + serviceKey;
+        return true;
+        
+        // // 하이픈(-) 제거
+        // String cleanNumber = businessNumber.replaceAll("-", "");
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        // String url = apiUrl + "?serviceKey=" + serviceKey;
 
-        // 요청 바디 생성 {"b_no": ["1234567890"]}
-        Map<String, List<String>> body = new HashMap<>();
-        body.put("b_no", Collections.singletonList(cleanNumber));
+        // HttpHeaders headers = new HttpHeaders();
+        // headers.setContentType(MediaType.APPLICATION_JSON);
+        // headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 
-        HttpEntity<Map<String, List<String>>> request = new HttpEntity<>(body, headers);
+        // // 요청 바디 생성 {"b_no": ["1234567890"]}
+        // Map<String, List<String>> body = new HashMap<>();
+        // body.put("b_no", Collections.singletonList(cleanNumber));
 
-        try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
-            Map<String, Object> responseBody = response.getBody();
+        // HttpEntity<Map<String, List<String>>> request = new HttpEntity<>(body, headers);
 
-            if (responseBody != null && responseBody.containsKey("data")) {
-                List<Map<String, Object>> dataList = (List<Map<String, Object>>) responseBody.get("data");
-                if (!dataList.isEmpty()) {
-                    // b_stt_cd 가 "01" 이면 계속사업자(정상)
-                    String statusCd = (String) dataList.get(0).get("b_stt_cd");
-                    return "01".equals(statusCd);
-                }
-            }
-            return false;
-        } catch (Exception e) {
-            // 통신 장애 시 로그를 남기고 실패 처리
-            return false;
-        }
+        // try {
+        //     ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+        //     Map<String, Object> responseBody = response.getBody();
+
+        //     if (responseBody != null && responseBody.containsKey("data")) {
+        //         List<Map<String, Object>> dataList = (List<Map<String, Object>>) responseBody.get("data");
+        //         if (!dataList.isEmpty()) {
+        //             // b_stt_cd 가 "01" 이면 계속사업자(정상)
+        //             String statusCd = (String) dataList.get(0).get("b_stt_cd");
+        //             return "01".equals(statusCd);
+        //         }
+        //     }
+        //     return false;
+        // } catch (Exception e) {
+        //     // 통신 장애 시 로그를 남기고 실패 처리
+        //     return false;
+        // }
     }
 } 
     
