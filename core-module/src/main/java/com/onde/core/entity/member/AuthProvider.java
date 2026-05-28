@@ -1,3 +1,5 @@
 package com.onde.core.entity.member;
 
-public class AuthProvider {}
+public enum AuthProvider {
+    LOCAL, KAKAO, GOOGLE
+}

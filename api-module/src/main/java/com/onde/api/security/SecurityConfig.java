@@ -1,6 +1,7 @@
 package com.onde.api.security;
 
-import lombok.RequiredArgsConstructor;
+import com.onde.api.security.oauth2.CustomOAuth2UserService;
+import com.onde.api.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -14,6 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import lombok.RequiredArgsConstructor;
 import java.util.Arrays;
 
 @Configuration
@@ -21,8 +23,18 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtTokenProvider jwtTokenProvider;
+    // [팀원 순정 의존성] 빈으로 관리되는 컴포넌트들을 주입받습니다.
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
+    // [팀원 순정 의존성] 소셜 로그인 관련 컴포넌트
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+
+    /**
+     * 회원가입 시 비밀번호 암호화를 담당할 인코더 빈 추가 (우리의 필수 코드 이식)
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -31,39 +43,54 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // 1. 첫 번째 코드의 커스텀 CORS 설정을 등록하여 프론트 통신 차단 해제
+                // 1. 우리의 커스텀 CORS 설정을 등록하여 프론트 통신 차단 해제 (이식 완료)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // 2. REST API 최적화를 위한 보안 무력화
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
-
-                // 3. JWT 기반이므로 세션을 무상태(Stateless)로 관리
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 4. 세부적인 인가(Authorization) 규칙 적용
+                // 2. [팀원 스펙] 401, 403 예외 처리 핸들러 등록 유지
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                        .accessDeniedHandler(jwtAccessDeniedHandler))
+
+                // 3. URL 경로별 접근 권한 세팅 (두 코드의 허용 경로 대통합)
                 .authorizeHttpRequests(auth -> auth
-                        // 회원가입, 로그인, 순수 조회성 API 및 내부 에러(/error) 경로는 토큰 없이 전면 접근 허용
-                        .requestMatchers("/api/v1/auth/**", "/error").permitAll()
-                        .requestMatchers("/api/v1/flights/search", "/api/v1/insurance/calculate").permitAll()
+                        // ALL (누구나 접근 가능한 공개 경로)
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/v1/flights/search").permitAll()
+                        .requestMatchers("/api/v1/insurance/calculate").permitAll() // 👈 우리 보험 경로 추가
+                        .requestMatchers("/api/v1/accommodations/**", "/api/v1/cars/**").permitAll()
 
-                        // 판매자 및 어드민 전용 권한 제한 설정
+                        // SELLER (판매자만 접근 가능)
                         .requestMatchers("/api/v1/seller/**").hasRole("SELLER")
-                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
-                        // 그 외 모든 예약을 포함한 일반 요청은 로그인(인증)된 사용자 접근 유도 (또는 기본 개방)
-                        .anyRequest().permitAll())
+                        // ADMIN & SUPER_ADMIN (관리자 페이지 권한 다각화 유지)
+                        .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "GENERAL_ADMIN", "SUPER_ADMIN")
 
-                // 5. 커스텀 JWT 인증 필터를 UsernamePasswordAuthenticationFilter 바로 앞단에 배치
-                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
-                        UsernamePasswordAuthenticationFilter.class);
+                        // [보안 강화] 그 외의 모든 예약, 정산 등 핵심 요청은 무조건 로그인(인증)된 사용자만 접근 허용
+                        // 원래 우리 코드의 .anyRequest().permitAll()은 보안 멍청이 코드가 될 위험이 커서 팀원의
+                        // .authenticated()로 잠갔습니다.
+                        .anyRequest().authenticated())
+
+                // 4. [팀원 스펙] OAuth2 소셜 로그인 파이프라인 조립 완벽 유지
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService))
+                        .successHandler(oAuth2AuthenticationSuccessHandler))
+
+                // 5. 스프링 빈 컨테이너가 안전하게 관리하는 필터를 UsernamePasswordAuthenticationFilter 앞에 배치
+                // (new 키워드로 수동 생성하면 의존성 주입이 다 깨지므로 팀원 방식이 100% 맞습니다)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     /**
-     * 프론트엔드(React, Vite 등) 연동을 위한 CORS 설정 구성
+     * 프론트엔드(React, Vite 등) 연동을 위한 CORS 설정 구성 (우리 코드 이식 완료)
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

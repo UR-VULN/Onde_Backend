@@ -3,7 +3,6 @@ package com.onde.api.application.settlement.dto;
 import lombok.*;
 import java.time.LocalDateTime;
 
-
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,4 +16,3 @@ public class SellerAccountRequest {
     private String representativeName;
     private String openedAt;
 }
-

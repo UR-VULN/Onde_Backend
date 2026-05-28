@@ -1,6 +1,78 @@
 package com.onde.api.application.auth;
 
+import com.onde.api.application.auth.dto.LoginRequest;
+import com.onde.api.application.auth.dto.LoginResponse;
+import com.onde.api.application.auth.dto.SignupRequest;
+import com.onde.core.entity.auth.RefreshToken;
+import com.onde.core.entity.member.Member;
+import com.onde.core.entity.member.MemberStatus;
+import com.onde.core.repository.MemberRepository;
+import com.onde.core.repository.RefreshTokenRepository;
+import com.onde.core.security.JwtTokenProvider;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class AuthService {}
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final MemberRepository memberRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
+
+    @Transactional
+    public String signup(SignupRequest request) {
+        // 이메일 중복 검증
+        if (memberRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+        }
+
+        // 비밀번호 암호화 및 Member 엔티티 생성
+        Member member = Member.builder()
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .phoneNumber(request.getPhoneNumber())
+                .role(request.getRole())
+                .status(MemberStatus.ACTIVE)
+                .build();
+
+        memberRepository.save(member);
+
+        return "회원가입이 성공적으로 완료되었습니다.";
+    }
+
+    @Transactional
+    public LoginResponse login(LoginRequest request) {
+        Member member = memberRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 이메일입니다."));
+
+        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
+            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+        }
+
+        // 토큰 발급
+        String accessToken = jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().getSecurityRole());
+        String refreshTokenString = jwtTokenProvider.createRefreshToken(member.getEmail());
+
+        // Refresh Token Redis 저장 (동일 이메일로 로그인 시 기존 토큰 덮어쓰기됨)
+        RefreshToken refreshToken = new RefreshToken(
+                member.getEmail(),
+                refreshTokenString,
+                jwtTokenProvider.getRefreshTokenValidTimeInSeconds()
+        );
+        refreshTokenRepository.save(refreshToken);
+
+        // API 명세서 규격에 맞게 LoginResponse 객체 생성하여 반환
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshTokenString)
+                .tokenType("Bearer")
+                .expiresIn(1800L) // 30분
+                .memberId(member.getId())
+                .role(member.getRole().name())
+                .build();
+    }
+}

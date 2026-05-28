@@ -3,6 +3,8 @@ apply plugin: 'org.springframework.boot'
 dependencies {
     implementation project(':core-module')
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -13,6 +15,8 @@ dependencies {
     implementation 'software.amazon.awssdk:s3:2.25.15'
     implementation 'org.mockito:mockito-core:5.11.0'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
@@ -30,4 +34,9 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+// 한글 깨짐 방지 및 UTF-8 인코딩 강제 설정
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
 }

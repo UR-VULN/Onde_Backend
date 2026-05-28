@@ -18,4 +18,3 @@ public class SellerAccountResponse {
     private String openedAt;
     private LocalDateTime createdAt;
 }
-
