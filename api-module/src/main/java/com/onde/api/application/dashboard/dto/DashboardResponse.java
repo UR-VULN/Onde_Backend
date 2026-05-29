@@ -10,8 +10,6 @@ import lombok.Getter;
 @Builder
 public class DashboardResponse {
     private String email;
-    private String name;
-    private String phoneNumber;
     private AccountStatus accountStatus;
     private String bankName;
     private String accountNumber;
@@ -19,8 +17,6 @@ public class DashboardResponse {
     public static DashboardResponse of(Member member, SellerAccount sellerAccount) {
         return DashboardResponse.builder()
                 .email(member.getEmail())
-                .name(member.getName())
-                .phoneNumber(member.getPhoneNumber())
                 .accountStatus(sellerAccount != null ? sellerAccount.getStatus() : null)
                 .bankName(sellerAccount != null ? sellerAccount.getBankName() : null)
                 .accountNumber(sellerAccount != null ? sellerAccount.getAccountNumber() : null)
