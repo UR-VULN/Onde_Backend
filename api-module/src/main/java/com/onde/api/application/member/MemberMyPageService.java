@@ -25,6 +25,9 @@ public class MemberMyPageService {
 
     private final FlightBookingRepository flightBookingRepository;
     private final InsurancePolicyRepository insurancePolicyRepository;
+    private final com.onde.core.repository.ReservationRepository reservationRepository;
+    private final com.onde.core.repository.RoomRepository roomRepository;
+    private final com.onde.core.repository.CarRepository carRepository;
 
     public MyPageListResponse<MyPageFlightBookingResponse> getMyFlightBookings(Long userId, String status, Pageable pageable) {
         Page<FlightBooking> pageResult;
@@ -96,6 +99,108 @@ public class MemberMyPageService {
 
         return MyPageListResponse.<MyPageInsurancePolicyResponse>builder()
                 .bookings(dtoList)
+                .totalCount(pageResult.getTotalElements())
+                .page(pageable.getPageNumber())
+                .size(pageable.getPageSize())
+                .build();
+    }
+
+    public MyPageListResponse<MyPageRoomReservationResponse> getMyRoomReservations(Long userId, String status, Pageable pageable) {
+        Page<com.onde.core.entity.reservation.Reservation> pageResult;
+
+        com.onde.core.entity.reservation.ReservationTarget targetType = com.onde.core.entity.reservation.ReservationTarget.ROOM;
+        if (status == null || status.isBlank()) {
+            pageResult = reservationRepository.findByUserIdAndTargetType(userId, targetType, pageable);
+        } else {
+            com.onde.core.entity.reservation.ReservationStatus resStatus;
+            try {
+                resStatus = com.onde.core.entity.reservation.ReservationStatus.valueOf(status.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return MyPageListResponse.<MyPageRoomReservationResponse>builder()
+                        .reservations(List.of())
+                        .totalCount(0)
+                        .page(pageable.getPageNumber())
+                        .size(pageable.getPageSize())
+                        .build();
+            }
+            pageResult = reservationRepository.findByUserIdAndTargetTypeAndStatus(userId, targetType, resStatus, pageable);
+        }
+
+        List<MyPageRoomReservationResponse> dtoList = pageResult.getContent().stream()
+                .map(res -> {
+                    String accommodationName = null;
+                    String roomName = null;
+                    com.onde.core.entity.accommodation.Room room = roomRepository.findById(res.getTargetId()).orElse(null);
+                    if (room != null) {
+                        roomName = room.getName();
+                        if (room.getAccommodation() != null) {
+                            accommodationName = room.getAccommodation().getName();
+                        }
+                    }
+                    return MyPageRoomReservationResponse.builder()
+                            .reservationId(res.getId())
+                            .accommodationName(accommodationName)
+                            .roomName(roomName)
+                            .checkIn(res.getCheckIn())
+                            .checkOut(res.getCheckOut())
+                            .totalPrice(res.getTotalPrice())
+                            .status(res.getStatus().name())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return MyPageListResponse.<MyPageRoomReservationResponse>builder()
+                .reservations(dtoList)
+                .totalCount(pageResult.getTotalElements())
+                .page(pageable.getPageNumber())
+                .size(pageable.getPageSize())
+                .build();
+    }
+
+    public MyPageListResponse<MyPageCarReservationResponse> getMyCarReservations(Long userId, String status, Pageable pageable) {
+        Page<com.onde.core.entity.reservation.Reservation> pageResult;
+
+        com.onde.core.entity.reservation.ReservationTarget targetType = com.onde.core.entity.reservation.ReservationTarget.CAR;
+        if (status == null || status.isBlank()) {
+            pageResult = reservationRepository.findByUserIdAndTargetType(userId, targetType, pageable);
+        } else {
+            com.onde.core.entity.reservation.ReservationStatus resStatus;
+            try {
+                resStatus = com.onde.core.entity.reservation.ReservationStatus.valueOf(status.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return MyPageListResponse.<MyPageCarReservationResponse>builder()
+                        .reservations(List.of())
+                        .totalCount(0)
+                        .page(pageable.getPageNumber())
+                        .size(pageable.getPageSize())
+                        .build();
+            }
+            pageResult = reservationRepository.findByUserIdAndTargetTypeAndStatus(userId, targetType, resStatus, pageable);
+        }
+
+        List<MyPageCarReservationResponse> dtoList = pageResult.getContent().stream()
+                .map(res -> {
+                    String modelName = null;
+                    String carType = null;
+                    com.onde.core.entity.accommodation.Car car = carRepository.findById(res.getTargetId()).orElse(null);
+                    if (car != null) {
+                        modelName = car.getModelName();
+                        carType = car.getCarType();
+                    }
+                    return MyPageCarReservationResponse.builder()
+                            .reservationId(res.getId())
+                            .modelName(modelName)
+                            .carType(carType)
+                            .checkIn(res.getCheckIn() != null ? res.getCheckIn().toLocalDate().toString() : null)
+                            .checkOut(res.getCheckOut() != null ? res.getCheckOut().toLocalDate().toString() : null)
+                            .totalPrice(res.getTotalPrice())
+                            .status(res.getStatus().name())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return MyPageListResponse.<MyPageCarReservationResponse>builder()
+                .reservations(dtoList)
                 .totalCount(pageResult.getTotalElements())
                 .page(pageable.getPageNumber())
                 .size(pageable.getPageSize())

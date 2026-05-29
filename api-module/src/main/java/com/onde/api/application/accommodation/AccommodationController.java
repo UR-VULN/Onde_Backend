@@ -30,36 +30,4 @@ public class AccommodationController {
         AccommodationSearchResponse response = accommodationService.searchAccommodations(request);
         return ResponseEntity.ok(ApiResponse.success(response, "숙소 조회가 완료되었습니다."));
     }
-
-    /**
-     * [두 번째 코드 스펙] 객실 예약 (시큐리티 세션 연동)
-     */
-    @PostMapping("/reservations/rooms")
-    public ResponseEntity<ApiResponse<ReservationResponse>> reserveRoom(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody RoomReservationRequest req) {
-
-        // TODO: 객실 예약 비즈니스 로직 연동 (필요 시 userDetails.getUsername()으로 회원 식별자 추출 가능)
-        ReservationResponse response = new ReservationResponse(1L, com.onde.core.entity.reservation.ReservationStatus.RESERVED, "객실 예약 임시 반환");
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "객실 예약이 성공적으로 완료되었습니다."));
-    }
-
-    /**
-     * [두 번째 코드 스펙] 렌터카 예약 (시큐리티 세션 연동)
-     */
-    @PostMapping("/reservations/cars")
-    public ResponseEntity<ApiResponse<ReservationResponse>> reserveCar(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody CarReservationRequest req) {
-
-        // TODO: 렌터카 예약 비즈니스 로직 연동
-        ReservationResponse response = new ReservationResponse(1L, com.onde.core.entity.reservation.ReservationStatus.RESERVED, "렌터카 예약 임시 반환");
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "렌터카 예약이 성공적으로 완료되었습니다."));
-    }
 }

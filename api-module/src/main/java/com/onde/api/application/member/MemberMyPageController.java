@@ -39,4 +39,30 @@ public class MemberMyPageController {
         MyPageListResponse<MyPageInsurancePolicyResponse> response = memberMyPageService.getMyInsurancePolicies(userId, status, pageable);
         return ResponseEntity.ok(ApiResponse.success(response, "보험 가입 목록 조회 성공"));
     }
+
+    @GetMapping("/reservations/rooms")
+    public ResponseEntity<ApiResponse<MyPageListResponse<MyPageRoomReservationResponse>>> getMyRoomReservations(
+            @LoginMember(required = true) Long userId,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        MyPageListResponse<MyPageRoomReservationResponse> response = memberMyPageService.getMyRoomReservations(userId, status, pageable);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "숙소 예약 목록 조회 성공"));
+    }
+
+    @GetMapping("/reservations/cars")
+    public ResponseEntity<ApiResponse<MyPageListResponse<MyPageCarReservationResponse>>> getMyCarReservations(
+            @LoginMember(required = true) Long userId,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        MyPageListResponse<MyPageCarReservationResponse> response = memberMyPageService.getMyCarReservations(userId, status, pageable);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "렌터카 예약 목록 조회 성공"));
+    }
 }

@@ -352,3 +352,12 @@ GET http://localhost:8081/api/v1/admin/dashboard/charts?month=2026-05
 X-Admin-Id: AD-001
 X-Admin-Role: SUPER_ADMIN
 
+### 16. 내 숙소 예약 목록 조회
+GET http://localhost:8080/api/v1/members/me/reservations/rooms?page=0&size=20&status=RESERVED
+X-Member-Id: 1
+
+### 17. 내 렌터카 예약 목록 조회
+GET http://localhost:8080/api/v1/members/me/reservations/cars?page=0&size=20&status=RESERVED
+X-Member-Id: 1
+
+

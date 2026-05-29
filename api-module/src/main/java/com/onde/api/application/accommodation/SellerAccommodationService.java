@@ -87,8 +87,9 @@ public class SellerAccommodationService {
     @Transactional
     public void updateRoomInventoriesBulk(List<RoomInventoryUpdateRequest> requests) {
         for (RoomInventoryUpdateRequest request : requests) {
-            if (request.getRoomId() == null) continue;
-            
+            if (request.getRoomId() == null)
+                continue;
+
             Optional<Inventory> inventoryOpt = inventoryRepository.findByTargetTypeAndTargetIdAndDate(
                     ReservationTarget.ROOM, request.getRoomId(), request.getDate());
 

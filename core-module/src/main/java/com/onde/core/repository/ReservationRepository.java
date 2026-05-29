@@ -9,5 +9,17 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
+    org.springframework.data.domain.Page<Reservation> findByUserIdAndTargetType(
+            Long userId, 
+            com.onde.core.entity.reservation.ReservationTarget targetType, 
+            org.springframework.data.domain.Pageable pageable
+    );
+
+    org.springframework.data.domain.Page<Reservation> findByUserIdAndTargetTypeAndStatus(
+            Long userId, 
+            com.onde.core.entity.reservation.ReservationTarget targetType, 
+            com.onde.core.entity.reservation.ReservationStatus status, 
+            org.springframework.data.domain.Pageable pageable
+    );
 }
 
