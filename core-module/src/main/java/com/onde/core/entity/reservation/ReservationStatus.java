@@ -1,3 +1,7 @@
 package com.onde.core.entity.reservation;
 
-public class ReservationStatus {}
+public enum ReservationStatus {
+    RESERVED,
+    CANCELLED,
+    COMPLETED
+}

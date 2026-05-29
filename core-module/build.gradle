@@ -1,56 +1,70 @@
+plugins {
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+    id 'java'
+}
+
+// core-module은 단독 실행(bootJar)하지 않고, api-module에 포함되는 일반 jar로 빌드합니다.
+bootJar { enabled = false }
+bootRun { enabled = false }
+jar     { enabled = true  }
+
 dependencies {
+    // Spring Boot 기본 스타터
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    
+    // Security & 인증 (JWT, OAuth2 스타터 통합)
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     
-    // Flyway (DB 마이그레이션)
-    implementation 'org.flywaydb:flyway-core'
-    implementation 'org.flywaydb:flyway-mysql'
-
-    implementation 'org.redisson:redisson-spring-boot-starter:3.27.2'
-    
-    // JWT (API, 구현체, 파서 3종 세트 필수)
+    // JWT 토큰 관련 라이브러리 3종 세트
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
     
-    // OAuth2 소셜 로그인 연동
-    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
-    
-    // 분산 락 처리를 위한 Redisson (동시성 제어)
-    implementation 'org.redisson:redisson-spring-boot-starter:3.24.3'
-
+    // 데이터베이스 (MySQL & Flyway 마이그레이션)
     runtimeOnly 'com.mysql:mysql-connector-j'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-mysql'
     
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    // Redis & Redisson 분산 락 (중복 제거 및 최신 버전 단일화)
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.redisson:redisson-spring-boot-starter:3.27.2'
     
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
-    // QueryDSL (Spring Boot 3.x / Jakarta 대응)
+    // QueryDSL (Spring Boot 3.x / Jakarta 스펙 대응)
     implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
     annotationProcessor "com.querydsl:querydsl-apt:5.0.0:jakarta"
     annotationProcessor "jakarta.annotation:jakarta.annotation-api"
     annotationProcessor "jakarta.persistence:jakarta.persistence-api"
+    
+    // Lombok 및 설정 프로세서
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    
+    // 테스트 라이브러리
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-// 한글 깨짐 방지 및 UTF-8 인코딩 강제 설정
+// 인코딩 및 UTF-8 설정
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
 
-// 빌드 시 QClass가 생성되는 디렉토리 설정
+// QueryDSL QClass 생성 디렉토리 및 빌드 태스크 설정
 def querydslDir = "$buildDir/generated/querydsl"
+
 sourceSets {
     main.java.srcDirs += [ querydslDir ]
 }
+
 tasks.withType(JavaCompile) {
     options.getGeneratedSourceOutputDirectory().set(file(querydslDir))
 }
+
 clean.doLast {
     file(querydslDir).deleteDir()
 }
