@@ -54,17 +54,4 @@ tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
 
-// QueryDSL QClass 생성 디렉토리 및 빌드 태스크 설정
-def querydslDir = "$buildDir/generated/querydsl"
-
-sourceSets {
-    main.java.srcDirs += [ querydslDir ]
-}
-
-tasks.withType(JavaCompile) {
-    options.getGeneratedSourceOutputDirectory().set(file(querydslDir))
-}
-
-clean.doLast {
-    file(querydslDir).deleteDir()
-}
+// QueryDSL QClass 생성 디렉토리는 별도 설정 없이 Gradle 기본 annotationProcessor 동작에 위임합니다.
