@@ -1,5 +1,8 @@
 package com.onde.admin.application.accommodation;
 
+import com.onde.admin.application.booking.AdminBookingService;
+import com.onde.admin.application.booking.dto.AdminBookingSearchRequest;
+import com.onde.admin.application.booking.dto.AdminBookingSearchResponse;
 import com.onde.core.entity.accommodation.Accommodation;
 import com.onde.core.entity.accommodation.ApprovalStatus;
 import com.onde.core.repository.AccommodationRepository;
@@ -15,10 +18,22 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/admin/accommodations")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'GENERAL_ADMIN', 'SUPER_ADMIN')")
 public class AdminAccommodationController {
 
     private final AccommodationRepository accommodationRepository;
+    private final AdminBookingService adminBookingService;
+
+    /**
+     * 숙소, 렌터카 전체 예약 내역 조회
+     */
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<AdminBookingSearchResponse>> searchBookings(
+            @ModelAttribute AdminBookingSearchRequest request) {
+        
+        AdminBookingSearchResponse response = adminBookingService.searchBookings(request);
+        return ResponseEntity.ok(ApiResponse.success(response, "예약 내역 조회가 완료되었습니다."));
+    }
 
     /**
      * 대기 매물 조회

@@ -26,17 +26,6 @@ public class AdminBookingController {
     private final AdminBookingService adminBookingService;
 
     /**
-     * [첫 번째 코드 스펙] 예약 내역 검색 (숙소/렌터카 도메인)
-     */
-    @GetMapping("/search")
-    public ResponseEntity<ApiResponse<AdminBookingSearchResponse>> searchBookings(
-            @ModelAttribute AdminBookingSearchRequest request) {
-        
-        AdminBookingSearchResponse response = adminBookingService.searchBookings(request);
-        return ResponseEntity.ok(ApiResponse.success(response, "예약 내역 조회가 완료되었습니다."));
-    }
-
-    /**
      * [첫 번째 코드 Skinner] 예약 이용 완료 강제 처리 (숙소/렌터카 도메인)
      */
     @PutMapping("/{bookingId}/status")
