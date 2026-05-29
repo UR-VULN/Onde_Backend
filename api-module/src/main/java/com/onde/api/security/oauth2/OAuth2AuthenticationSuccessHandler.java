@@ -28,7 +28,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
         // 1. JWT 토큰 발행
-        String accessToken = jwtTokenProvider.createAccessToken(userDetails.getUsername(), userDetails.getAuthorities().iterator().next().getAuthority());
+        String authority = userDetails.getAuthorities().iterator().next().getAuthority();
+        String accessToken = jwtTokenProvider.createAccessToken(userDetails.getUsername(), authority);
         String refreshTokenString = jwtTokenProvider.createRefreshToken(userDetails.getUsername());
 
         // 2. Redis에 Refresh Token 세이브
@@ -48,9 +49,14 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
         response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
-
-        // 4. 프론트엔드 대시보드 페이지로 안전하게 리다이렉트 (실제 프론트엔드 URL에 맞춰 수정 가능)
-        String targetUrl = "http://localhost:5173/oauth2/redirect";
-        getRedirectStrategy().sendRedirect(request, response, targetUrl);
+        
+        // 4. 권한에 따른 리다이렉트
+        if ("ROLE_GUEST".equals(authority)) {
+            // 이메일 추가 수집 페이지로 리다이렉트
+            getRedirectStrategy().sendRedirect(request, response, "http://localhost:3000/signup/email");
+        } else {
+            // 정상 메인 페이지로 리다이렉트
+            getRedirectStrategy().sendRedirect(request, response, "http://localhost:3000/oauth2/redirect");
+        }
     }
 }

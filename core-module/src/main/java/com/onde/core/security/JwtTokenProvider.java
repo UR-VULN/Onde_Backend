@@ -18,8 +18,8 @@ public class JwtTokenProvider {
     private final long refreshTokenValidTime = 14 * 24 * 60 * 60 * 1000L; // 14일 유효기간
 
     // Access Token 생성 메서드
-    public String createAccessToken(String email, String role) {
-        Claims claims = Jwts.claims().setSubject(email);
+    public String createAccessToken(String identifier, String role) {
+        Claims claims = Jwts.claims().setSubject(identifier);
         claims.put("role", role); // 토큰 Payload에 권한(Role) 정보 담기
 
         Date now = new Date();
@@ -31,10 +31,10 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    public String createRefreshToken(String email) {
+    public String createRefreshToken(String identifier) {
         Date now = new Date();
         return Jwts.builder()
-                .setSubject(email)
+                .setSubject(identifier)
                 .setIssuedAt(now)
                 .setExpiration(new Date(now.getTime() + refreshTokenValidTime))
                 .signWith(key)
@@ -46,6 +46,16 @@ public class JwtTokenProvider {
         return refreshTokenValidTime / 1000;
     }
 
+    // 토큰의 subject(email 혹은 providerId)를 꺼내는 메서드
+    public String getSubject(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
+
     // 토큰의 유효성 및 만료일자 확인
     public boolean validateToken(String token) {
         try {
@@ -54,15 +64,5 @@ public class JwtTokenProvider {
         } catch (Exception e) {
             return false;
         }
-    }
-
-    // 토큰에서 이메일(Subject) 추출
-    public String getEmail(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
     }
 }
