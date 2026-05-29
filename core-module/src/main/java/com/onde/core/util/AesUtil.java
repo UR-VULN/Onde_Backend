@@ -22,7 +22,8 @@ public class AesUtil {
     }
 
     public String encrypt(String text) {
-        if (text == null) return null;
+        if (text == null)
+            return null;
         try {
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, iv);
@@ -34,7 +35,8 @@ public class AesUtil {
     }
 
     public String decrypt(String encryptedText) {
-        if (encryptedText == null) return null;
+        if (encryptedText == null)
+            return null;
         try {
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
             cipher.init(Cipher.DECRYPT_MODE, secretKey, iv);
