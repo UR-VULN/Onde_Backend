@@ -3,6 +3,7 @@ package com.onde.api.application.admin;
 import com.onde.api.application.admin.dto.MemberAdminResponse;
 import com.onde.api.application.admin.dto.MemberSearchRequest;
 import com.onde.core.entity.member.Member;
+import com.onde.core.entity.member.MemberRole;
 import com.onde.core.entity.member.MemberStatus;
 import com.onde.core.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -46,5 +47,18 @@ public class AdminMemberService {
         // 3. Redis에서 Refresh Token 강제 삭제 -> 다음 토큰 재발급 시 401 발생 (강제 로그아웃 효과)
         String redisKey = "RT:" + member.getEmail();
         redisTemplate.delete(redisKey);
+    }
+
+    @Transactional
+    public void updateMemberRole(Long targetMemberId, Long currentAdminId, MemberRole newRole) {
+        // 1. 자기 자신 권한 변경 방지 로직
+        if (targetMemberId.equals(currentAdminId)) {
+            throw new IllegalArgumentException("본인의 권한은 변경할 수 없습니다.");
+        }
+        
+        Member member = memberRepository.findById(targetMemberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
+                
+        member.updateRole(newRole);
     }
 }

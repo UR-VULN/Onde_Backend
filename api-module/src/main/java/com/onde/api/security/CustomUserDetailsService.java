@@ -14,9 +14,15 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final MemberRepository memberRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return memberRepository.findByEmail(email)
+    public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
+        // 1. 이메일로 먼저 조회
+        return memberRepository.findByEmail(identifier)
                 .map(CustomUserDetails::new)
-                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + email));
+                .or(() -> 
+                    // 2. 이메일로 없으면 providerId로 조회
+                    memberRepository.findByProviderId(identifier)
+                        .map(CustomUserDetails::new)
+                )
+                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + identifier));
     }
 }

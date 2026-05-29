@@ -46,8 +46,8 @@ try {
                 System.out.println("▶️ 3. 토큰 유효성 검사 결과: " + (isValid ? "✅ 통과" : "❌ 실패 (만료 또는 훼손)"));
                 
                 if (isValid) {
-                    String email = jwtTokenProvider.getEmail(token);
-                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+                    String identifier = jwtTokenProvider.getSubject(token);
+                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(identifier);
                     
                     UsernamePasswordAuthenticationToken authentication = 
                             new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());

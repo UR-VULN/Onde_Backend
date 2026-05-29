@@ -5,7 +5,12 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "members")
+@Table(
+    name = "members",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_member_provider", columnNames = {"provider", "providerId"})
+    }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -16,8 +21,11 @@ public class Member extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(length = 100) // email is now nullable and not globally unique
     private String email;
+
+    @Column(length = 100)
+    private String providerId; // 카카오 고유 ID 등 저장
 
     @Column(nullable = false)
     private String password;
@@ -48,5 +56,14 @@ public class Member extends BaseEntity {
 
     public void updateStatus(MemberStatus newStatus) {
         this.status = newStatus;
+    }
+
+    public void updatePassword(String encryptedPassword) {
+        this.password = encryptedPassword;
+    }
+
+    public void completeRegistration(String verifiedEmail) {
+        this.email = verifiedEmail;
+        this.role = MemberRole.USER;
     }
 }

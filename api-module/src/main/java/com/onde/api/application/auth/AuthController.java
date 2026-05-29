@@ -4,6 +4,8 @@ import com.onde.api.application.auth.dto.LoginRequest;
 import com.onde.api.application.auth.dto.LoginResponse;
 import com.onde.api.application.auth.dto.SignupRequest;
 import com.onde.api.application.auth.dto.SignupRequest;
+import com.onde.api.application.auth.dto.TokenRefreshRequest;
+import com.onde.api.application.auth.dto.TokenRefreshResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -53,5 +55,11 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
                 .body(loginResponse);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<TokenRefreshResponse> refresh(@RequestBody TokenRefreshRequest request) {
+        TokenRefreshResponse response = authService.refresh(request.getRefreshToken());
+        return ResponseEntity.ok(response);
     }
 }
