@@ -32,6 +32,8 @@ public class PaymentService {
     private final MileageService mileageService;
     private final MemberGradeService memberGradeService;
     private final ReservationRepository reservationRepository;
+    private final com.onde.core.repository.AccommodationRepository accommodationRepository;
+    private final com.onde.core.repository.CarRepository carRepository;
     private final PortOneService portOneService;
 
     /**
@@ -171,7 +173,17 @@ public class PaymentService {
                 .orElseThrow(() -> new IllegalArgumentException("연관된 예약 정보가 존재하지 않습니다."));
 
         boolean isBuyer = payment.getUserId().equals(userId);
-        boolean isSeller = reservation.getMember().getId().equals(userId);
+        boolean isSeller = false;
+        
+        if (reservation.getTargetType() == com.onde.core.entity.reservation.ReservationTarget.ROOM) {
+            isSeller = accommodationRepository.findById(reservation.getTargetId())
+                    .map(acc -> acc.getSellerId().equals(userId))
+                    .orElse(false);
+        } else if (reservation.getTargetType() == com.onde.core.entity.reservation.ReservationTarget.CAR) {
+            isSeller = carRepository.findById(reservation.getTargetId())
+                    .map(car -> car.getSellerId().equals(userId))
+                    .orElse(false);
+        }
 
         if (!isBuyer && !isSeller) {
             throw new IllegalArgumentException("해당 예약을 취소할 권한이 없습니다.");

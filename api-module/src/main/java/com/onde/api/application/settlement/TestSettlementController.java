@@ -31,6 +31,7 @@ public class TestSettlementController {
     private final SellerAccountRepository sellerAccountRepository;
     private final com.onde.core.repository.MileageLogRepository mileageLogRepository;
     private final com.onde.api.infrastructure.portone.PortOneService portOneService;
+    private final ApplicationContext context;
 
     @Autowired
     @SuppressWarnings("unchecked")
@@ -41,6 +42,7 @@ public class TestSettlementController {
                                     com.onde.api.infrastructure.portone.PortOneService portOneService) {
         this.settlementService = settlementService;
         this.paymentRepository = paymentRepository;
+        this.context = context;
         // ReservationRepository를 멀티모듈 빈 조회 방식으로 동적 주입합니다.
         this.reservationRepository = context.getBean("reservationRepository", JpaRepository.class);
         this.mileageLogRepository = mileageLogRepository;
@@ -59,25 +61,48 @@ public class TestSettlementController {
     public ResponseEntity<String> createDummyData(
             @RequestParam(name = "userId", required = false, defaultValue = "1") Long userId,
             @RequestParam(name = "sellerId", required = false, defaultValue = "1") Long sellerId) {
-        // 1. 결제 발생 일시를 전일(어제)로 설정하여 일간 정산 조건 충족
+        
+        // JpaRepository를 사용해 accommodation 및 room 저장소 동적 주입
+        JpaRepository accommodationRepository = context.getBean("accommodationRepository", JpaRepository.class);
+        JpaRepository roomRepository = context.getBean("roomRepository", JpaRepository.class);
+
+        // 1. 1번 숙소 및 1번 방 생성/업데이트 (소유자를 파라미터로 받은 sellerId로 강제 지정)
+        com.onde.core.entity.accommodation.Accommodation accommodation = new com.onde.core.entity.accommodation.Accommodation();
+        accommodation.setId(1L);
+        accommodation.setSellerId(sellerId);
+        accommodation.setName("더미 테스트 숙소");
+        accommodation.setApprovalStatus(com.onde.core.entity.accommodation.ApprovalStatus.APPROVED);
+        accommodationRepository.save(accommodation);
+
+        com.onde.core.entity.accommodation.Room room = new com.onde.core.entity.accommodation.Room();
+        room.setId(1L);
+        room.setAccommodation(accommodation);
+        room.setName("더미 테스트 방");
+        roomRepository.save(room);
+
+        // 2. 결제 발생 일시를 전일(어제)로 설정하여 일간 정산 조건 충족
         LocalDate yesterday = LocalDate.now().minusDays(1);
         LocalDateTime yesterdayMidday = yesterday.atTime(12, 0);
         LocalDateTime lastMonth = LocalDateTime.now().minusMonths(1);
 
         // 2. 판매자 및 사용자 ID에 대한 더미 예약 데이터 생성 및 저장
         Reservation r1 = Reservation.builder()
-                .member(Member.builder().id(userId).build())
-                .productName("더미 숙소 패키지 1")
-                .amount(1200000)
-                .mileageUsed(50000)
-                .reservationDate(LocalDateTime.now())
+                .userId(userId)
+                .targetType(com.onde.core.entity.reservation.ReservationTarget.ROOM)
+                .targetId(1L)
+                .checkIn(LocalDateTime.now())
+                .checkOut(LocalDateTime.now().plusDays(1))
+                .status(com.onde.core.entity.reservation.ReservationStatus.COMPLETED)
+                .totalPrice(java.math.BigDecimal.valueOf(1200000))
                 .build();
         Reservation r2 = Reservation.builder()
-                .member(Member.builder().id(sellerId).build())
-                .productName("더미 숙소 패키지 2")
-                .amount(200000)
-                .mileageUsed(20000)
-                .reservationDate(LocalDateTime.now())
+                .userId(sellerId)
+                .targetType(com.onde.core.entity.reservation.ReservationTarget.ROOM)
+                .targetId(2L)
+                .checkIn(LocalDateTime.now())
+                .checkOut(LocalDateTime.now().plusDays(1))
+                .status(com.onde.core.entity.reservation.ReservationStatus.COMPLETED)
+                .totalPrice(java.math.BigDecimal.valueOf(200000))
                 .build();
         
         if (reservationRepository != null) {
@@ -94,7 +119,7 @@ public class TestSettlementController {
                         .impUid("imp_0001_" + java.util.UUID.randomUUID().toString().substring(0, 8))
                         .merchantUid("merchant_0001_" + java.util.UUID.randomUUID().toString().substring(0, 8))
                         .status(PaymentStatus.PAID)
-                        .createdAt(lastMonth)
+                        .createdAt(yesterdayMidday)
                         .build(),
                 // 판매자 대상의 두 번째 결제 건 (총 5만원)
                 Payment.builder()
@@ -104,7 +129,7 @@ public class TestSettlementController {
                         .impUid("imp_0002_" + java.util.UUID.randomUUID().toString().substring(0, 8))
                         .merchantUid("merchant_0002_" + java.util.UUID.randomUUID().toString().substring(0, 8))
                         .status(PaymentStatus.PAID)
-                        .createdAt(lastMonth)
+                        .createdAt(yesterdayMidday)
                         .build(),
                 // 판매자 2번 대상의 세 번째 결제 건 (총 20만원, 마일리지 2만원 사용, PG 실 결제 18만원)
                 Payment.builder()
@@ -114,7 +139,7 @@ public class TestSettlementController {
                         .impUid("imp_0003_" + java.util.UUID.randomUUID().toString().substring(0, 8))
                         .merchantUid("merchant_0003_" + java.util.UUID.randomUUID().toString().substring(0, 8))
                         .status(PaymentStatus.PAID)
-                        .createdAt(lastMonth)
+                        .createdAt(yesterdayMidday)
                         .build()
         );
 
@@ -174,8 +199,10 @@ public class TestSettlementController {
     @PostMapping("/execute")
     public ResponseEntity<String> executeSettlement() {
         LocalDate yesterday = LocalDate.now().minusDays(1);
+        LocalDate today = LocalDate.now();
         settlementService.executeDailySettlement(yesterday);
-        return ResponseEntity.ok("일간 정산 배치 강제 실행 완료. 대상 일자: " + yesterday + ". DB(Settlement)를 확인해보세요.");
+        settlementService.executeDailySettlement(today); // JPA Auditing에 의해 오늘 날짜로 저장된 더미 결제 정보까지 정산 처리
+        return ResponseEntity.ok("일간 정산 배치 강제 실행 완료. 대상 일자: " + yesterday + " 및 " + today + ". DB(Settlement)를 확인해보세요.");
     }
 
     /**

@@ -32,11 +32,13 @@ public class MemberService {
         if (id != null && id == 1L) {
             Reservation reservation = Reservation.builder()
                     .id(1L)
-                    .member(savedMember)
-                    .productName("도쿄 3박 4일 감성 패키지 여행 상품")
-                    .amount(350000)
-                    .mileageUsed(5000)
-                    .reservationDate(LocalDateTime.now())
+                    .userId(savedMember.getId())
+                    .targetType(com.onde.core.entity.reservation.ReservationTarget.ROOM)
+                    .targetId(1L)
+                    .checkIn(LocalDateTime.now())
+                    .checkOut(LocalDateTime.now().plusDays(3))
+                    .status(com.onde.core.entity.reservation.ReservationStatus.RESERVED)
+                    .totalPrice(java.math.BigDecimal.valueOf(350000))
                     .build();
             reservationRepository.save(reservation);
         }

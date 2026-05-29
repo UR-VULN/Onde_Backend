@@ -48,6 +48,7 @@ public class NotificationService {
     private final FcmTokenRepository fcmTokenRepository;
     private final MemberRepository memberRepository;
     private final ReservationRepository reservationRepository;
+    private final com.onde.core.repository.PaymentRepository paymentRepository;
     private final AwsS3Service awsS3Service;
 
     @Transactional
@@ -95,9 +96,12 @@ public class NotificationService {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESERVATION_NOT_FOUND));
 
-        if (!reservation.getMember().getId().equals(memberId)) {
+        if (!reservation.getUserId().equals(memberId)) {
             throw new ForbiddenException(ErrorCode.RESERVATION_NOT_OWNER);
         }
+
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
@@ -127,7 +131,7 @@ public class NotificationService {
             addTableCell(infoTable, LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")), false);
 
             addTableCell(infoTable, "Customer Email:", true);
-            addTableCell(infoTable, reservation.getMember().getEmail(), false);
+            addTableCell(infoTable, member.getEmail(), false);
 
             document.add(infoTable);
 
@@ -145,18 +149,26 @@ public class NotificationService {
             addTableHeaderCell(detailsTable, "Product Description");
             addTableHeaderCell(detailsTable, "Amount");
 
+            // 결제 및 요금 정보 안전 바인딩
+            com.onde.core.entity.payment.Payment payment = paymentRepository.findFirstByReservationIdOrderByIdDesc(reservationId).orElse(null);
+            long totalAmount = payment != null ? payment.getTotalAmount() : (reservation.getTotalPrice() != null ? reservation.getTotalPrice().longValue() : 0L);
+            long usedMileage = payment != null ? payment.getUsedMileage() : 0L;
+            long finalPaid = totalAmount - usedMileage;
+
             // Item Row
-            addTableCell(detailsTable, reservation.getProductName(), false);
-            addTableCell(detailsTable, String.format("%,d KRW", reservation.getAmount()), false);
+            String productDesc = reservation.getTargetType() != null 
+                    ? String.format("ONDE %s Reservation (ID: %d)", reservation.getTargetType().name(), reservation.getTargetId())
+                    : String.format("ONDE Reservation (ID: %d)", reservation.getId());
+            addTableCell(detailsTable, productDesc, false);
+            addTableCell(detailsTable, String.format("%,d KRW", totalAmount), false);
 
             // Mileage Row
             addTableCell(detailsTable, "Used Mileage Discount", false);
-            addTableCell(detailsTable, String.format("-%,d KRW", reservation.getMileageUsed()), false);
+            addTableCell(detailsTable, String.format("-%,d KRW", usedMileage), false);
 
             // Total Row
-            int totalPaid = reservation.getAmount() - reservation.getMileageUsed();
             addTableCell(detailsTable, "Total Paid Amount", true);
-            addTableCell(detailsTable, String.format("%,d KRW", Math.max(0, totalPaid)), true);
+            addTableCell(detailsTable, String.format("%,d KRW", Math.max(0, finalPaid)), true);
 
             document.add(detailsTable);
 
@@ -170,7 +182,8 @@ public class NotificationService {
             document.close();
         } catch (Exception e) {
             log.error("PDF generation failed for reservationId={}", reservationId, e);
-            throw new RuntimeException("영수증 PDF 생성 실패", e);
+            e.printStackTrace(); // 콘솔창에 디버그 스택 트레이스 강제 출력
+            throw new RuntimeException("영수증 PDF 생성 실패: " + e.toString(), e);
         }
 
         return baos.toByteArray();
@@ -200,7 +213,7 @@ public class NotificationService {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESERVATION_NOT_FOUND));
 
-        if (!reservation.getMember().getId().equals(memberId)) {
+        if (!reservation.getUserId().equals(memberId)) {
             throw new ForbiddenException(ErrorCode.RESERVATION_NOT_OWNER);
         }
 
@@ -216,7 +229,7 @@ public class NotificationService {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESERVATION_NOT_FOUND));
 
-        if (!reservation.getMember().getId().equals(memberId)) {
+        if (!reservation.getUserId().equals(memberId)) {
             throw new ForbiddenException(ErrorCode.RESERVATION_NOT_OWNER);
         }
 

@@ -18,7 +18,7 @@ POST {{api_host}}/api/v1/members/test
 Content-Type: application/json
 
 {
-  "email": "hong@aa.com",
+  "email": "hong1@aa.com",
   "password": "hong1111",
   "role": "USER"
 }

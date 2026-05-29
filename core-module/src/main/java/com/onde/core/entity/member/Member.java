@@ -32,7 +32,8 @@ public class Member extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private MemberStatus status;
+    @Builder.Default
+    private MemberStatus status = MemberStatus.ACTIVE;
 
     // 가입 출처 필드 (기본값 LOCAL 세팅)
     @Enumerated(EnumType.STRING)

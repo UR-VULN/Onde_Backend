@@ -7,7 +7,7 @@ import com.onde.admin.application.approval.dto.ApprovalProcessRequest;
 import com.onde.admin.application.approval.dto.ApprovalProcessResponse;
 import com.onde.core.entity.accommodation.Accommodation;
 import com.onde.core.entity.accommodation.Car;
-import com.onde.core.entity.flight.ApprovalStatus; // 👈 프로젝트 공통 표준 승인 상태 에넘으로 패키지 통합
+import com.onde.core.entity.accommodation.ApprovalStatus;
 import com.onde.core.entity.flight.FlightSchedule;
 import com.onde.core.entity.insurance.InsuranceProduct;
 import com.onde.core.exception.ErrorCode;
@@ -55,7 +55,7 @@ public class AdminApprovalService {
 
         // 1. 항공 스케줄 대기 목록 로드
         if (loadFlight) {
-            List<FlightSchedule> pendingSchedules = flightScheduleRepository.findByStatus(ApprovalStatus.PENDING_APPROVAL);
+            List<FlightSchedule> pendingSchedules = flightScheduleRepository.findByStatus(com.onde.core.entity.flight.ApprovalStatus.PENDING_APPROVAL);
             flights = pendingSchedules.stream()
                     .map(fs -> AdminPendingApprovalsResponse.PendingFlightDto.builder()
                             .scheduleId(fs.getId())
@@ -70,7 +70,7 @@ public class AdminApprovalService {
 
         // 2. 여행자 보험 요율안 대기 목록 로드
         if (loadInsurance) {
-            List<InsuranceProduct> pendingProducts = insuranceProductRepository.findByStatus(ApprovalStatus.PENDING_APPROVAL);
+            List<InsuranceProduct> pendingProducts = insuranceProductRepository.findByStatus(com.onde.core.entity.flight.ApprovalStatus.PENDING_APPROVAL);
             insurances = pendingProducts.stream()
                     .map(ip -> AdminPendingApprovalsResponse.PendingInsuranceDto.builder()
                             .productId(ip.getId())
@@ -126,13 +126,13 @@ public class AdminApprovalService {
                     .orElseThrow(() -> new NotFoundException(ErrorCode.FLIGHT_SCHEDULE_NOT_FOUND));
 
             schedule.setStatus(req.getDecision());
-            if (req.getDecision() == ApprovalStatus.REJECTED) {
+            if (req.getDecision() == com.onde.core.entity.flight.ApprovalStatus.REJECTED) {
                 schedule.setRejectReason(req.getRejectReason());
             }
             flightScheduleRepository.save(schedule);
 
             // 항공 상품 승인(APPROVED) 성공 시 관련된 Redis 항공 검색 캐시 즉시 일괄 무효화
-            if (req.getDecision() == ApprovalStatus.APPROVED) {
+            if (req.getDecision() == com.onde.core.entity.flight.ApprovalStatus.APPROVED) {
                 clearRedisCache("flightSearch*");
             }
 
@@ -141,7 +141,7 @@ public class AdminApprovalService {
                     .orElseThrow(() -> new NotFoundException(ErrorCode.INSURANCE_PRODUCT_NOT_FOUND));
 
             product.setStatus(req.getDecision());
-            if (req.getDecision() == ApprovalStatus.REJECTED) {
+            if (req.getDecision() == com.onde.core.entity.flight.ApprovalStatus.REJECTED) {
                 product.setRejectReason(req.getRejectReason());
             }
             insuranceProductRepository.save(product);
@@ -163,11 +163,11 @@ public class AdminApprovalService {
      * 숙소 및 차량용 대기 목록 조회 편의 메서드 (구용성 컴포넌트 유지)
      */
     public List<Accommodation> getPendingAccommodations() {
-        return accommodationRepository.findByApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        return accommodationRepository.findByApprovalStatus(ApprovalStatus.PENDING);
     }
 
     public List<Car> getPendingCars() {
-        return carRepository.findByApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        return carRepository.findByApprovalStatus(ApprovalStatus.PENDING);
     }
 
     /**
