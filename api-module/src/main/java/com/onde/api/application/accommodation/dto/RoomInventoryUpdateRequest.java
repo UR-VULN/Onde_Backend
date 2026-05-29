@@ -7,6 +7,7 @@ import java.time.LocalDate;
 
 @Getter @Setter
 public class RoomInventoryUpdateRequest {
+    private Long roomId;
     private LocalDate date;
     private Integer stock;
     private BigDecimal basePrice;

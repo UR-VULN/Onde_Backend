@@ -119,4 +119,29 @@ public class ReservationService {
 
         return reservationRepository.save(reservation);
     }
+
+    @Transactional
+    public void cancelReservation(Long reservationId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            throw new RuntimeException("Reservation is already cancelled");
+        }
+
+        reservation.setStatus(ReservationStatus.CANCELLED);
+
+        // Restore inventory stock
+        LocalDate startDate = reservation.getCheckIn().toLocalDate();
+        LocalDate endDate = reservation.getCheckOut().toLocalDate().minusDays(1);
+
+        List<Inventory> inventories = inventoryRepository.findByTargetTypeAndTargetIdAndDateBetween(
+                reservation.getTargetType(), reservation.getTargetId(), startDate, endDate);
+
+        for (Inventory inventory : inventories) {
+            inventory.setStock(inventory.getStock() + 1);
+        }
+
+        reservationRepository.save(reservation);
+    }
 }

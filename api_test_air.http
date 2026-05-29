@@ -207,6 +207,6 @@ Accept: text/csv
 ### 3.4. 관리자 직권 수동 예약 강제 취소 (POST)
 # - 비관적 락 좌석 복원 (+1) 및 D팀 환불 FeignClient 연동 시뮬레이션
 # - URL 및 경로 변수 스네이크 케이스 준수 (booking_id)
-POST {{adminHost}}/api/v1/admin/bookings/3/cancel
+POST {{adminHost}}/api/v1/admin/bookings/4/cancel
 X-Admin-Role: MASTER
 Content-Type: application/json
