@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 
 @RestController
-@RequestMapping("/api/v1/admin/members")
+@RequestMapping("/api/v1/admin")
 @RequiredArgsConstructor
 public class AdminMemberController {
 
@@ -24,7 +24,7 @@ public class AdminMemberController {
     private final MemberRepository memberRepository;
 
     // 전사 회원 리스트 다중 필터 (GET)
-    @GetMapping
+    @GetMapping("/members")
     public ResponseEntity<Page<MemberAdminResponse>> searchMembers(
             @ModelAttribute MemberSearchRequest request,
             @PageableDefault(size = 10) Pageable pageable) {
@@ -34,20 +34,21 @@ public class AdminMemberController {
     }
 
     // 회원 블랙리스트 처리 (POST)
-    @PostMapping("/{id}/blacklist")
+    @PostMapping("/members/{id}/blacklist")
     public ResponseEntity<String> blacklistMember(@PathVariable Long id) {
         
         adminMemberService.blacklistMember(id);
         return ResponseEntity.ok("해당 회원이 블랙리스트로 지정되었으며, 강제 로그아웃 처리되었습니다.");
     }
 
+    // ADM-003: 최고 관리자의 직원 권한 수정
     @PatchMapping("/roles/{id}")
-    @PreAuthorize("hasAuthority('SUPER_ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<String> updateRole(@PathVariable Long id, 
                                              @RequestBody RoleUpdateRequest request,
                                              Principal principal) {
         Long currentAdminId = getAdminIdFromPrincipal(principal);
-        adminMemberService.updateMemberRole(id, currentAdminId, request.getRole());
+        adminMemberService.updateMemberRole(id, currentAdminId, request.getNewRole());
         return ResponseEntity.ok("권한이 성공적으로 변경되었습니다.");
     }
 

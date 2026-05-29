@@ -7,5 +7,5 @@ import lombok.Setter;
 @Getter
 @Setter
 public class RoleUpdateRequest {
-    private MemberRole role;
+    private MemberRole newRole;
 }
