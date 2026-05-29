@@ -93,7 +93,6 @@ class PostServiceTest {
 
         Member member = Member.builder()
                 .id(memberId)
-                .name("홍길동")
                 .role(MemberRole.USER)
                 .build();
 
@@ -131,7 +130,6 @@ class PostServiceTest {
 
         Member author = Member.builder()
                 .id(1L)
-                .name("홍길동")
                 .role(MemberRole.USER)
                 .build();
 
@@ -160,7 +158,6 @@ class PostServiceTest {
 
         Member author = Member.builder()
                 .id(memberId)
-                .name("홍길동")
                 .role(MemberRole.USER)
                 .build();
 

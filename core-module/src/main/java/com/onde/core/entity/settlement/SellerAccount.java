@@ -1,12 +1,10 @@
 package com.onde.core.entity.settlement;
 
+import com.onde.core.entity.BaseEntity;
+import com.onde.core.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.*;
 
-/**
- * 판매자(Seller)의 정산용 은행 계좌 정보를 저장하는 엔티티입니다.
- * 정산 데이터를 승인하고 지급 처리할 때 실제 송금할 은행명과 계좌번호 정보를 조회하는 데 사용됩니다.
- */
 @Entity
 @Table(name = "seller_accounts")
 @Getter
@@ -14,57 +12,37 @@ import lombok.*;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class SellerAccount {
+public class SellerAccount extends BaseEntity {
 
-    /**
-     * 계좌 정보 식별자 (PK)
-     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * 판매자 식별자 (FK 역할)
-     */
-    @Column(name = "seller_id", nullable = false)
-    private Long sellerId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", nullable = false, unique = true)
+    private Member member;
 
-    /**
-     * 정산용 은행명 (예: 신한은행, 국민은행 등)
-     */
-    @Column(name = "bank_name", nullable = false)
+    @Column(nullable = false, length = 50)
     private String bankName;
 
-    /**
-     * 정산용 은행 계좌번호 (하이픈 제외 숫자 권장)
-     */
-    @Column(name = "account_number", nullable = false)
-    private String accountNumber;
+    @Column(nullable = false, length = 100)
+    private String accountHolder; // 예금주명
 
-    /**
-     * 사업자등록번호 (예: 123-45-67890)
-     */
-    @Column(name = "business_number")
-    private String businessNumber;
+    @Column(nullable = false, length = 255) // 암호화된 문자열이 들어가므로 길게 설정
+    private String accountNumber; // 계좌번호
 
-    /**
-     * 대표자 성명
-     */
-    @Column(name = "representative_name")
-    private String representativeName;
+    @Column(nullable = false, length = 20)
+    private String businessNumber; // 사업자등록번호
 
-    /**
-     * 개업 일자 (예: 20200101)
-     */
-    @Column(name = "opened_at")
+    @Column(nullable = false, length = 50)
+    private String representativeName; // 대표자명
+
+    @Column(nullable = false, length = 8) // 개업일자 (YYYYMMDD)
     private String openedAt;
 
-    /**
-     * 예금주 성명
-     */
-    @Column(name = "account_holder")
-    private String accountHolder;
+    public void updateAccount(String bankName, String accountNumber, String accountHolder) {
+        this.bankName = bankName;
+        this.accountNumber = accountNumber;
+        this.accountHolder = accountHolder;
+    }
 }
-
-
-

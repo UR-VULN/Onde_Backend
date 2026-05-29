@@ -19,10 +19,9 @@ public class MemberService {
     private final ReservationRepository reservationRepository;
 
     @Transactional
-    public Member createTestMember(Long id, String name, MemberRole role, String email, String password) {
+    public Member createTestMember(Long id, MemberRole role, String email, String password) {
         Member member = Member.builder()
                 .id(id)
-                .name(name != null ? name : "테스트유저")
                 .role(role)
                 .email(email != null ? email : (role.name().toLowerCase() + (id != null ? id : "") + "@onde.com"))
                 .password(password != null ? password : "testpassword123")
@@ -33,11 +32,13 @@ public class MemberService {
         if (id != null && id == 1L) {
             Reservation reservation = Reservation.builder()
                     .id(1L)
-                    .member(savedMember)
-                    .productName("도쿄 3박 4일 감성 패키지 여행 상품")
-                    .amount(350000)
-                    .mileageUsed(5000)
-                    .reservationDate(LocalDateTime.now())
+                    .userId(savedMember.getId())
+                    .targetType(com.onde.core.entity.reservation.ReservationTarget.ROOM)
+                    .targetId(1L)
+                    .checkIn(LocalDateTime.now())
+                    .checkOut(LocalDateTime.now().plusDays(3))
+                    .status(com.onde.core.entity.reservation.ReservationStatus.RESERVED)
+                    .totalPrice(java.math.BigDecimal.valueOf(350000))
                     .build();
             reservationRepository.save(reservation);
         }

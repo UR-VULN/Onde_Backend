@@ -23,6 +23,16 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      * @return 조회된 결제 정보 (존재할 경우)
      */
     Optional<Payment> findByMerchantUid(String merchantUid);
+    
+    /**
+     * 예약 식별자(reservationId)로 결제 내역을 조회합니다.
+     */
+    Optional<Payment> findByReservationId(Long reservationId);
+
+    /**
+     * 예약 식별자(reservationId)로 가장 최근의 결제 내역 1건을 조회합니다.
+     */
+    Optional<Payment> findFirstByReservationIdOrderByIdDesc(Long reservationId);
 
     /**
      * 지정된 기간 동안 특정 결제 상태를 가진 거래를 대상으로 판매자별 총 정산 대상 금액(수수료 차감 전)을 조회합니다.
@@ -33,14 +43,27 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      * @param end    집계 대상 종료 일시 (미포함)
      * @return 판매자 식별자 및 총 매출액을 담은 프로젝션 목록
      */
-    @Query("SELECT r.member.id AS sellerId, " +
+    @Query("SELECT " +
+            "CASE " +
+            "  WHEN r.targetType = 'ROOM' THEN a.sellerId " +
+            "  WHEN r.targetType = 'CAR' THEN c.sellerId " +
+            "  ELSE null " +
+            "END AS sellerId, " +
             "SUM(p.totalAmount) AS grossAmount " +
             "FROM Payment p " +
             "JOIN Reservation r ON p.reservationId = r.id " +
+            "LEFT JOIN Room rm ON r.targetType = 'ROOM' AND r.targetId = rm.id " +
+            "LEFT JOIN Accommodation a ON rm.accommodation.id = a.id " +
+            "LEFT JOIN Car c ON r.targetType = 'CAR' AND r.targetId = c.id " +
             "WHERE p.status = :status " +
             "AND p.createdAt >= :start " +
             "AND p.createdAt < :end " +
-            "GROUP BY r.member.id")
+            "GROUP BY " +
+            "CASE " +
+            "  WHEN r.targetType = 'ROOM' THEN a.sellerId " +
+            "  WHEN r.targetType = 'CAR' THEN c.sellerId " +
+            "  ELSE null " +
+            "END")
     List<SettlementProjection> calculateSettlementAmounts(
             @Param("status") PaymentStatus status,
             @Param("start") LocalDateTime start,

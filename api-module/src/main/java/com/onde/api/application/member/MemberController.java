@@ -22,7 +22,7 @@ public class MemberController {
 
     @PostMapping("/test")
     public ResponseEntity<ApiResponse<Member>> createTestMember(@RequestBody TestMemberRequest req) {
-        Member member = memberService.createTestMember(req.getId(), req.getName(), req.getRole(), req.getEmail(), req.getPassword());
+        Member member = memberService.createTestMember(req.getId(), req.getRole(), req.getEmail(), req.getPassword());
         return ResponseEntity.ok(ApiResponse.success(member, "테스트용 회원이 정상 생성되었습니다."));
     }
 
@@ -31,7 +31,6 @@ public class MemberController {
     @NoArgsConstructor
     public static class TestMemberRequest {
         private Long id;
-        private String name;
         private MemberRole role;
         private String email;
         private String password;

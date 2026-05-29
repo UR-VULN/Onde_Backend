@@ -1,0 +1,24 @@
+### 상품 승인 처리 (Admin 권한)
+POST http://localhost:8081/api/admin/approvals/process
+Content-Type: application/json
+
+{
+  "targetId": 1,
+  "status": "APPROVED",
+  "adminMemo": "사진 및 정보 검수 완료"
+}
+
+
+
+### 예약 이용 완료 강제 처리 (Admin 권한)
+PUT http://localhost:8081/api/admin/bookings/1/status
+Content-Type: application/json
+
+{
+  "status": "COMPLETED",
+  "adminMemo": "이용 일정 종료 확인, 강제 업데이트 완료"
+}
+
+### 예약 내역 검색 (GET)
+# 파라미터(page, size 등)를 붙여서 테스트해보세요
+GET http://localhost:8081/api/admin/bookings/search?page=0&size=10

@@ -1,38 +1,49 @@
 package com.onde.core.entity.reservation;
 
 import com.onde.core.entity.BaseEntity;
-import com.onde.core.entity.member.Member;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "reservations")
 @Getter
 @Setter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Reservation extends BaseEntity {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "reservation_id")
     private Long id;
 
-    // 논리 FK 형태로 DB 물리 외래키 제약조건 제거
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
-    private Member member;
+    @Column(name = "user_id")
+    private Long userId;
 
-    @Column(name = "product_name", nullable = false, length = 300)
-    private String productName;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_type", length = 10)
+    private ReservationTarget targetType;
 
-    @Column(nullable = false)
-    private Integer amount;
+    @Column(name = "target_id")
+    private Long targetId;
 
-    @Column(name = "mileage_used", nullable = false)
-    private Integer mileageUsed;
+    @Column(name = "check_in")
+    private LocalDateTime checkIn;
 
-    @Column(name = "reservation_date", nullable = false)
-    private LocalDateTime reservationDate;
+    @Column(name = "check_out")
+    private LocalDateTime checkOut;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 20)
+    private ReservationStatus status;
+
+    @Column(name = "total_price", precision = 19, scale = 2)
+    private BigDecimal totalPrice;
 }

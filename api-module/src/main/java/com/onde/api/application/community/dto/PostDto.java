@@ -25,7 +25,7 @@ public class PostDto {
                 .postId(post.getId())
                 .title(post.getTitle())
                 .type(post.getType())
-                .authorName(post.getMember() != null ? post.getMember().getName() : "익명")
+                .authorName(post.getMember() != null ? post.getMember().getEmail() : "익명")
                 .likeCount(post.getLikeCount() != null ? post.getLikeCount() : 0)
                 .commentCount(post.getCommentCount() != null ? post.getCommentCount() : 0)
                 .thumbnailUrl(thumbnailUrl)
