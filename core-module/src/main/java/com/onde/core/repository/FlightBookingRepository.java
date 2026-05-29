@@ -26,4 +26,9 @@ public interface FlightBookingRepository extends JpaRepository<FlightBooking, Lo
     })
     @Query("SELECT fb FROM FlightBooking fb WHERE fb.flightSchedule.id = :scheduleId")
     java.util.stream.Stream<FlightBooking> streamByFlightScheduleId(@Param("scheduleId") Long scheduleId);
+
+    org.springframework.data.domain.Page<FlightBooking> findByUserId(Long userId, org.springframework.data.domain.Pageable pageable);
+
+    org.springframework.data.domain.Page<FlightBooking> findByUserIdAndStatus(Long userId, BookingStatus status, org.springframework.data.domain.Pageable pageable);
 }
+

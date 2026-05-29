@@ -56,11 +56,53 @@ try {
                     System.out.println("▶️ 4. 인증 완료! 부여된 권한: " + userDetails.getAuthorities());
                 }
             } else {
-                // [테스트 헬퍼] 토큰이 없지만 어드민 테스트용 HTTP 헤더 정보가 넘어온 경우 모의 인증 처리
+                // [테스트 헬퍼] 토큰이 없지만 테스트용 HTTP 헤더 정보가 넘어온 경우 모의 인증 처리
+                String memberIdHeader = request.getHeader("X-Member-Id");
+                if (memberIdHeader == null || memberIdHeader.isBlank()) {
+                    memberIdHeader = request.getHeader("X-User-Id");
+                }
+                if (memberIdHeader == null || memberIdHeader.isBlank()) {
+                    memberIdHeader = request.getHeader("X-Seller-Id");
+                }
+
                 String adminId = request.getHeader("X-Admin-Id");
                 String adminRole = request.getHeader("X-Admin-Role");
 
-                if (adminRole != null && !adminRole.isBlank()) {
+                if (memberIdHeader != null && !memberIdHeader.isBlank()) {
+                    try {
+                        Long memberId = Long.parseLong(memberIdHeader);
+                        String memberRoleHeader = request.getHeader("X-Member-Role");
+                        if (memberRoleHeader == null || memberRoleHeader.isBlank()) {
+                            if (request.getHeader("X-Seller-Id") != null) {
+                                memberRoleHeader = "SELLER";
+                            } else {
+                                memberRoleHeader = "USER";
+                            }
+                        }
+
+                        com.onde.core.entity.member.MemberRole role = com.onde.core.entity.member.MemberRole.USER;
+                        try {
+                            role = com.onde.core.entity.member.MemberRole.valueOf(memberRoleHeader.toUpperCase());
+                        } catch (Exception ignored) {}
+
+                        com.onde.core.entity.member.Member mockMember = com.onde.core.entity.member.Member.builder()
+                                .id(memberId)
+                                .email("mock_" + memberId + "@onde.com")
+                                .password("")
+                                .role(role)
+                                .status(com.onde.core.entity.member.MemberStatus.ACTIVE)
+                                .build();
+
+                        com.onde.api.security.CustomUserDetails userDetails = new com.onde.api.security.CustomUserDetails(mockMember);
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                        System.out.println("▶️ [멤버 테스트 헬퍼] 인증 완료! ID: " + memberId + ", 역할: " + role + ", 부여된 권한: " + userDetails.getAuthorities());
+                    } catch (NumberFormatException e) {
+                        System.out.println("❌ 멤버 ID 파싱 실패: " + memberIdHeader);
+                    }
+                } else if (adminRole != null && !adminRole.isBlank()) {
                     if (adminId == null || adminId.isBlank()) {
                         adminId = "AD-999";
                     }
