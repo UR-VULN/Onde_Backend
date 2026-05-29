@@ -8,20 +8,20 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/admin/settlements")
 @RequiredArgsConstructor
-public class AdminSettlementController {
-    private final AdminSettlementService adminSettlementService;
+public class AdminSellerAccountController {
+    private final AdminSellerAccountService adminSellerAccountService;
 
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<String> approve(@PathVariable Long id) {
-        adminSettlementService.approveAccount(id);
+        adminSellerAccountService.approveAccount(id);
         return ResponseEntity.ok("정산 계좌 승인 완료");
     }
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<String> reject(@PathVariable Long id) {
-        adminSettlementService.rejectAccount(id);
+        adminSellerAccountService.rejectAccount(id);
         return ResponseEntity.ok("정산 계좌 반려 완료");
     }
 }

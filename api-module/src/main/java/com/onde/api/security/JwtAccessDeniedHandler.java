@@ -2,6 +2,7 @@ package com.onde.api.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.onde.core.exception.ErrorCode;
 import com.onde.core.support.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,7 +20,7 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
         response.setContentType("application/json;charset=UTF-8");
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         
-        ErrorResponse error = ErrorResponse.of(403, "AUTH-002", "해당 API에 접근할 권한이 없습니다.");
+        ErrorResponse error = ErrorResponse.of(ErrorCode.FORBIDDEN);
         response.getWriter().write(new ObjectMapper().registerModule(new JavaTimeModule()).writeValueAsString(error));
     }
 }

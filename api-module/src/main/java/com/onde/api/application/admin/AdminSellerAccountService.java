@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class AdminSettlementService {
+public class AdminSellerAccountService {
     private final SellerAccountRepository sellerAccountRepository;
     private final ApplicationEventPublisher eventPublisher;
 

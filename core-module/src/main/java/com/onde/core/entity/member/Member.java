@@ -24,6 +24,9 @@ public class Member extends BaseEntity {
     @Column(length = 100) // email is now nullable and not globally unique
     private String email;
 
+    @Column(nullable = true, length = 100)
+    private String name;
+
     @Column(length = 100)
     private String providerId; // 카카오 고유 ID 등 저장
 

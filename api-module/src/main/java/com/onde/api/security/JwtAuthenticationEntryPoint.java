@@ -2,6 +2,7 @@ package com.onde.api.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.onde.core.exception.ErrorCode;
 import com.onde.core.support.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,7 +20,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setContentType("application/json;charset=UTF-8");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         
-        ErrorResponse error = ErrorResponse.of(401, "AUTH-001", "인증에 실패하였습니다.");
+        ErrorResponse error = ErrorResponse.of(ErrorCode.UNAUTHORIZED);
         response.getWriter().write(new ObjectMapper().registerModule(new JavaTimeModule()).writeValueAsString(error));
     }
 }
