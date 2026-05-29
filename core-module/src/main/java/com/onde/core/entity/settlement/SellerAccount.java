@@ -41,7 +41,8 @@ public class SellerAccount extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false) 
-    private AccountStatus status;
+    @Builder.Default
+    private AccountStatus status = AccountStatus.PENDING;
 
     public void updateAccount(String bankName, String accountNumber, String accountHolder) {
         this.bankName = bankName;

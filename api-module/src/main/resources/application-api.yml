@@ -4,8 +4,8 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID:dummy_google_id}          # 구글 클라이언트 ID 입력
-            client-secret: ${GOOGLE_CLIENT_SECRET:dummy_google_secret}  # 구글 클라이언트 시크릿 입력
+            client-id: ${GOOGLE_CLIENT_ID}          # 구글 클라이언트 ID 입력
+            client-secret: ${GOOGLE_CLIENT_SECRET}  # 구글 클라이언트 시크릿 입력
             scope:
               - email
               - profile
