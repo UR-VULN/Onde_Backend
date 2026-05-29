@@ -2,11 +2,13 @@ package com.onde.core.entity.auth;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
 import org.springframework.data.redis.core.TimeToLive;
 
 @Getter
+@NoArgsConstructor
 @AllArgsConstructor
 @RedisHash(value = "auth:refresh") // Redis에 저장될 Key의 Prefix 설정
 public class RefreshToken {
