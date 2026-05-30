@@ -30,5 +30,18 @@ public interface FlightBookingRepository extends JpaRepository<FlightBooking, Lo
     org.springframework.data.domain.Page<FlightBooking> findByUserId(Long userId, org.springframework.data.domain.Pageable pageable);
 
     org.springframework.data.domain.Page<FlightBooking> findByUserIdAndStatus(Long userId, BookingStatus status, org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT COALESCE(SUM(fb.totalPrice), 0) FROM FlightBooking fb WHERE fb.status = com.onde.core.entity.flight.BookingStatus.CONFIRMED AND fb.createdAt >= :start AND fb.createdAt < :end")
+    java.math.BigDecimal sumTotalPriceByStatusAndCreatedAtBetween(
+            @Param("start") LocalDateTime start, 
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("SELECT COUNT(fb) FROM FlightBooking fb WHERE fb.status = com.onde.core.entity.flight.BookingStatus.CONFIRMED AND fb.createdAt >= :start AND fb.createdAt < :end")
+    long countByStatusAndCreatedAtBetween(
+            @Param("start") LocalDateTime start, 
+            @Param("end") LocalDateTime end
+    );
 }
+
 

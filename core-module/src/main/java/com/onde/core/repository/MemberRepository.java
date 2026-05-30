@@ -19,4 +19,7 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
 
     // 식별자(providerId)로 회원 조회
     Optional<Member> findByProviderId(String providerId);
-}
+
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(m) FROM Member m WHERE m.createdAt >= :start AND m.createdAt < :end")
+    long countByCreatedAtBetween(@org.springframework.data.repository.query.Param("start") java.time.LocalDateTime start, @org.springframework.data.repository.query.Param("end") java.time.LocalDateTime end);
+}
