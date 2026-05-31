@@ -168,4 +168,15 @@ public class FlightService {
                 .status(savedBooking.getStatus())
                 .build();
     }
+
+    /**
+     * [Day 9] 예약 결제 확정 로직 (예약 상태를 CONFIRMED로 최종 업데이트)
+     */
+    @Transactional
+    public void confirmBooking(String bookingCode) {
+        FlightBooking booking = flightBookingRepository.findByBookingCode(bookingCode)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.FLIGHT_SCHEDULE_NOT_FOUND)); // 예외 코드는 기존 정의된 NotFoundException 활용
+        booking.setStatus(BookingStatus.CONFIRMED);
+        flightBookingRepository.save(booking);
+    }
 }

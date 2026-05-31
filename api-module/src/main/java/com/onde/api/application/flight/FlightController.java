@@ -22,6 +22,7 @@ public class FlightController {
 
     private final FlightService flightService;
     private final DistributedLockExecutor distributedLockExecutor;
+    private final com.onde.api.infrastructure.portone.PortOneService portOneService;
 
     @GetMapping("/flights/search")
     public ResponseEntity<ApiResponse<FlightSearchResponse>> searchFlights(@ModelAttribute FlightSearchRequest req) {
@@ -80,6 +81,7 @@ public class FlightController {
             }
 
             // [정상 흐름]: 실제 비즈니스에서는 예약 상태를 CONFIRMED로 최종 갱신
+            flightService.confirmBooking(bookingCode);
             log.info("🎉 [DB SUCCESS] FlightBooking status updated to CONFIRMED for bookingCode={}", bookingCode);
             return ResponseEntity.ok(ApiResponse.success(
                     Map.of("bookingCode", bookingCode, "status", "CONFIRMED", "pgTransactionId", pgTransactionId),
@@ -92,7 +94,7 @@ public class FlightController {
             log.warn("🔄 [SAGA COMPENSATING] 로컬 DB 갱신 장애 감지! 승인된 외부 결제건에 대해 즉시 자동 취소를 청구합니다. targetPgTxId={}",
                     pgTransactionId);
 
-            // 외부 PG 취소 API 모의 자동 호출 (D팀 환불 FeignClient 연동 시뮬레이션)
+            // 외부 PG 취소 API 실제 호출 (D팀 환불 FeignClient 연동 시뮬레이션 및 포트원 서비스 취소 기능 연동)
             triggerCompensatingRefund(pgTransactionId, amount);
 
             // 최종 비즈니스 예외 전파
@@ -102,8 +104,13 @@ public class FlightController {
     }
 
     private void triggerCompensatingRefund(String pgTransactionId, BigDecimal amount) {
-        log.info(
-                "💰 [SAGA COMPENSATION SUCCESS] Auto-refund completed successfully for pgTransactionId={} with amount={}",
-                pgTransactionId, amount);
+        try {
+            portOneService.cancelPayment(pgTransactionId, amount.longValue(), "로컬 DB 갱신 장애로 인한 SAGA 보상 트랜잭션 자동 취소");
+            log.info(
+                    "💰 [SAGA COMPENSATION SUCCESS] Auto-refund completed successfully via PortOne for pgTransactionId={} with amount={}",
+                    pgTransactionId, amount);
+        } catch (Exception e) {
+            log.error("❌ [SAGA COMPENSATION FAIL] Failed to refund via PortOne for pgTransactionId={}: {}", pgTransactionId, e.getMessage());
+        }
     }
 }

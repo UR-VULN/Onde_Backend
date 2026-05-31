@@ -13,6 +13,7 @@ import java.util.List;
 @Repository
 public interface FlightBookingRepository extends JpaRepository<FlightBooking, Long> {
     List<FlightBooking> findByStatusAndReservedUntilBefore(BookingStatus status, LocalDateTime dateTime);
+    java.util.Optional<FlightBooking> findByBookingCode(String bookingCode);
 
     @Query("SELECT COUNT(fb) FROM FlightBooking fb WHERE fb.flightSchedule.id = :scheduleId AND fb.seatClass = :seatClass AND fb.status IN (com.onde.core.entity.flight.BookingStatus.CONFIRMED, com.onde.core.entity.flight.BookingStatus.RESERVED)")
     long countActiveBookings(
