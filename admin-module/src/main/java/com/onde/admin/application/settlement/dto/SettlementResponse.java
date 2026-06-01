@@ -1,4 +1,4 @@
-package com.onde.api.application.admin.dto;
+package com.onde.admin.application.settlement.dto;
 
 import com.onde.core.entity.settlement.SellerAccount;
 import lombok.Builder;

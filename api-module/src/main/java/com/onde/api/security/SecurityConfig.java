@@ -63,8 +63,7 @@ public class SecurityConfig {
                         // SELLER (판매자만 접근 가능)
                         .requestMatchers("/api/v1/seller/**").hasRole("SELLER")
 
-                        // ADMIN & SUPER_ADMIN (관리자 페이지 권한 다각화 유지)
-                        .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "GENERAL_ADMIN", "SUPER_ADMIN")
+
 
                         // [보안 강화] 그 외의 모든 예약, 정산 등 핵심 요청은 무조건 로그인(인증)된 사용자만 접근 허용
                         // 원래 우리 코드의 .anyRequest().permitAll()은 보안 멍청이 코드가 될 위험이 커서 팀원의

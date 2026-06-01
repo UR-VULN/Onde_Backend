@@ -1,6 +1,6 @@
-package com.onde.api.security;
+package com.onde.admin.security;
 
-import com.onde.api.application.admin.AdminMemberService;
+import com.onde.admin.application.member.AdminMemberService;
 import com.onde.core.repository.MemberRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,7 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
-public class SecurityTest {
+public class AdminSecurityTest {
 
     @Autowired
     private MockMvc mockMvc;
