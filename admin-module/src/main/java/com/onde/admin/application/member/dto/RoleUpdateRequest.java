@@ -1,4 +1,4 @@
-package com.onde.api.application.admin.dto;
+package com.onde.admin.application.member.dto;
 
 import com.onde.core.entity.member.MemberRole;
 import lombok.Getter;

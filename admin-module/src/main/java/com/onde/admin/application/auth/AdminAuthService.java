@@ -1,4 +1,4 @@
-package com.onde.api.application.admin;
+package com.onde.admin.application.auth;
 
 import com.onde.core.entity.member.Member;
 import com.onde.core.repository.MemberRepository;

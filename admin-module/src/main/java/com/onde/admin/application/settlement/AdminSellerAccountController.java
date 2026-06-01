@@ -1,4 +1,4 @@
-package com.onde.api.application.admin;
+package com.onde.admin.application.settlement;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
