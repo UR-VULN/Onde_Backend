@@ -57,7 +57,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/flights/search").permitAll()
                         .requestMatchers("/api/v1/insurance/calculate").permitAll() // 👈 우리 보험 경로 추가
-                        .requestMatchers("/api/v1/accommodations/**", "/api/v1/cars/**").permitAll()
+                        .requestMatchers("/api/v1/accommodations/**", "/api/v1/cars/**", "/api/v1/rental_cars/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/properties", "/api/v1/property").permitAll()
 
                         // SELLER (판매자만 접근 가능)

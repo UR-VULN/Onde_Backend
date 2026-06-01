@@ -16,6 +16,7 @@ import java.time.LocalDate;
 public class Inventory extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "inventory_id")
     private Long id;
 
     @Enumerated(EnumType.STRING)

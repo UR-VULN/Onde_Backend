@@ -16,15 +16,28 @@ import com.onde.core.entity.reservation.Reservation;
 import com.onde.core.support.ApiResponse;
 
 @RestController
-@RequestMapping("/api/v1/cars")
+@RequestMapping("/api/v1/rental_cars")
 @RequiredArgsConstructor
 public class CarController {
 
     private final CarService carService;
+    private final ReservationService reservationService;
 
     // 렌터카 목록 및 검색
-    @GetMapping
+    @GetMapping("/search")
     public ResponseEntity<ApiResponse<CarSearchResponse>> search(CarSearchRequest request) {
         return ResponseEntity.ok(ApiResponse.success(carService.searchCars(request), "렌터카 조회가 완료되었습니다."));
+    }
+
+    // 렌터카 예약 생성
+    @PostMapping("/reservations")
+    public ResponseEntity<ApiResponse<ReservationResponse>> reserveCar(@RequestBody CarReservationRequest request) {
+        Reservation reservation = reservationService.reserveCar(request);
+        ReservationResponse response = new ReservationResponse(
+                reservation.getId(),
+                reservation.getStatus(),
+                "렌터카 예약이 성공적으로 완료되었습니다."
+        );
+        return ResponseEntity.ok(ApiResponse.success(response, "렌터카 예약이 완료되었습니다."));
     }
 }

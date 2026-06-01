@@ -61,7 +61,16 @@ public class SellerAccommodationController {
         return ResponseEntity.ok(ApiResponse.success(data, "판매자 등록 숙소 목록 조회가 성공적으로 완료되었습니다."));
     }
 
-    // 객실 재고/가격 수정
+    // 객실 재고/가격 수정 (특정 객실 대상)
+    @PutMapping("/accommodations/rooms/{roomId}/inventory")
+    public ResponseEntity<ApiResponse<Void>> updateRoomInventory(
+            @PathVariable Long roomId,
+            @RequestBody List<@Valid RoomInventoryUpdateRequest> requests) {
+        sellerAccommodationService.updateRoomInventories(roomId, requests);
+        return ResponseEntity.ok(ApiResponse.success(null, "객실 재고 정보가 성공적으로 수정되었습니다."));
+    }
+
+    // 객실 재고/가격 수정 (벌크)
     @PutMapping("/inventories/rooms")
     public ResponseEntity<ApiResponse<Void>> updateInventories(
             @RequestBody List<@Valid RoomInventoryUpdateRequest> requests) {
