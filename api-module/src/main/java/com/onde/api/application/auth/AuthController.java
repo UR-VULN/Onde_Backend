@@ -3,9 +3,9 @@ package com.onde.api.application.auth;
 import com.onde.api.application.auth.dto.LoginRequest;
 import com.onde.api.application.auth.dto.LoginResponse;
 import com.onde.api.application.auth.dto.SignupRequest;
-import com.onde.api.application.auth.dto.SignupRequest;
 import com.onde.api.application.auth.dto.TokenRefreshRequest;
 import com.onde.api.application.auth.dto.TokenRefreshResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -23,13 +23,13 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/signup")
-    public ResponseEntity<String> signup(@RequestBody SignupRequest request) {
+    public ResponseEntity<String> signup(@Valid @RequestBody SignupRequest request) {
         String result = authService.signup(request);
         return ResponseEntity.ok(result);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse loginResponse = authService.login(request);
 
         // Access Token 쿠키 설정 (30분)
@@ -50,7 +50,7 @@ public class AuthController {
                 .maxAge(14 * 24 * 60 * 60)
                 .build();
 
-        // 바디(Body)에도 프론트엔드가 필요한 정보(회원 ID, 권한 등)를 담아서 응답합니다.
+        // 바디(Body)에도 프론트엔드가 필요한 정보(회원 ID, 권한 등)를 담아서 응답
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
@@ -58,7 +58,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<TokenRefreshResponse> refresh(@RequestBody TokenRefreshRequest request) {
+    public ResponseEntity<TokenRefreshResponse> refresh(@Valid @RequestBody TokenRefreshRequest request) {
         TokenRefreshResponse response = authService.refresh(request.getRefreshToken());
         return ResponseEntity.ok(response);
     }

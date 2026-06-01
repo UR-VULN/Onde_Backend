@@ -2,21 +2,32 @@ package com.onde.core.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
 @Component
 public class JwtTokenProvider {
 
-    // 실무에서는 application.yml에서 @Value("${jwt.secret}") 로 주입받는 것이 안전합니다.
-    private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256); 
+    @Value("${jwt.secret}")
+    private String secretKey;
+    
+    private Key key;
+
     private final long accessTokenValidTime = 30 * 60 * 1000L; // 30분 유효기간
     private final long refreshTokenValidTime = 14 * 24 * 60 * 60 * 1000L; // 14일 유효기간
 
+    // 서버 실행 시 환경변수의 키를 바이트 배열로 변환하여 Key 객체 초기화
+    @PostConstruct
+    public void init() {
+        this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+    }
+    
     // Access Token 생성 메서드
     public String createAccessToken(String identifier, String role) {
         Claims claims = Jwts.claims().setSubject(identifier);

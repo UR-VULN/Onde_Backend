@@ -27,7 +27,6 @@ public class GlobalExceptionHandler {
                 ErrorCode errorCode = e.getErrorCode();
                 String systemMessage = e.getMessage() != null ? e.getMessage() : errorCode.getMessage();
 
-                // 👈 순정 ErrorResponse.of(errorCode, systemMessage) 스펙 준수
                 ErrorResponse response = ErrorResponse.of(errorCode, systemMessage);
 
                 return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
@@ -53,7 +52,6 @@ public class GlobalExceptionHandler {
                         defaultMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
                 }
 
-                // 👈 순정 ErrorResponse.of(errorCode, customUserMessage, systemMessage, details) 스펙 준수
                 ErrorResponse response = ErrorResponse.of(
                                 ErrorCode.INVALID_INPUT_VALUE,
                                 defaultMessage,
@@ -74,7 +72,6 @@ public class GlobalExceptionHandler {
                 String systemMessage = String.format("%s: %s", e.getClass().getName(),
                                 e.getMessage() != null ? e.getMessage() : "No detailed message");
 
-                // 👈 순정 ErrorResponse.of(errorCode, customUserMessage, systemMessage, details) 스펙 준수
                 ErrorResponse response = ErrorResponse.of(
                                 ErrorCode.INTERNAL_SERVER_ERROR,
                                 "서버 내부 오류가 발생했습니다. 관리자에게 문의하세요.",
