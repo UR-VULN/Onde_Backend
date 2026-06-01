@@ -208,6 +208,14 @@ public class MemberMyPageService {
                 .build();
      }
 
+    /**
+     * 1.1. 로그인 상태 유지용 내 정보 조회 비즈니스 로직
+     * 전달받은 고유 회원 ID로 회원 엔티티를 조회하고, 응답용 DTO 객체(MemberInfoResponse)로 바인딩하여 리턴합니다.
+     *
+     * @param userId 회원 고유 식별 ID
+     * @return 이메일, 권한, 생성일자 등이 포함된 회원 정보 응답 DTO
+     * @throws BusinessException 회원이 존재하지 않는 경우 MEMBER_NOT_FOUND 예외 발생
+     */
     public MemberInfoResponse getMyInfo(Long userId) {
         com.onde.core.entity.member.Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.MEMBER_NOT_FOUND));

@@ -26,6 +26,14 @@ public class SellerAccommodationService {
     private final RoomRepository roomRepository;
     private final InventoryRepository inventoryRepository;
 
+    /**
+     * 1.7. 판매자 숙소 신규 등록 비즈니스 로직 (주소 규격 포함)
+     * 신규 숙소 엔티티를 검수 대기(PENDING) 상태로 생성하고, 
+     * 요청 정보에 포함된 객실(Room) 목록도 연관 매핑하여 저장합니다.
+     *
+     * @param request 신규 등록할 숙소 정보와 객실 정보 리스트 DTO
+     * @return 등록 완료된 숙소 ID
+     */
     @Transactional
     public Long registerAccommodation(SellerAccommodationRegisterRequest request) {
         Accommodation accommodation = new Accommodation();
@@ -114,6 +122,13 @@ public class SellerAccommodationService {
         }
     }
 
+    /**
+     * 1.7. 판매자 등록 숙소 목록 조회 비즈니스 로직
+     * 특정 판매자(Seller ID)가 등록한 모든 숙소 엔티티 목록을 조회합니다.
+     *
+     * @param sellerId 판매자 고유 식별 ID
+     * @return 판매자 소유의 숙소 엔티티 리스트
+     */
     public List<Accommodation> getAccommodations(Long sellerId) {
         return accommodationRepository.findBySellerId(sellerId);
     }
