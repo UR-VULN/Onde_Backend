@@ -1,4 +1,4 @@
-package com.onde.api.application.admin;
+package com.onde.admin.application.settlement;
 
 import com.onde.core.entity.settlement.SellerAccount;
 import com.onde.core.repository.SellerAccountRepository;

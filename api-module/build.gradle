@@ -15,6 +15,7 @@ dependencies {
     implementation 'software.amazon.awssdk:s3:2.25.15'
     implementation 'org.mockito:mockito-core:5.11.0'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'

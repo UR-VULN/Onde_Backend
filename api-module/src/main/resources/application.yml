@@ -4,9 +4,9 @@ spring:
   main:
     allow-bean-definition-overriding: true 
   datasource:
-    url: jdbc:mariadb://localhost:3306/onde_db?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&createDatabaseIfNotExist=true&zeroDateTimeBehavior=convertToNull
-    username: root
-    password: maria
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.mariadb.jdbc.Driver
   jpa:
     hibernate:
@@ -17,13 +17,13 @@ spring:
         format_sql: true
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
   mail:
     host: smtp.gmail.com
     port: 587
-    username: your-email@gmail.com
-    password: your-app-password
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -35,17 +35,17 @@ server:
   port: 8080
 
 jwt:
-  secret: ${JWT_SECRET:your-secret-key-here-must-be-very-long-and-secure-with-more-than-256-bits-length-spec}
+  secret: ${JWT_SECRET}
   access-token-expiration: 1800000    # 30분
   refresh-token-expiration: 1209600000 # 14일
 
 portone:
-  imp-key: "0754805832574205"
-  imp-secret: "5w2kDl7p94HPu9JavDbMmXOnDsknWUoyeOdGsUk8Jc3FJVf75gwr6jsbRyRfuk0qYD8mS2w6L7hc9qzD"
+  imp-key: ${PORTONE_IMP_KEY}
+  imp-secret: ${PORTONE_IMP_SECRET}
 
 aws:
   s3:
-    bucket: onde-private-bucket
-    cloudfront-domain: https://cdn.travel-platform.com
-    region: ap-northeast-2
+    bucket: ${AWS_S3_BUCKET}
+    cloudfront-domain: ${AWS_CLOUDFRONT_DOMAIN}
+    region: ${AWS_REGION}
 

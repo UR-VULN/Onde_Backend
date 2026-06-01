@@ -17,6 +17,6 @@ server:
   port: 8081
 
 jwt:
-  secret: your-admin-secret-key-here-must-be-very-long-and-secure-with-more-than-256-bits-length-spec
+  secret: ${JWT_SECRET:your-secret-key-here-must-be-very-long-and-secure-with-more-than-256-bits-length-spec}
   access-token-expiration: 1800000
   refresh-token-expiration: 1209600000

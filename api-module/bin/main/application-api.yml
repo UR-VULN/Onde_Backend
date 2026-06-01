@@ -27,10 +27,10 @@ spring:
 encryption:
   aes:
     # 32바이트(256비트) 길이의 임의 문자열
-    secret-key: ${AES_SECRET_KEY:ThisIsLocalTestSecretKey12345678}
+    secret-key: ${AES_SECRET_KEY}
 
 nts:
   api:
     # 공공데이터포털에서 발급받은 서비스 키 입력
-    service-key: ${NTS_SERVICE_KEY:bcc245843d38537ad3234fdfe90c19bbb93582d89c482eef060a2cfc4b17c476}
+    service-key: ${NTS_SERVICE_KEY}
     url: "https://api.odcloud.kr/api/nts-businessman/v1/status"

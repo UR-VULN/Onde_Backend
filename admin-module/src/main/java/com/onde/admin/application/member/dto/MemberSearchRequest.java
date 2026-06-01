@@ -1,4 +1,4 @@
-package com.onde.api.application.admin.dto;
+package com.onde.admin.application.member.dto;
 
 import lombok.Getter;
 import lombok.Setter;

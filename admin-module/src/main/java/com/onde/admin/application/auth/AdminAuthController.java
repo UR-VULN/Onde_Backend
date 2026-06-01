@@ -1,6 +1,6 @@
-package com.onde.api.application.admin;
+package com.onde.admin.application.auth;
 
-import com.onde.api.application.admin.dto.PasswordChangeRequest;
+import com.onde.admin.application.auth.dto.PasswordChangeRequest;
 import com.onde.core.entity.member.Member;
 import com.onde.core.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
