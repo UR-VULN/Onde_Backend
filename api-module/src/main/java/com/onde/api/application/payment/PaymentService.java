@@ -15,9 +15,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
+
+import org.springframework.context.event.EventListener;
+import com.onde.core.event.AdminBookingCancelEvent;
 
 /**
  * 결제 서비스 클래스입니다.
@@ -54,8 +59,8 @@ public class PaymentService {
         }
 
         // 2. 마일리지 사용액과 실제 PG사 청구액 계산
-        Long usedMileage = req.getUsedMileage() != null ? req.getUsedMileage() : 0L;
-        Long pgAmount = req.getTotalAmount() - usedMileage;
+        Integer usedMileage = req.getUsedMileage() != null ? req.getUsedMileage() : 0;
+        BigDecimal pgAmount = req.getTotalAmount().subtract(BigDecimal.valueOf(usedMileage));
 
         // 3. 고유한 주문번호 생성 (포맷: ORDER-연도-난수8글자)
         String merchantUid = "ORDER-" + LocalDateTime.now().getYear() + "-"
@@ -69,7 +74,7 @@ public class PaymentService {
                 .totalAmount(req.getTotalAmount())
                 .pgAmount(pgAmount)
                 .usedMileage(usedMileage)
-                .accumulatedMileage(0L) // 아직 결제 성공 전이므로 적립 마일리지는 0
+                .accumulatedMileage(0) // 아직 결제 성공 전이므로 적립 마일리지는 0
                 .status(PaymentStatus.PENDING)
                 .merchantUid(merchantUid)
                 .build();
@@ -100,13 +105,13 @@ public class PaymentService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 주문번호입니다."));
 
         // 2. 금액 위변조 여부 검증 (사전에 약속된 PG 청구금액과 실제 결제 금액 비교)
-        if (!payment.getPgAmount().equals(req.getPgAmount())) {
+        if (payment.getPgAmount().compareTo(req.getPgAmount()) != 0) {
             throw new IllegalArgumentException("결제 요청 금액이 일치하지 않습니다.");
         }
 
         // --- PG사 실제 결제 내역 조회 및 실 금액 검증 ---
         PortOneService.PaymentAnnotation pgInfo = portOneService.getPaymentInfo(req.getImpUid(), payment.getPgAmount());
-        if (!payment.getPgAmount().equals(pgInfo.getAmount())) {
+        if (payment.getPgAmount().compareTo(pgInfo.getAmount()) != 0) {
             throw new IllegalArgumentException("실제 PG 결제 금액과 요청된 결제 금액이 일치하지 않습니다. (위변조 위험)");
         }
         if (!"paid".equals(pgInfo.getStatus())) {
@@ -121,7 +126,8 @@ public class PaymentService {
         // 4. 회원 등급 기반 마일리지 적립률 계산 (누적 결제액에 따른 등급 및 적립률)
         Map<String, Object> gradeInfo = memberGradeService.getMemberGradeInfo(userId);
         double rate = (double) gradeInfo.get("rate");
-        Long accumulatedMileage = (long) (req.getPgAmount() * rate);
+        Integer accumulatedMileage = req.getPgAmount().multiply(BigDecimal.valueOf(rate))
+                .setScale(0, RoundingMode.FLOOR).intValue();
 
         // 5. 결제 건 상태를 PAID로 승인 및 적립 마일리지 세팅
         payment.setImpUid(req.getImpUid());
@@ -130,12 +136,12 @@ public class PaymentService {
 
         // 6. 복합 결제에 사용된 마일리지를 차감 처리 (마일리지 로그 음수(-) 기록)
         if (payment.getUsedMileage() > 0) {
-            mileageService.addLog(userId, (int) -payment.getUsedMileage(), MileageLogType.USE,
+            mileageService.addLog(userId, -payment.getUsedMileage(), MileageLogType.USE,
                     "결제 시 마일리지 사용 (" + req.getMerchantUid() + ")");
         }
         // 7. 실 결제액(PG 결제 금액)에 등급 적립률을 적용한 마일리지 적립 처리 (마일리지 로그 양수(+) 기록)
         if (accumulatedMileage > 0) {
-            mileageService.addLog(userId, accumulatedMileage.intValue(), MileageLogType.EARN,
+            mileageService.addLog(userId, accumulatedMileage, MileageLogType.EARN,
                     "결제 적립 (" + req.getMerchantUid() + ")");
         }
 
@@ -199,17 +205,17 @@ public class PaymentService {
             portOneService.cancelPayment(payment.getImpUid(), payment.getPgAmount(), req.getReason());
         }
 
-        // 4. 결제 상태를 CANCELLED로 변경
-        payment.setStatus(PaymentStatus.CANCELLED);
+        // 4. 결제 상태를 REFUNDED로 변경
+        payment.setStatus(PaymentStatus.REFUNDED);
 
         // 5. 결제 시 사용했던 마일리지 돌려주기 (마일리지 로그 양수(+) 기록) - 실구매자(payment.getUserId()) 기준
         if (payment.getUsedMileage() > 0) {
-            mileageService.addLog(payment.getUserId(), payment.getUsedMileage().intValue(), MileageLogType.RESTORE,
+            mileageService.addLog(payment.getUserId(), payment.getUsedMileage(), MileageLogType.RESTORE,
                     "결제 취소 복구 (" + req.getReason() + ")");
         }
         // 6. 결제 성공으로 적립되었던 마일리지 회수 (마일리지 로그 음수(-) 기록) - 실구매자(payment.getUserId()) 기준
         if (payment.getAccumulatedMileage() > 0) {
-            mileageService.addLog(payment.getUserId(), (int) -payment.getAccumulatedMileage(), MileageLogType.REVOKE,
+            mileageService.addLog(payment.getUserId(), -payment.getAccumulatedMileage(), MileageLogType.REVOKE,
                     "결제 취소 적립취소 (" + req.getReason() + ")");
         }
 
@@ -220,5 +226,40 @@ public class PaymentService {
                 .restoredMileage(payment.getUsedMileage())
                 .cancelledAt(LocalDateTime.now())
                 .build();
+    }
+
+    /**
+     * 어드민 예약 강제 취소 이벤트를 수신하여, 해당 예약건의 결제를 취소(환불)하고 마일리지를 원복합니다.
+     */
+    @EventListener
+    @Transactional
+    public void handleAdminBookingCancelEvent(AdminBookingCancelEvent event) {
+        // 예약 ID로 연관 결제건 조회
+        paymentRepository.findByReservationId(event.getBookingId()).ifPresent(payment -> {
+            if (payment.getStatus() != PaymentStatus.CANCELLED && payment.getStatus() != PaymentStatus.REFUNDED) {
+                PaymentCancelRequest req = new PaymentCancelRequest();
+                req.setReason("Admin force cancellation for " + event.getTargetType());
+                // 어드민 직권 취소이므로 검증 우회를 위해 직접 서비스 내부 로직 재호출 또는 우회 구현
+                // 권한 체크(isBuyer/isSeller)가 포함된 cancelPayment 재사용 시 어드민 여부 판단이 불가능하므로, 
+                // 환불/마일리지 복구 핵심 로직을 직접 수행합니다.
+
+                if (payment.getImpUid() != null) {
+                    portOneService.cancelPayment(payment.getImpUid(), payment.getPgAmount(), req.getReason());
+                }
+
+                payment.setStatus(PaymentStatus.REFUNDED);
+
+                if (payment.getUsedMileage() > 0) {
+                    mileageService.addLog(payment.getUserId(), payment.getUsedMileage(), MileageLogType.RESTORE,
+                            "관리자 직권 결제 취소 복구 (" + req.getReason() + ")");
+                }
+                if (payment.getAccumulatedMileage() > 0) {
+                    mileageService.addLog(payment.getUserId(), -payment.getAccumulatedMileage(), MileageLogType.REVOKE,
+                            "관리자 직권 결제 적립 취소 (" + req.getReason() + ")");
+                }
+                
+                paymentRepository.save(payment);
+            }
+        });
     }
 }

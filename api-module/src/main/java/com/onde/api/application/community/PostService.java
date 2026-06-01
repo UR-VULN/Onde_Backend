@@ -60,13 +60,14 @@ public class PostService {
             throw new ValidationException(ErrorCode.IMAGE_LIMIT_EXCEEDED);
         }
 
-        // 2. 작성자 회원 검증
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
+        // 2. 작성자 회원 검증 (논리 FK)
+        if (!memberRepository.existsById(memberId)) {
+            throw new NotFoundException(ErrorCode.MEMBER_NOT_FOUND);
+        }
 
         // 3. 게시글 저장
         Post post = Post.builder()
-                .member(member)
+                .memberId(memberId)
                 .title(req.getTitle())
                 .content(req.getContent())
                 .type(req.getType())
@@ -84,7 +85,7 @@ public class PostService {
         List<PostImage> postImages = new ArrayList<>();
         for (int i = 0; i < imageUrls.size(); i++) {
             PostImage postImage = PostImage.builder()
-                    .post(savedPost)
+                    .postId(savedPost.getId())
                     .imageUrl(imageUrls.get(i))
                     .sortOrder(i)
                     .build();
@@ -127,7 +128,7 @@ public class PostService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.POST_NOT_FOUND));
 
         // 본인 소유권 검증
-        if (!post.getMember().getId().equals(memberId)) {
+        if (!post.getMemberId().equals(memberId)) {
             throw new ForbiddenException(ErrorCode.POST_NOT_OWNER);
         }
 

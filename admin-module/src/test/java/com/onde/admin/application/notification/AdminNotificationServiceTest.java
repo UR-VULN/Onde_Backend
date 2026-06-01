@@ -42,11 +42,10 @@ class AdminNotificationServiceTest {
 
         // 1200개의 FcmToken 리스트 준비
         List<FcmToken> fcmTokens = new ArrayList<>();
-        Member mockMember = Mockito.mock(Member.class);
         for (int i = 0; i < 1200; i++) {
             fcmTokens.add(FcmToken.builder()
                     .id((long) i)
-                    .member(mockMember)
+                    .memberId(1L)
                     .fcmToken("token_" + i)
                     .build());
         }

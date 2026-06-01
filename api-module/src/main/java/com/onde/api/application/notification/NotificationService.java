@@ -34,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.io.ByteArrayOutputStream;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -53,8 +54,10 @@ public class NotificationService {
 
     @Transactional
     public FcmTokenResponse saveFcmToken(FcmTokenRequest req, Long memberId) {
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
+        // 1. 회원 존재 여부 검증 (논리 FK)
+        if (!memberRepository.existsById(memberId)) {
+            throw new NotFoundException(ErrorCode.MEMBER_NOT_FOUND);
+        }
 
         FcmToken token = fcmTokenRepository.findByMemberIdAndDeviceType(memberId, req.getDeviceType())
                 .map(existingToken -> {
@@ -62,7 +65,7 @@ public class NotificationService {
                     return existingToken;
                 })
                 .orElseGet(() -> FcmToken.builder()
-                        .member(member)
+                        .memberId(memberId)
                         .fcmToken(req.getFcmToken())
                         .deviceType(req.getDeviceType())
                         .build());
@@ -151,16 +154,16 @@ public class NotificationService {
 
             // 결제 및 요금 정보 안전 바인딩
             com.onde.core.entity.payment.Payment payment = paymentRepository.findFirstByReservationIdOrderByIdDesc(reservationId).orElse(null);
-            long totalAmount = payment != null ? payment.getTotalAmount() : (reservation.getTotalPrice() != null ? reservation.getTotalPrice().longValue() : 0L);
-            long usedMileage = payment != null ? payment.getUsedMileage() : 0L;
-            long finalPaid = totalAmount - usedMileage;
+            BigDecimal totalAmount = payment != null ? payment.getTotalAmount() : (reservation.getTotalPrice() != null ? reservation.getTotalPrice() : BigDecimal.ZERO);
+            Integer usedMileage = payment != null ? payment.getUsedMileage() : 0;
+            BigDecimal finalPaid = totalAmount.subtract(BigDecimal.valueOf(usedMileage));
 
             // Item Row
             String productDesc = reservation.getTargetType() != null 
                     ? String.format("ONDE %s Reservation (ID: %d)", reservation.getTargetType().name(), reservation.getTargetId())
                     : String.format("ONDE Reservation (ID: %d)", reservation.getId());
             addTableCell(detailsTable, productDesc, false);
-            addTableCell(detailsTable, String.format("%,d KRW", totalAmount), false);
+            addTableCell(detailsTable, String.format("%,.0f KRW", totalAmount), false);
 
             // Mileage Row
             addTableCell(detailsTable, "Used Mileage Discount", false);
@@ -168,7 +171,7 @@ public class NotificationService {
 
             // Total Row
             addTableCell(detailsTable, "Total Paid Amount", true);
-            addTableCell(detailsTable, String.format("%,d KRW", Math.max(0, finalPaid)), true);
+            addTableCell(detailsTable, String.format("%,.0f KRW", finalPaid.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : finalPaid), true);
 
             document.add(detailsTable);
 

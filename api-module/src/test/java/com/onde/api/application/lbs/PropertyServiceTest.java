@@ -59,22 +59,16 @@ class PropertyServiceTest {
                 .longitude(126.9781) // 소수점 4자리 (끝자리 0이 아닌 값으로 세팅하여 Double 절삭 방지)
                 .build();
 
-        Member seller = Member.builder()
-                .id(sellerId)
-                .role(MemberRole.SELLER)
-                .build();
-
         Property mockSavedProperty = Property.builder()
                 .id(15L)
-                .seller(seller)
+                .sellerId(sellerId)
                 .addressName(req.getAddressName())
                 .latitude(req.getLatitude())
                 .longitude(req.getLongitude())
                 .isVerified(false)
-                .registeredAt(LocalDateTime.now())
                 .build();
 
-        Mockito.when(memberRepository.findById(sellerId)).thenReturn(Optional.of(seller));
+        Mockito.when(memberRepository.existsById(sellerId)).thenReturn(true);
         Mockito.when(propertyRepository.save(Mockito.any(Property.class))).thenReturn(mockSavedProperty);
 
         // when

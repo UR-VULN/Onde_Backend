@@ -17,8 +17,8 @@ public class FlightRoute extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "route_code", unique = true, nullable = false, length = 20)
-    private String routeCode;
+    @Column(name = "seller_id", nullable = false)
+    private Long sellerId;
 
     @Column(name = "departure_airport", nullable = false, length = 10)
     private String departureAirport;
@@ -26,6 +26,14 @@ public class FlightRoute extends BaseEntity {
     @Column(name = "arrival_airport", nullable = false, length = 10)
     private String arrivalAirport;
 
-    @Column(name = "distance_km", nullable = false)
-    private Integer distanceKm;
+    @Column(name = "duration_minutes", nullable = false)
+    private Integer durationMinutes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING_APPROVAL'")
+    @Builder.Default
+    private ApprovalStatus status = ApprovalStatus.PENDING_APPROVAL;
+
+    @Column(name = "reject_reason", columnDefinition = "TEXT")
+    private String rejectReason;
 }

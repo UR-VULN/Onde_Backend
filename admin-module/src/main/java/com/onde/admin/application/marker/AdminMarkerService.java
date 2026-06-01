@@ -7,7 +7,6 @@ import com.onde.core.repository.GuideMarkerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +23,6 @@ public class AdminMarkerService {
                 .latitude(req.getLatitude())
                 .longitude(req.getLongitude())
                 .createdBy(adminId)
-                .createdAt(LocalDateTime.now())
                 .build();
 
         GuideMarker savedMarker = guideMarkerRepository.save(marker);

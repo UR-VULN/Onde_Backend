@@ -3,6 +3,8 @@ package com.onde.api.application.payment.dto.request;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 /**
  * PG사 결제 완료 후, 백엔드 서버에 결제 사후 검증 및 최종 승인을 요청하는 DTO 클래스입니다.
  */
@@ -23,5 +25,5 @@ public class PaymentValidateRequest {
     /**
      * 실제 PG사 결제창을 통해 성공적으로 승인 및 결제 완료된 현금성 금액 (사후 대조용)
      */
-    private Long pgAmount;
+    private BigDecimal pgAmount;
 }

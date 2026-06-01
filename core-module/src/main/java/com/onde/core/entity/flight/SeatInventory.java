@@ -29,7 +29,7 @@ public class SeatInventory extends BaseEntity {
     @Column(name = "total_seats", nullable = false)
     private Integer totalSeats;
 
-    @Column(name = "remaining_seats", nullable = false)
+    @Column(name = "remaining_seats", nullable = false, columnDefinition = "INT CHECK (remaining_seats >= 0)")
     private Integer remainingSeats;
 
     @Column(name = "base_price", precision = 12, scale = 2, nullable = false)

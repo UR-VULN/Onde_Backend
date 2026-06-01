@@ -91,14 +91,9 @@ class PostServiceTest {
                 new MockMultipartFile("img2", "2.jpg", "image/jpeg", "image2".getBytes())
         );
 
-        Member member = Member.builder()
-                .id(memberId)
-                .role(MemberRole.USER)
-                .build();
-
         Post mockPost = Post.builder()
                 .id(100L)
-                .member(member)
+                .memberId(memberId)
                 .title(req.getTitle())
                 .content(req.getContent())
                 .type(req.getType())
@@ -107,7 +102,7 @@ class PostServiceTest {
                 .commentCount(0)
                 .build();
 
-        Mockito.when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        Mockito.when(memberRepository.existsById(memberId)).thenReturn(true);
         Mockito.when(postRepository.save(Mockito.any(Post.class))).thenReturn(mockPost);
         Mockito.when(s3Uploader.upload(Mockito.any(MultipartFile.class), Mockito.eq("posts")))
                 .thenReturn("https://cdn.example.com/posts/dummy-url.jpg");
@@ -128,14 +123,9 @@ class PostServiceTest {
         Long postId = 100L;
         Long otherMemberId = 2L;
 
-        Member author = Member.builder()
-                .id(1L)
-                .role(MemberRole.USER)
-                .build();
-
         Post post = Post.builder()
                 .id(postId)
-                .member(author)
+                .memberId(1L)
                 .title("제목")
                 .content("내용")
                 .status(PostStatus.ACTIVE)
@@ -156,14 +146,9 @@ class PostServiceTest {
         Long postId = 100L;
         Long memberId = 1L;
 
-        Member author = Member.builder()
-                .id(memberId)
-                .role(MemberRole.USER)
-                .build();
-
         Post post = Post.builder()
                 .id(postId)
-                .member(author)
+                .memberId(memberId)
                 .title("제목")
                 .content("내용")
                 .status(PostStatus.ACTIVE)

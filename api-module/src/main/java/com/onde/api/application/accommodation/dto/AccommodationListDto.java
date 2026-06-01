@@ -13,6 +13,5 @@ public class AccommodationListDto {
     private String category;
     private String location;
     private String thumbnailUrl;
-    private Double rating;
     private Integer minPrice;
 }

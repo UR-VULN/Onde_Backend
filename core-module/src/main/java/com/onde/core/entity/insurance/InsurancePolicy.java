@@ -23,7 +23,7 @@ public class InsurancePolicy extends BaseEntity {
     private String policyCode;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "insurance_product_id", foreignKey = @ForeignKey(name = "fk_policy_product"))
+    @JoinColumn(name = "insurance_product_id", nullable = false, foreignKey = @ForeignKey(name = "fk_policy_product"))
     private InsuranceProduct insuranceProduct;
 
     @Column(name = "user_id", nullable = false)
@@ -47,7 +47,8 @@ public class InsurancePolicy extends BaseEntity {
     @Column(name = "total_premium", precision = 12, scale = 2, nullable = false)
     private BigDecimal totalPremium;
 
-    @Column(name = "status", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'ACTIVE'")
     @Builder.Default
-    private String status = "ACTIVE"; // ACTIVE, EXPIRED, CANCELLED
+    private InsurancePolicyStatus status = InsurancePolicyStatus.ACTIVE;
 }

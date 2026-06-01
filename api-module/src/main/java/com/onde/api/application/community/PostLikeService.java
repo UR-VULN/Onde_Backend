@@ -30,8 +30,10 @@ public class PostLikeService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.POST_NOT_FOUND));
 
-        Member member = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
+        // 회원 존재 여부 검증 (논리 FK)
+        if (!memberRepository.existsById(memberId)) {
+            throw new NotFoundException(ErrorCode.MEMBER_NOT_FOUND);
+        }
 
         Optional<PostLike> existingLike = postLikeRepository.findByPostIdAndMemberId(postId, memberId);
         boolean isLiked;
@@ -43,8 +45,8 @@ public class PostLikeService {
             log.info("Post like toggled OFF. postId={}, memberId={}", postId, memberId);
         } else {
             PostLike newLike = PostLike.builder()
-                    .post(post)
-                    .member(member)
+                    .postId(postId)
+                    .memberId(memberId)
                     .build();
             postLikeRepository.save(newLike);
             post.incrementLikeCount();

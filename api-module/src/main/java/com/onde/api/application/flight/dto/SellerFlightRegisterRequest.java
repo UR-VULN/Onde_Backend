@@ -15,7 +15,6 @@ import java.util.List;
 @ToString
 public class SellerFlightRegisterRequest {
     private Long routeId;
-    private String routeCode;
     private String flightNumber;
     private String departureAirport;
     private String arrivalAirport;

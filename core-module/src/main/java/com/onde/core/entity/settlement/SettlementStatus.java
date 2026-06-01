@@ -6,22 +6,22 @@ package com.onde.core.entity.settlement;
  */
 public enum SettlementStatus {
     /**
-     * 배치에 의해 자동 생성된 최초 상태. 아직 지급 신청되지 않은 상태입니다.
+     * PENDING: 배치에 의해 자동 생성된 최초 상태. 아직 지급 신청되지 않은 상태
      */
     PENDING,
 
     /**
-     * 판매자가 확인 후 정산금 지급을 신청한 상태입니다.
+     * REQUESTED: 판매자가 확인 후 정산금 지급을 신청한 상태
      */
     REQUESTED,
 
     /**
-     * 본사의 1차 정산 담당자(SALES_ADMIN 등)가 금액 검증 및 서류 검토 후 1차 승인한 상태입니다.
+     * APPROVED_1ST: 본사 1차 담당자가 금액 검증 및 서류 검토 후 1차 승인한 상태
      */
     APPROVED_1ST,
 
     /**
-     * 본사의 최고 관리자(SUPER_ADMIN)가 최종적으로 지급 확정(이체 등)을 완료한 상태입니다.
+     * COMPLETED: 본사 최고 관리자가 최종 지급 확정을 완료한 상태
      */
     COMPLETED
 }

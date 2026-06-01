@@ -31,7 +31,7 @@ public class SellerAccount extends BaseEntity {
     @Column(nullable = false, length = 255) // 암호화된 문자열이 들어가므로 길게 설정
     private String accountNumber; // 계좌번호
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20, unique = true)
     private String businessNumber; // 사업자등록번호
 
     @Column(nullable = false, length = 50)

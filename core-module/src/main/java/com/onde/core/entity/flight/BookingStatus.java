@@ -1,7 +1,6 @@
 package com.onde.core.entity.flight;
 
 public enum BookingStatus {
-    RESERVED,
     PENDING_PAYMENT,
     CONFIRMED,
     CANCELLED,

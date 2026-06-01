@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -81,7 +82,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
         /**
          * @return 판매자의 총 매출액 (수수료 차감 전)
          */
-        Long getGrossAmount();
+        BigDecimal getGrossAmount();
     }
 
     /**
@@ -91,7 +92,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      * @return 플랫폼 전체 총거래액 및 수수료 금액 프로젝션
      */
     @Query("SELECT COALESCE(SUM(p.totalAmount), 0) AS totalGmv, " +
-            "COALESCE(CAST(SUM(p.totalAmount) * 0.03 AS Long), 0) AS totalCommission " +
+            "COALESCE(SUM(p.totalAmount) * 0.03, 0) AS totalCommission " +
             "FROM Payment p WHERE p.status = :status")
     PlatformRevenueProjection calculatePlatformRevenue(@Param("status") PaymentStatus status);
 
@@ -113,8 +114,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      * 플랫폼 전체 매출 및 수수료 집계를 위한 프로젝션 인터페이스입니다.
      */
     interface PlatformRevenueProjection {
-        Long getTotalGmv();
-        Long getTotalCommission();
+        BigDecimal getTotalGmv();
+        BigDecimal getTotalCommission();
     }
 
     /**
@@ -122,7 +123,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      */
     interface ServiceRevenueProjection {
         String getServiceType();
-        Long getServiceGmv();
+        BigDecimal getServiceGmv();
     }
 }
 

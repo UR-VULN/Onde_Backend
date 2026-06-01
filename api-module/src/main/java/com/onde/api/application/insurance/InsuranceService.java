@@ -5,6 +5,7 @@ import com.onde.api.application.insurance.dto.InsuranceCalculateResponse;
 import com.onde.api.application.insurance.dto.InsurancePolicyRequest;
 import com.onde.api.application.insurance.dto.InsurancePolicyResponse;
 import com.onde.core.entity.insurance.InsurancePolicy;
+import com.onde.core.entity.insurance.InsurancePolicyStatus;
 import com.onde.core.entity.insurance.InsuranceProduct;
 import com.onde.core.exception.ErrorCode;
 import com.onde.core.exception.NotFoundException;
@@ -155,7 +156,7 @@ public class InsuranceService {
                 .endDate(req.getEndDate())
                 .coverageLevel(req.getCoverageLevel().trim().toUpperCase())
                 .totalPremium(calculated.getCalculatedPremium())
-                .status("ACTIVE")
+                .status(InsurancePolicyStatus.ACTIVE)
                 .build();
 
         InsurancePolicy savedPolicy = insurancePolicyRepository.save(policy);
@@ -166,7 +167,7 @@ public class InsuranceService {
                 .insuredName(savedPolicy.getInsuredName())
                 .coverageLevel(savedPolicy.getCoverageLevel())
                 .totalPremium(savedPolicy.getTotalPremium())
-                .status(savedPolicy.getStatus())
+                .status(savedPolicy.getStatus().name())
                 .build();
     }
 }

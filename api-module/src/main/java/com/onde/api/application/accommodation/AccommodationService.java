@@ -28,16 +28,14 @@ public class AccommodationService {
         Sort sort = Sort.by(Sort.Direction.DESC, "id");
         if ("price_asc".equals(request.getSort())) {
             // Note: Sorting by min price across rooms/inventories is complex in JPA Sort.
-            // For now, we will sort by id as a placeholder or use rating.
+            // For now, we will sort by id as a placeholder.
         } else if ("price_desc".equals(request.getSort())) {
             // Placeholder
-        } else if ("rating".equals(request.getSort())) {
-            sort = Sort.by(Sort.Direction.DESC, "rating");
         }
 
         List<Accommodation> accommodations = accommodationRepository.searchAccommodations(
-                ApprovalStatus.APPROVED, 
-                request.getRegion(), 
+                ApprovalStatus.APPROVED,
+                request.getRegion(),
                 request.getCategory(),
                 request.getCheckIn(),
                 request.getCheckOut() != null ? request.getCheckOut().minusDays(1) : null,
@@ -51,7 +49,6 @@ public class AccommodationService {
                         .category(a.getCategory())
                         .location(a.getLocation())
                         .thumbnailUrl(a.getThumbnailUrl())
-                        .rating(a.getRating())
                         .minPrice(100000) // Placeholder
                         .build())
                 .collect(Collectors.toList());

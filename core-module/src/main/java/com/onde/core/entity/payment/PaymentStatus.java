@@ -5,12 +5,12 @@ package com.onde.core.entity.payment;
  */
 public enum PaymentStatus {
     /**
-     * PENDING: 결제 요청 대기 중 (PG사 승인 전)
+     * PENDING: 결제 요청 대기 중 (PG 사 승인 전)
      */
     PENDING,
 
     /**
-     * PAID: 결제 완료 (PG사 승인 및 마일리지 처리 완료)
+     * PAID: 결제 완료 (PG 사 승인 및 마일리지 처리 완료)
      */
     PAID,
 
@@ -20,7 +20,7 @@ public enum PaymentStatus {
     CANCELLED,
 
     /**
-     * REFUNDED: 환불 완료 (결제 완료 후 예약 취소에 따른 전체/부분 환불)
+     * REFUNDED: 환불 완료 (결제 완료 후 예약 취소에 따른 전체 / 부분 환불)
      */
     REFUNDED
 }

@@ -30,18 +30,18 @@ public class PropertyService {
         // 1. 좌표 정밀도 검증 (소수점 4자리 이상)
         validateCoordinate(req.getLatitude(), req.getLongitude());
 
-        // 2. 판매자 존재 유무 확인
-        Member seller = memberRepository.findById(sellerId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
+        // 2. 판매자 존재 유무 확인 (논리 FK 검증)
+        if (!memberRepository.existsById(sellerId)) {
+            throw new NotFoundException(ErrorCode.MEMBER_NOT_FOUND);
+        }
 
         // 3. 매물 저장 (isVerified = false로 시작)
         Property property = Property.builder()
-                .seller(seller)
+                .sellerId(sellerId)
                 .addressName(req.getAddressName())
                 .latitude(req.getLatitude())
                 .longitude(req.getLongitude())
                 .isVerified(false)
-                .registeredAt(LocalDateTime.now())
                 .build();
 
         Property savedProperty = propertyRepository.save(property);

@@ -10,7 +10,5 @@ public class CarSearchRequest {
     private LocalDateTime pickup;
     private LocalDateTime returnTime;
     private String carType;
-    private String fuelType;
-    private Integer capacity;
     private String sort;
 }

@@ -23,7 +23,7 @@ public class FlightBooking extends BaseEntity {
     private String bookingCode;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "flight_schedule_id", foreignKey = @ForeignKey(name = "fk_booking_schedule"))
+    @JoinColumn(name = "flight_schedule_id", nullable = false, foreignKey = @ForeignKey(name = "fk_booking_schedule"))
     private FlightSchedule flightSchedule;
 
     @Column(name = "user_id", nullable = false)
@@ -40,9 +40,9 @@ public class FlightBooking extends BaseEntity {
     private BigDecimal totalPrice;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "status", nullable = false, length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING_PAYMENT'")
     @Builder.Default
-    private BookingStatus status = BookingStatus.RESERVED;
+    private BookingStatus status = BookingStatus.PENDING_PAYMENT;
 
     @Column(name = "reserved_until", nullable = false)
     private LocalDateTime reservedUntil;

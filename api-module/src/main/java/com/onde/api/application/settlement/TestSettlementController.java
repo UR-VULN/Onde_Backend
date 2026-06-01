@@ -116,7 +116,8 @@ public class TestSettlementController {
                 Payment.builder()
                         .userId(userId)
                         .reservationId(r1.getId() != null ? r1.getId() : 1L)
-                        .totalAmount(1200000L).pgAmount(1150000L).usedMileage(50000L).accumulatedMileage(11500L)
+                        .totalAmount(new BigDecimal("1200000")).pgAmount(new BigDecimal("1150000")).usedMileage(50000).accumulatedMileage(11500)
+                        .reservationType("ROOM")
                         .impUid("imp_0001_" + java.util.UUID.randomUUID().toString().substring(0, 8))
                         .merchantUid("merchant_0001_" + java.util.UUID.randomUUID().toString().substring(0, 8))
                         .status(PaymentStatus.PAID)
@@ -126,7 +127,8 @@ public class TestSettlementController {
                 Payment.builder()
                         .userId(101L)
                         .reservationId(r1.getId() != null ? r1.getId() : 1L)
-                        .totalAmount(50000L).pgAmount(50000L).usedMileage(0L).accumulatedMileage(500L)
+                        .totalAmount(new BigDecimal("50000")).pgAmount(new BigDecimal("50000")).usedMileage(0).accumulatedMileage(500)
+                        .reservationType("ROOM")
                         .impUid("imp_0002_" + java.util.UUID.randomUUID().toString().substring(0, 8))
                         .merchantUid("merchant_0002_" + java.util.UUID.randomUUID().toString().substring(0, 8))
                         .status(PaymentStatus.PAID)
@@ -136,7 +138,8 @@ public class TestSettlementController {
                 Payment.builder()
                         .userId(102L)
                         .reservationId(r2.getId() != null ? r2.getId() : 2L)
-                        .totalAmount(200000L).pgAmount(180000L).usedMileage(20000L).accumulatedMileage(1800L)
+                        .totalAmount(new BigDecimal("200000")).pgAmount(new BigDecimal("180000")).usedMileage(20000).accumulatedMileage(1800)
+                        .reservationType("ROOM")
                         .impUid("imp_0003_" + java.util.UUID.randomUUID().toString().substring(0, 8))
                         .merchantUid("merchant_0003_" + java.util.UUID.randomUUID().toString().substring(0, 8))
                         .status(PaymentStatus.PAID)
@@ -168,9 +171,11 @@ public class TestSettlementController {
             // 가짜 노선 (ICN -> NRT) 생성
             com.onde.core.entity.flight.FlightRoute dummyRoute = new com.onde.core.entity.flight.FlightRoute();
             dummyRoute.setId(1L);
+            dummyRoute.setSellerId(1L);
             dummyRoute.setDepartureAirport("ICN");
             dummyRoute.setArrivalAirport("NRT");
-            dummyRoute.setDistanceKm(1000);
+            dummyRoute.setDurationMinutes(150);
+            dummyRoute.setStatus(com.onde.core.entity.flight.ApprovalStatus.APPROVED);
             routeRepo.save(dummyRoute);
 
             // 가짜 항공 스케줄 (ID: 1) 생성

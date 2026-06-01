@@ -14,32 +14,33 @@ public class Accommodation extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "accommodation_id")
     private Long id;
 
-    @Column(name = "seller_id")
+    @Column(name = "seller_id", nullable = false)
     private Long sellerId;
 
+    @Column(name = "name", nullable = false, length = 200)
     private String name;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "category", nullable = false, length = 30)
     private String category;
+
+    @Column(name = "location", nullable = false, length = 500)
     private String location;
 
-    private Double rating;
-
-    @Column(name = "business_license")
+    @Column(name = "business_license", nullable = false, length = 100)
     private String businessLicense;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "approval_status")
-    private ApprovalStatus approvalStatus;
+    @Column(name = "approval_status", nullable = false, length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
+    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
 
-    @Column(name = "thumbnail_url")
+    @Column(name = "thumbnail_url", length = 500)
     private String thumbnailUrl;
 
-    @Column(name = "submit_date")
+    @Column(name = "submit_date", nullable = false)
     private LocalDateTime submitDate;
 }

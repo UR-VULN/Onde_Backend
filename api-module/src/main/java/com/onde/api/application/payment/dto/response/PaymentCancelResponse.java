@@ -3,6 +3,8 @@ package com.onde.api.application.payment.dto.response;
 import lombok.Builder;
 import lombok.Getter;
 import com.onde.core.entity.payment.PaymentStatus;
+
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -25,12 +27,12 @@ public class PaymentCancelResponse {
     /**
      * PG사 측으로 환불(취소) 요청된 현금성 금액 (실제 결제 금액)
      */
-    private Long refundedAmount;
+    private BigDecimal refundedAmount;
 
     /**
      * 결제 당시 차감하여 사용했던 마일리지 중 이번 취소로 복구(RESTORE)된 마일리지 액수
      */
-    private Long restoredMileage;
+    private Integer restoredMileage;
 
     /**
      * 결제 취소(환불)가 완료된 일시
