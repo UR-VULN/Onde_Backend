@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -76,5 +77,30 @@ public class SellerFlightController {
 
         SellerScheduleControlResponse response = sellerFlightService.controlSchedule(scheduleId, req, actualSellerId);
         return ResponseEntity.ok(ApiResponse.success(response, "선택하신 항공편의 실시간 재고 및 가격 조절을 완료했습니다."));
+    }
+
+    @GetMapping("/api/v1/seller/flights")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getFlights() {
+        List<com.onde.core.entity.flight.FlightSchedule> list = sellerFlightService.getAllSchedules();
+        List<Map<String, Object>> mapped = list.stream().map(fs -> {
+            Map<String, Object> item = new java.util.HashMap<>();
+            item.put("propertyId", fs.getId());
+            item.put("name", fs.getFlightNumber());
+            String status = "ACTIVE";
+            if (fs.getStatus() == com.onde.core.entity.flight.ApprovalStatus.PENDING_APPROVAL) {
+                status = "PENDING";
+            } else if (fs.getStatus() == com.onde.core.entity.flight.ApprovalStatus.REJECTED) {
+                status = "REJECTED";
+            }
+            item.put("status", status);
+            item.put("basePrice", 120000);
+            return item;
+        }).toList();
+
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("flights", mapped);
+        data.put("totalCount", mapped.size());
+
+        return ResponseEntity.ok(ApiResponse.success(data, "판매자 등록 항공 스케줄 목록 조회가 성공적으로 완료되었습니다."));
     }
 }

@@ -28,6 +28,7 @@ public class MemberMyPageService {
     private final com.onde.core.repository.ReservationRepository reservationRepository;
     private final com.onde.core.repository.RoomRepository roomRepository;
     private final com.onde.core.repository.CarRepository carRepository;
+    private final com.onde.core.repository.MemberRepository memberRepository;
 
     public MyPageListResponse<MyPageFlightBookingResponse> getMyFlightBookings(Long userId, String status, Pageable pageable) {
         Page<FlightBooking> pageResult;
@@ -204,6 +205,29 @@ public class MemberMyPageService {
                 .totalCount(pageResult.getTotalElements())
                 .page(pageable.getPageNumber())
                 .size(pageable.getPageSize())
+                .build();
+     }
+
+    /**
+     * 1.1. 로그인 상태 유지용 내 정보 조회 비즈니스 로직
+     * 전달받은 고유 회원 ID로 회원 엔티티를 조회하고, 응답용 DTO 객체(MemberInfoResponse)로 바인딩하여 리턴합니다.
+     *
+     * @param userId 회원 고유 식별 ID
+     * @return 이메일, 권한, 생성일자 등이 포함된 회원 정보 응답 DTO
+     * @throws BusinessException 회원이 존재하지 않는 경우 MEMBER_NOT_FOUND 예외 발생
+     */
+    public MemberInfoResponse getMyInfo(Long userId) {
+        com.onde.core.entity.member.Member member = memberRepository.findById(userId)
+                .orElseThrow(() -> new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.MEMBER_NOT_FOUND));
+
+        return MemberInfoResponse.builder()
+                .memberId(member.getId())
+                .email(member.getEmail())
+                .name(member.getName())
+                .role(member.getRole() != null ? member.getRole().name() : null)
+                .provider(member.getProvider() != null ? member.getProvider().name() : null)
+                .status(member.getStatus() != null ? member.getStatus().name() : null)
+                .createdAt(member.getCreatedAt())
                 .build();
     }
 }

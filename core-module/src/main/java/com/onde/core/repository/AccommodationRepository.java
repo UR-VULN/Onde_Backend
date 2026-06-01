@@ -35,4 +35,5 @@ public interface AccommodationRepository extends JpaRepository<Accommodation, Lo
             Sort sort);
             
        List<Accommodation> findByApprovalStatus(ApprovalStatus status);
+       List<Accommodation> findBySellerId(Long sellerId);
 }
