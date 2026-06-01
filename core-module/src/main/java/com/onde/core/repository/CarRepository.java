@@ -16,8 +16,6 @@ public interface CarRepository extends JpaRepository<Car, Long> {
     @Query("SELECT c FROM Car c " +
            "WHERE c.approvalStatus = :status " +
            "AND (:carType IS NULL OR c.carType = :carType) " +
-           "AND (:fuelType IS NULL OR c.fuelType = :fuelType) " +
-           "AND (:capacity IS NULL OR c.capacity >= :capacity) " +
            "AND (:startDate IS NULL OR :endDate IS NULL OR EXISTS (" +
            "    SELECT i FROM Inventory i " +
            "    WHERE i.targetType = 'CAR' AND i.targetId = c.id " +
@@ -28,8 +26,6 @@ public interface CarRepository extends JpaRepository<Car, Long> {
     List<Car> searchCars(
             @Param("status") ApprovalStatus status,
             @Param("carType") String carType,
-            @Param("fuelType") String fuelType,
-            @Param("capacity") Integer capacity,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("days") Long days,

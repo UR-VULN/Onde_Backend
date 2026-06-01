@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -53,14 +55,14 @@ public class SettlementService {
         // 3. 집계된 판매자별 매출을 순회하며 정산 데이터(Settlement) 생성
         for (PaymentRepository.SettlementProjection proj : projections) {
             Long sellerId = proj.getSellerId();
-            Long grossAmount = proj.getGrossAmount();
+            BigDecimal grossAmount = proj.getGrossAmount();
 
-            if (sellerId == null || grossAmount == null || grossAmount == 0)
+            if (sellerId == null || grossAmount == null || grossAmount.compareTo(BigDecimal.ZERO) == 0)
                 continue;
 
             // 4. 플랫폼 중개 수수료 3% 계산 및 최종 지급액(netAmount = grossAmount - 수수료) 산정
-            Long commission = (long) (grossAmount * 0.03);
-            Long netAmount = grossAmount - commission;
+            BigDecimal commission = grossAmount.multiply(new BigDecimal("0.03")).setScale(0, RoundingMode.FLOOR);
+            BigDecimal netAmount = grossAmount.subtract(commission);
 
             // 5. 정산 대기(PENDING) 상태로 엔티티 빌드 및 저장
             Settlement settlement = Settlement.builder()
@@ -240,13 +242,13 @@ public class SettlementService {
         List<SettlementRepository.RevenueProjection> dailyProjections = settlementRepository.findDailyRevenueBySellerId(sellerId);
         List<SellerStatisticsResponse.RevenueTrend> dailyTrends = new ArrayList<>();
         
-        long dailyAccumulatedGross = 0;
-        long dailyAccumulatedNet = 0;
+        BigDecimal dailyAccumulatedGross = BigDecimal.ZERO;
+        BigDecimal dailyAccumulatedNet = BigDecimal.ZERO;
         
         // 2. 일별 데이터를 순회하며 누적 매출액 계산
         for (SettlementRepository.RevenueProjection proj : dailyProjections) {
-            dailyAccumulatedGross += proj.getGrossAmount();
-            dailyAccumulatedNet += proj.getNetAmount();
+            dailyAccumulatedGross = dailyAccumulatedGross.add(proj.getGrossAmount());
+            dailyAccumulatedNet = dailyAccumulatedNet.add(proj.getNetAmount());
             
             dailyTrends.add(SellerStatisticsResponse.RevenueTrend.builder()
                     .label(proj.getLabel())
@@ -261,13 +263,13 @@ public class SettlementService {
         List<SettlementRepository.RevenueProjection> monthlyProjections = settlementRepository.findMonthlyRevenueBySellerId(sellerId);
         List<SellerStatisticsResponse.RevenueTrend> monthlyTrends = new ArrayList<>();
         
-        long monthlyAccumulatedGross = 0;
-        long monthlyAccumulatedNet = 0;
+        BigDecimal monthlyAccumulatedGross = BigDecimal.ZERO;
+        BigDecimal monthlyAccumulatedNet = BigDecimal.ZERO;
         
         // 4. 월별 데이터를 순회하며 누적 매출액 계산
         for (SettlementRepository.RevenueProjection proj : monthlyProjections) {
-            monthlyAccumulatedGross += proj.getGrossAmount();
-            monthlyAccumulatedNet += proj.getNetAmount();
+            monthlyAccumulatedGross = monthlyAccumulatedGross.add(proj.getGrossAmount());
+            monthlyAccumulatedNet = monthlyAccumulatedNet.add(proj.getNetAmount());
             
             monthlyTrends.add(SellerStatisticsResponse.RevenueTrend.builder()
                     .label(proj.getLabel())
@@ -295,8 +297,8 @@ public class SettlementService {
         // 1. 플랫폼 전사 총거래액 및 수수료 누적 수익 조회
         PaymentRepository.PlatformRevenueProjection revenueProj = paymentRepository.calculatePlatformRevenue(PaymentStatus.PAID);
         
-        long totalGmv = revenueProj.getTotalGmv() != null ? revenueProj.getTotalGmv() : 0L;
-        long totalCommission = revenueProj.getTotalCommission() != null ? revenueProj.getTotalCommission() : 0L;
+        BigDecimal totalGmv = revenueProj.getTotalGmv() != null ? revenueProj.getTotalGmv() : BigDecimal.ZERO;
+        BigDecimal totalCommission = revenueProj.getTotalCommission() != null ? revenueProj.getTotalCommission() : BigDecimal.ZERO;
 
         // 2. 서비스 카테고리별(ROOM, CAR 등) 매출액 집계 조회
         List<PaymentRepository.ServiceRevenueProjection> serviceProjections = paymentRepository.calculateRevenueByService(PaymentStatus.PAID);
@@ -304,8 +306,10 @@ public class SettlementService {
 
         // 3. 서비스별 매출 점유 비중 계산
         for (PaymentRepository.ServiceRevenueProjection proj : serviceProjections) {
-            long serviceGmv = proj.getServiceGmv() != null ? proj.getServiceGmv() : 0L;
-            double shareRate = totalGmv > 0 ? (double) serviceGmv / totalGmv : 0.0;
+            BigDecimal serviceGmv = proj.getServiceGmv() != null ? proj.getServiceGmv() : BigDecimal.ZERO;
+            double shareRate = totalGmv.compareTo(BigDecimal.ZERO) > 0 
+                    ? serviceGmv.divide(totalGmv, 4, RoundingMode.HALF_UP).doubleValue() 
+                    : 0.0;
 
             serviceShares.add(PlatformStatisticsResponse.ServiceRevenueShare.builder()
                     .serviceType(proj.getServiceType())

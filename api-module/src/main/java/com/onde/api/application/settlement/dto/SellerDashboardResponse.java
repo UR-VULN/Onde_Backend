@@ -1,6 +1,8 @@
 package com.onde.api.application.settlement.dto;
 
 import lombok.*;
+
+import java.math.BigDecimal;
 import java.util.List;
 
 @Getter
@@ -10,7 +12,7 @@ import java.util.List;
 @Builder
 public class SellerDashboardResponse {
     private String period;
-    private Long totalRevenue;
+    private BigDecimal totalRevenue;
     private List<RevenueBreakdown> breakdown;
 
     @Getter
@@ -20,7 +22,7 @@ public class SellerDashboardResponse {
     @Builder
     public static class RevenueBreakdown {
         private String month;
-        private Long revenue;
+        private BigDecimal revenue;
         private Integer bookingCount;
     }
 }

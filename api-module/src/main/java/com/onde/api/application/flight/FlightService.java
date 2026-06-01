@@ -88,7 +88,7 @@ public class FlightService {
                                 .arrivalAirport(fs.getRoute().getArrivalAirport())
                                 .departureTime(fs.getDepartureTime())
                                 .arrivalTime(fs.getArrivalTime())
-                                .durationMinutes(fs.getRoute().getDistanceKm() / 10)
+                                .durationMinutes(fs.getRoute().getDurationMinutes())
                                 .availableSeats(seatDtos)
                                 .build());
                     }

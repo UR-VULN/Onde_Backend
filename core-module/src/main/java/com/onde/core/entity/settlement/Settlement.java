@@ -6,6 +6,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -25,83 +26,80 @@ import java.time.LocalDateTime;
 public class Settlement {
 
     /**
-     * 정산 내역 고유 식별자 (PK)
+     * 정산 고유 식별자 (PK)
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     /**
-     * 정산 대상이 되는 판매자의 식별자 (FK 역할)
+     * 정산 대상 판매자 ID (FK → members.id 논리)
      */
     @Column(name = "seller_id", nullable = false)
     private Long sellerId;
 
     /**
-     * 정산 기준 일자 (해당 일자의 총 거래액에 대한 정산 데이터를 가리킴)
-     * 예: 2026년 5월 27일 전체 매출 정산건 -> 2026-05-27로 저장
+     * 정산 기준 (매일 기준 적재)
      */
     @Column(name = "settlement_date", nullable = false)
     private LocalDate settlementDate;
 
     /**
-     * 정산 대상 기간(해당 월) 동안 발생한 총 매출액 (수수료 및 마일리지 차감 전 금액)
+     * 정산 달의 총 거래액 (이용 완료 기준)
      */
-    @Column(name = "gross_amount", nullable = false)
-    private Long grossAmount;
+    @Column(name = "gross_amount", nullable = false, precision = 14, scale = 2)
+    private BigDecimal grossAmount;
 
     /**
-     * 플랫폼이 취하는 중개 수수료 금액 (기본 요율 등을 곱하여 계산)
+     * 플랫폼 운영 수수료 (기본 3% 산출)
      */
-    @Column(name = "commission", nullable = false)
-    private Long commission;
+    @Column(name = "commission", nullable = false, precision = 14, scale = 2)
+    private BigDecimal commission;
 
     /**
-     * 판매자에게 실제 지급되어야 하는 최종 정산 금액
-     * 공식: netAmount = grossAmount - commission
+     * 최종 정산 지급액 (gross_amount - commission)
      */
-    @Column(name = "net_amount", nullable = false)
-    private Long netAmount;
+    @Column(name = "net_amount", nullable = false, precision = 14, scale = 2)
+    private BigDecimal netAmount;
 
     /**
-     * 정산 진행 상태 (PENDING -> REQUESTED -> APPROVED_1ST -> COMPLETED 등)
+     * PENDING / REQUESTED / APPROVED_1ST / COMPLETED
      */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
     @Builder.Default
     private SettlementStatus status = SettlementStatus.PENDING;
 
     /**
-     * 정산금 지급 신청 일시
-     */
-    @Column(name = "requested_at")
-    private LocalDateTime requestedAt;
-
-    /**
-     * 1차 승인 일시
-     */
-    @Column(name = "approved_at")
-    private LocalDateTime approvedAt;
-
-    /**
-     * 최종 지급 확정 일시
-     */
-    @Column(name = "finalized_at")
-    private LocalDateTime finalizedAt;
-
-    /**
-     * 정산 레코드가 생성된 일시 (자동 등록)
+     * 내역 생성 일시
      */
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-
     /**
-     * 정산 정보가 최종 수정(상태 변경 등)된 일시 (자동 갱신)
+     * 처리 및 수정 일시
      */
     @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    /**
+     * 판매자의 정산 지급 신청 일시 (상태가 REQUESTED로 변할 때 기록)
+     */
+    @Column(name = "requested_at")
+    private LocalDateTime requestedAt;
+
+    /**
+     * 본사 정산 담당자가 1차 승인한 일시 (APPROVED_1ST 시점)
+     */
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    /**
+     * 최고 관리자가 최종 지급 확정 및 이체를 완료한 일시 (COMPLETED 시점)
+     */
+    @Column(name = "finalized_at")
+    private LocalDateTime finalizedAt;
 }
 

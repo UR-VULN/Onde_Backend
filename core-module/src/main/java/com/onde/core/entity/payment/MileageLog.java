@@ -22,44 +22,42 @@ import java.time.LocalDateTime;
 public class MileageLog {
 
     /**
-     * 마일리지 로그 식별자 (PK)
+     * 이력 고유 식별자 (PK)
      */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     /**
-     * 마일리지가 변동된 사용자의 식별자 (FK 역할)
+     * 마일리지 변동 대상 회원 (FK → members.id 논리)
      */
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
     /**
-     * 마일리지 변동 금액
-     * 양수(+): 적립 (예: 결제 완료에 따른 적립, 환불로 인한 복구)
-     * 음수(-): 차감 (예: 결제 시 사용, 적립 취소로 인한 회수)
+     * 수치 변동량 (양수: 적립 / 음수: 차감)
      */
-    @Column(nullable = false)
+    @Column(name = "amount", nullable = false)
     private Integer amount;
 
     /**
-     * 마일리지 변동 유형 (적립, 사용, 복구, 회수 등)
+     * 마일리지 변동 유형 (EARN / USE / RESTORE / REVOKE)
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "log_type", nullable = false, length = 10)
     private MileageLogType logType;
 
     /**
-     * 마일리지 변동에 대한 상세 설명 (예: "결제 사용", "예약 취소 복구" 등)
+     * 마일리지 적립/차감 상세 사유
      */
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     /**
-     * 마일리지 로그가 생성된 일시 (자동 등록)
+     * 로그 생성 일시
      */
     @CreatedDate
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at", updatable = false, columnDefinition = "DATETIME DEFAULT NOW()")
     private LocalDateTime createdAt;
 }
 

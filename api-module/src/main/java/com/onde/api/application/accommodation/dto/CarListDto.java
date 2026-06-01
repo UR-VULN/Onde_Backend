@@ -11,7 +11,5 @@ public class CarListDto {
     private Long id;
     private String modelName;
     private String carType;
-    private String fuelType;
-    private Integer capacity;
     private Integer price;
 }

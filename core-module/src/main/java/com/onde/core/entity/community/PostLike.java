@@ -4,6 +4,9 @@ import com.onde.core.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.*;
 
+/**
+ * 게시글 좋아요 관계 엔티티입니다.
+ */
 @Entity
 @Table(
     name = "post_likes",
@@ -18,15 +21,22 @@ import lombok.*;
 @Builder
 public class PostLike {
 
+    /**
+     * 좋아요 관계 고유 식별자 (PK)
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id", nullable = false)
-    private Post post;
+    /**
+     * 좋아요 대상 게시글 ID (FK → posts.id)
+     */
+    @Column(name = "post_id", nullable = false)
+    private Long postId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", nullable = false)
-    private Member member;
+    /**
+     * 좋아요를 클릭한 회원 ID (FK → members.id)
+     */
+    @Column(name = "member_id", nullable = false)
+    private Long memberId;
 }

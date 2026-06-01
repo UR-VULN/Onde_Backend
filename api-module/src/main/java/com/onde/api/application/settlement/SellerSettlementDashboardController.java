@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+
 @RestController
 @RequestMapping("/api/v1/seller/dashboard")
 @RequiredArgsConstructor
@@ -36,7 +38,9 @@ public class SellerSettlementDashboardController {
 
         com.onde.api.application.settlement.dto.SellerDashboardResponse response = com.onde.api.application.settlement.dto.SellerDashboardResponse.builder()
                 .period(period)
-                .totalRevenue(stats.getMonthlyTrends().stream().mapToLong(t -> t.getGrossAmount()).sum())
+                .totalRevenue(stats.getMonthlyTrends().stream()
+                        .map(com.onde.api.application.payment.dto.response.SellerStatisticsResponse.RevenueTrend::getGrossAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add))
                 .breakdown(breakdown)
                 .build();
 

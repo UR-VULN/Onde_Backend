@@ -2,6 +2,8 @@ package com.onde.api.application.payment.dto.response;
 
 import lombok.Builder;
 import lombok.Getter;
+
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -40,21 +42,21 @@ public class SellerStatisticsResponse {
         /**
          * 해당 기간(일/월) 동안의 총 매출액
          */
-        private Long grossAmount;
+        private BigDecimal grossAmount;
 
         /**
          * 해당 기간(일/월) 동안의 수수료 차감 후 판매자 실수령 정산금
          */
-        private Long netAmount;
+        private BigDecimal netAmount;
 
         /**
          * 전체 집계 대상 기간의 누적 총 매출액
          */
-        private Long accumulatedGrossAmount;
+        private BigDecimal accumulatedGrossAmount;
 
         /**
          * 전체 집계 대상 기간의 누적 순 정산금
          */
-        private Long accumulatedNetAmount;
+        private BigDecimal accumulatedNetAmount;
     }
 }

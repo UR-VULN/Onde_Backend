@@ -19,7 +19,7 @@ public class FlightSchedule extends BaseEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "route_id", foreignKey = @ForeignKey(name = "fk_schedule_route"))
+    @JoinColumn(name = "route_id", nullable = false, foreignKey = @ForeignKey(name = "fk_schedule_route"))
     private FlightRoute route;
 
     @Column(name = "flight_number", nullable = false, length = 10)

@@ -38,7 +38,7 @@ public class AdminCommunityService {
         post.updateStatus(PostStatus.BLINDED);
 
         // 2. 작성자 회원 FCM 알림 발송 (단건 푸시 발송)
-        Long authorId = post.getMember().getId();
+        Long authorId = post.getMemberId();
         String title = "게시글 블라인드 안내";
         String body = String.format("작성하신 게시글이 블라인드 처리되었습니다. (사유: %s)", req.getReason());
         sendSinglePush(authorId, title, body);
@@ -59,7 +59,7 @@ public class AdminCommunityService {
         post.updateStatus(PostStatus.ACTIVE);
 
         // 2. 작성자 회원 FCM 알림 발송 (단건 푸시 발송)
-        Long authorId = post.getMember().getId();
+        Long authorId = post.getMemberId();
         String title = "게시글 복구 안내";
         String body = "블라인드되었던 게시글이 정상 복구되어 노출이 재개되었습니다.";
         sendSinglePush(authorId, title, body);

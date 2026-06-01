@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,37 +34,37 @@ public class MemberGradeService {
         List<com.onde.core.entity.payment.Payment> payments = paymentRepository.findAll();
 
         // 2. 해당 회원이 실제로 결제에 성공하여 지불 완료한 금액(pgAmount)의 누적 총합을 실시간 집계
-        long totalPgAmount = payments.stream()
+        BigDecimal totalPgAmount = payments.stream()
                 .filter(p -> p.getUserId() != null && p.getUserId().equals(userId)
                         && p.getStatus() == PaymentStatus.PAID)
-                .mapToLong(p -> p.getPgAmount() != null ? p.getPgAmount() : 0)
-                .sum();
+                .map(p -> p.getPgAmount() != null ? p.getPgAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         String grade;
         double accumulationRate;
-        long nextThreshold;
+        BigDecimal nextThreshold;
 
         // 3. 누적 금액 기준에 따른 등급 및 혜택 분기 처리
         // - 500만원 이상: VIP (마일리지 적립률 1%, 최고 등급)
         // - 100만원 이상 ~ 500만원 미만: GOLD (마일리지 적립률 0.5%)
         // - 30만원 이상 ~ 100만원 미만: SILVER (마일리지 적립률 0.2%)
         // - 30만원 미만: BRONZE (마일리지 적립률 0.1%)
-        if (totalPgAmount >= 5000000) {
+        if (totalPgAmount.compareTo(new BigDecimal("5000000")) >= 0) {
             grade = "VIP";
             accumulationRate = 0.01;
-            nextThreshold = 0; // 이미 최고 등급이므로 0
-        } else if (totalPgAmount >= 1000000) {
+            nextThreshold = BigDecimal.ZERO; // 이미 최고 등급이므로 0
+        } else if (totalPgAmount.compareTo(new BigDecimal("1000000")) >= 0) {
             grade = "GOLD";
             accumulationRate = 0.005;
-            nextThreshold = 5000000;
-        } else if (totalPgAmount >= 300000) {
+            nextThreshold = new BigDecimal("5000000");
+        } else if (totalPgAmount.compareTo(new BigDecimal("300000")) >= 0) {
             grade = "SILVER";
             accumulationRate = 0.002;
-            nextThreshold = 1000000;
+            nextThreshold = new BigDecimal("1000000");
         } else {
             grade = "BRONZE";
             accumulationRate = 0.001;
-            nextThreshold = 300000;
+            nextThreshold = new BigDecimal("300000");
         }
 
         Map<String, Object> gradeInfo = new HashMap<>();

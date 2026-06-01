@@ -12,27 +12,21 @@ import lombok.Setter;
 public class Car extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "car_id")
     private Long id;
 
-    @Column(name = "seller_id")
+    @Column(name = "seller_id", nullable = false)
     private Long sellerId;
 
-    @Column(name = "model_name")
+    @Column(name = "model_name", nullable = false, length = 100)
     private String modelName;
 
-    @Column(name = "license_plate")
+    @Column(name = "license_plate", nullable = false, unique = true, length = 20)
     private String licensePlate;
 
-    @Column(name = "car_type")
+    @Column(name = "car_type", nullable = false, length = 30)
     private String carType;
 
-    @Column(name = "fuel_type")
-    private String fuelType;
-
-    private Integer capacity;
-
     @Enumerated(EnumType.STRING)
-    @Column(name = "approval_status")
-    private ApprovalStatus approvalStatus;
+    @Column(name = "approval_status", nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
+    private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
 }

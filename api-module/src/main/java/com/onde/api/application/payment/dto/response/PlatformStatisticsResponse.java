@@ -2,6 +2,8 @@ package com.onde.api.application.payment.dto.response;
 
 import lombok.Builder;
 import lombok.Getter;
+
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -14,12 +16,12 @@ public class PlatformStatisticsResponse {
     /**
      * 플랫폼 전체 총 거래액 (GMV)
      */
-    private Long totalGmv;
+    private BigDecimal totalGmv;
 
     /**
      * 플랫폼 전체 수수료 순이익
      */
-    private Long totalCommission;
+    private BigDecimal totalCommission;
 
     /**
      * 서비스 유형별 매출 비중 목록
@@ -40,7 +42,7 @@ public class PlatformStatisticsResponse {
         /**
          * 해당 서비스의 총거래액
          */
-        private Long grossAmount;
+        private BigDecimal grossAmount;
 
         /**
          * 전체 매출 대비 해당 서비스의 비중 (0.0 ~ 1.0 비율)

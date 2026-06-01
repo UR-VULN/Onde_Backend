@@ -21,7 +21,7 @@ public class PropertyMarkerDto {
                 .addressName(property.getAddressName())
                 .latitude(property.getLatitude())
                 .longitude(property.getLongitude())
-                .memberId(property.getSeller() != null ? property.getSeller().getId() : null)
+                .memberId(property.getSellerId())
                 .build();
     }
 }

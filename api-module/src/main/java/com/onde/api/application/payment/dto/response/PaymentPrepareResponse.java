@@ -3,6 +3,8 @@ package com.onde.api.application.payment.dto.response;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
+
 /**
  * PG 결제 사전 등록(검증 준비) 완료 정보를 반환하는 DTO 클래스입니다.
  */
@@ -18,12 +20,12 @@ public class PaymentPrepareResponse {
     /**
      * 실제 PG사(카드사 등) 결제창에 청구해야 하는 현금성 결제 금액 (totalAmount - usedMileage)
      */
-    private Long pgAmount;
+    private BigDecimal pgAmount;
 
     /**
      * 이 결제 건에 적용되어 사전 차감 처리될 마일리지 액수
      */
-    private Long usedMileage;
+    private Integer usedMileage;
 
     /**
      * 결제 대상 예약 식별자 (PK)

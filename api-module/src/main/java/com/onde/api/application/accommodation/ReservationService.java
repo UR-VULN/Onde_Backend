@@ -61,15 +61,12 @@ public class ReservationService {
             basePriceSum = basePriceSum.add(inventory.getBasePrice());
         }
 
-        // 인원 추가 비용 계산: (투숙 인원 - 기준 인원) * 추가 요금 * 박수
-        BigDecimal extraFee = BigDecimal.ZERO;
-        if (request.getGuests() != null && room.getBaseCapacity() != null && request.getGuests() > room.getBaseCapacity()) {
-            BigDecimal extraPerNight = room.getExtraPersonFee() != null ? room.getExtraPersonFee() : BigDecimal.ZERO;
-            extraFee = extraPerNight.multiply(BigDecimal.valueOf(request.getGuests() - room.getBaseCapacity()))
-                                     .multiply(BigDecimal.valueOf(nights));
+        // 인원 초과 확인 (최대 수용 인원 기준)
+        if (request.getGuests() != null && request.getGuests() > room.getCapacity()) {
+            throw new RuntimeException("Maximum capacity exceeded");
         }
 
-        BigDecimal totalPrice = basePriceSum.add(extraFee);
+        BigDecimal totalPrice = basePriceSum;
         
         // 원단위 절사 (10원 단위로 반올림/절사)
         totalPrice = totalPrice.divide(BigDecimal.valueOf(10), 0, RoundingMode.FLOOR).multiply(BigDecimal.valueOf(10));

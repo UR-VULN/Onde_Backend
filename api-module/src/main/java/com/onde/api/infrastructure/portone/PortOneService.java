@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -89,7 +90,7 @@ public class PortOneService {
      * @param expectedAmount  비즈니스에서 결제되어야 하는 기대 금액 (검증용)
      * @return 결제 고유 정보 객체 (PaymentAnnotation)
      */
-    public PaymentAnnotation getPaymentInfo(String impUid, Long expectedAmount) {
+    public PaymentAnnotation getPaymentInfo(String impUid, BigDecimal expectedAmount) {
         // 로컬 개발/통합 테스트 환경 및 임시 테스트 impUid 접두사 진입 시 모의 데이터 반환 분기
         if ("test_key".equals(impKey) || (impUid != null && impUid.startsWith("imp_1234567890"))) {
             log.info("모의 결제 정보 처리를 적용합니다. impUid: {}", impUid);
@@ -139,7 +140,7 @@ public class PortOneService {
      * @param amount 취소 처리할 취소 요청 금액
      * @param reason 취소 발생 사유
      */
-    public void cancelPayment(String impUid, Long amount, String reason) {
+    public void cancelPayment(String impUid, BigDecimal amount, String reason) {
         // 로컬 테스트 환경 분기 처리
         if ("test_key".equals(impKey) || (impUid != null && impUid.startsWith("imp_1234567890"))) {
             log.info("모의 결제 취소를 수행합니다. impUid: {}, 금액: {}, 사유: {}", impUid, amount, reason);
@@ -220,7 +221,7 @@ public class PortOneService {
         private String imp_uid;      // 포트원 고유 거래 ID
         private String merchant_uid; // 플랫폼 내부 주문/예약 번호
         private String pay_method;   // 결제 수단 (card, trans, vbank 등)
-        private Long amount;         // 실제 결제된 금액
+        private BigDecimal amount;   // 실제 결제된 금액
         private String status;       // 결제 진행 상태 (ready, paid, cancelled, failed)
     }
 }

@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.List;
@@ -34,6 +35,7 @@ public class AdminBookingService {
     private final ReservationRepository reservationRepository;
     private final FlightBookingRepository flightBookingRepository;
     private final SeatInventoryRepository seatInventoryRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 투숙객/이용자 명단 조회 (숙소/렌터카 도메인)
@@ -122,8 +124,10 @@ public class AdminBookingService {
         booking.setStatus(BookingStatus.CANCELLED_BY_ADMIN);
         FlightBooking savedBooking = flightBookingRepository.save(booking);
 
-        log.info("💰 [D-TEAM FEIGN] Triggered refund transaction call logically. bookingCode={}, status={}",
-                savedBooking.getBookingCode(), savedBooking.getStatus());
+        log.info("💰 Publishing AdminBookingCancelEvent for payment refund and mileage restore. bookingId={}", bookingId);
+        
+        // 이벤트 발행을 통해 결제 취소 및 마일리지 복구 로직 비동기 연동
+        eventPublisher.publishEvent(new com.onde.core.event.AdminBookingCancelEvent(this, bookingId, savedBooking.getUserId(), "FLIGHT"));
 
         return AdminBookingCancelResponse.builder()
                 .bookingCode(savedBooking.getBookingCode())

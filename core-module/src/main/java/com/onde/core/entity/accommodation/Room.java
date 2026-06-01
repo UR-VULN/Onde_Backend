@@ -14,20 +14,15 @@ import java.math.BigDecimal;
 public class Room extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "room_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "accommodation_id")
+    @JoinColumn(name = "accommodation_id", nullable = false)
     private Accommodation accommodation;
 
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
 
+    @Column(name = "capacity", nullable = false)
     private Integer capacity;
-
-    @Column(name = "base_capacity")
-    private Integer baseCapacity;
-
-    @Column(name = "extra_person_fee", precision = 19, scale = 2)
-    private BigDecimal extraPersonFee;
 }

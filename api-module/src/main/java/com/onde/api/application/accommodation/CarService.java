@@ -40,8 +40,6 @@ public class CarService {
         List<Car> cars = carRepository.searchCars(
                 ApprovalStatus.APPROVED, 
                 request.getCarType(),
-                request.getFuelType(),
-                request.getCapacity(),
                 startDate,
                 endDate != null ? endDate.minusDays(1) : null,
                 days,
@@ -52,8 +50,6 @@ public class CarService {
                         .id(c.getId())
                         .modelName(c.getModelName())
                         .carType(c.getCarType())
-                        .fuelType(c.getFuelType())
-                        .capacity(c.getCapacity())
                         .price(50000) // Placeholder
                         .build())
                 .collect(Collectors.toList());

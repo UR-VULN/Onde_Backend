@@ -94,7 +94,7 @@ public class MemberMyPageService {
                         .endDate(ip.getEndDate() != null ? ip.getEndDate().toString() : null)
                         .coverageLevel(ip.getCoverageLevel())
                         .totalPremium(ip.getTotalPremium())
-                        .status(ip.getStatus())
+                        .status(ip.getStatus() != null ? ip.getStatus().name() : null)
                         .build())
                 .collect(Collectors.toList());
 
