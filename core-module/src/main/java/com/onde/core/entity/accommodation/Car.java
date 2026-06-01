@@ -12,6 +12,7 @@ import lombok.Setter;
 public class Car extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "car_id")
     private Long id;
 
     @Column(name = "seller_id", nullable = false)

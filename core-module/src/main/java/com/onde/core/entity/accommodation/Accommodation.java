@@ -14,6 +14,7 @@ public class Accommodation extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "accommodation_id")
     private Long id;
 
     @Column(name = "seller_id", nullable = false)
