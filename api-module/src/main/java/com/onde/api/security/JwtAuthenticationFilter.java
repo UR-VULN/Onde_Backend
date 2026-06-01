@@ -7,16 +7,17 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -29,22 +30,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         try {
-            System.out.println("\n===== [JWT 필터 디버깅 시작] =====");
-
             // 1. 헤더에서 토큰 추출
             String token = resolveTokenFromHeader(request);
-            System.out.println("▶️ 1. 헤더 토큰: " + (token != null ? "발견됨 (길이: " + token.length() + ")" : "없음"));
 
             // 2. 쿠키에서 토큰 추출 (헤더에 없을 경우)
             if (token == null) {
                 token = resolveTokenFromCookie(request, "accessToken");
-                System.out.println("▶️ 2. 쿠키 토큰: " + (token != null ? "발견됨" : "없음"));
             }
 
             // 3. 토큰 검증 및 인증 처리
             if (token != null) {
                 boolean isValid = jwtTokenProvider.validateToken(token);
-                System.out.println("▶️ 3. 토큰 유효성 검사 결과: " + (isValid ? "✅ 통과" : "❌ 실패 (만료 또는 훼손)"));
 
                 if (isValid) {
                     String identifier = jwtTokenProvider.getSubject(token);
@@ -54,100 +50,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             userDetails, null, userDetails.getAuthorities());
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                    System.out.println("▶️ 4. 인증 완료! 부여된 권한: " + userDetails.getAuthorities());
-                }
-            } else {
-                // [테스트 헬퍼] 토큰이 없지만 테스트용 HTTP 헤더 정보가 넘어온 경우 모의 인증 처리
-                String memberIdHeader = request.getHeader("X-Member-Id");
-                if (memberIdHeader == null || memberIdHeader.isBlank()) {
-                    memberIdHeader = request.getHeader("X-User-Id");
-                }
-                if (memberIdHeader == null || memberIdHeader.isBlank()) {
-                    memberIdHeader = request.getHeader("X-Seller-Id");
-                }
-
-                String adminId = request.getHeader("X-Admin-Id");
-                String adminRole = request.getHeader("X-Admin-Role");
-
-                if (memberIdHeader != null && !memberIdHeader.isBlank()) {
-                    try {
-                        Long memberId = Long.parseLong(memberIdHeader);
-                        String memberRoleHeader = request.getHeader("X-Member-Role");
-                        if (memberRoleHeader == null || memberRoleHeader.isBlank()) {
-                            if (request.getHeader("X-Seller-Id") != null) {
-                                memberRoleHeader = "SELLER";
-                            } else {
-                                memberRoleHeader = "USER";
-                            }
-                        }
-
-                        com.onde.core.entity.member.MemberRole role = com.onde.core.entity.member.MemberRole.USER;
-                        try {
-                            role = com.onde.core.entity.member.MemberRole.valueOf(memberRoleHeader.toUpperCase());
-                        } catch (Exception ignored) {
-                        }
-
-                        com.onde.core.entity.member.Member mockMember = com.onde.core.entity.member.Member.builder()
-                                .id(memberId)
-                                .email("mock_" + memberId + "@onde.com")
-                                .password("")
-                                .role(role)
-                                .status(com.onde.core.entity.member.MemberStatus.ACTIVE)
-                                .build();
-
-                        com.onde.api.security.CustomUserDetails userDetails = new com.onde.api.security.CustomUserDetails(
-                                mockMember);
-                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities());
-
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
-                        System.out.println("▶️ [멤버 테스트 헬퍼] 인증 완료! ID: " + memberId + ", 역할: " + role + ", 부여된 권한: "
-                                + userDetails.getAuthorities());
-                    } catch (NumberFormatException e) {
-                        System.out.println("❌ 멤버 ID 파싱 실패: " + memberIdHeader);
-                    }
-                } else if (adminRole != null && !adminRole.isBlank()) {
-                    if (adminId == null || adminId.isBlank()) {
-                        adminId = "AD-999";
-                    }
-                    String roleName = adminRole.toUpperCase().startsWith("ROLE_") ? adminRole.toUpperCase()
-                            : "ROLE_" + adminRole.toUpperCase();
-                    java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities = java.util.List
-                            .of(
-                                    new SimpleGrantedAuthority(roleName),
-                                    new SimpleGrantedAuthority("ROLE_ADMIN"));
-
-                    UserDetails principal = new org.springframework.security.core.userdetails.User(adminId, "",
-                            authorities);
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            principal, null, authorities);
-
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                    System.out.println("▶️ [어드민 테스트 헬퍼] 인증 완료! 부여된 권한: " + authorities);
                 } else {
-                    System.out.println("▶️ 🚨 요청에 토큰이 아예 존재하지 않습니다!");
+                    log.warn("[JwtAuthenticationFilter] 유효하지 않거나 만료된 토큰입니다.");
                 }
-            }
-            System.out.println("==================================\n");
+            } 
+            // 테스트 헬퍼(우회 로직) 전체 삭제 완료
 
         } catch (Exception e) {
-            System.out.println("❌ JWT 필터 통과 중 에러 발생: " + e.getMessage());
+            log.warn("[JwtAuthenticationFilter] JWT 필터 처리 중 에러 발생: {}", e.getMessage());
         }
 
         // 다음 필터로 이동
         filterChain.doFilter(request, response);
     }
 
-    // Authorization 헤더에서 Bearer 토큰을 꺼내오는 메서드
     private String resolveTokenFromHeader(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7); // "Bearer " 이후의 진짜 토큰만 잘라서 반환
+            return bearerToken.substring(7);
         }
         return null;
     }
 
-    // 쿠키 배열을 뒤져서 원하는 이름의 쿠키 값을 꺼내오는 유틸리티 메서드
     private String resolveTokenFromCookie(HttpServletRequest request, String cookieName) {
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {

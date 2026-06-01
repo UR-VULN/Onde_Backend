@@ -65,17 +65,4 @@ public class MemberMyPageController {
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "렌터카 예약 목록 조회 성공"));
     }
-
-    /**
-     * 1.1. 로그인 상태 유지용 내 정보 조회 API
-     * 현재 로그인한 사용자의 고유 ID를 기반으로 회원 기본 정보(이메일, 이름, 역할 등)를 조회합니다.
-     *
-     * @param userId 로그인한 회원 ID (@LoginMember 분해를 통해 주입)
-     * @return 회원 기본 정보 DTO
-     */
-    @GetMapping
-    public ResponseEntity<ApiResponse<MemberInfoResponse>> getMyInfo(@LoginMember(required = true) Long userId) {
-        MemberInfoResponse response = memberMyPageService.getMyInfo(userId);
-        return ResponseEntity.ok(ApiResponse.success(response, "회원 정보가 성공적으로 조회되었습니다."));
-    }
 }
