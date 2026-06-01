@@ -1,5 +1,9 @@
 package com.onde.api.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.onde.core.exception.ErrorCode;
+import com.onde.core.support.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.AccessDeniedException;
@@ -10,9 +14,13 @@ import java.io.IOException;
 
 @Component
 public class JwtAccessDeniedHandler implements AccessDeniedHandler {
-    // 필요한 권한이 없이 접근하려 할 때 403 에러를 리턴
+
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException) throws IOException {
-        response.sendError(HttpServletResponse.SC_FORBIDDEN, "해당 API에 접근할 권한이 없습니다.");
+        response.setContentType("application/json;charset=UTF-8");
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        
+        ErrorResponse error = ErrorResponse.of(ErrorCode.FORBIDDEN);
+        response.getWriter().write(new ObjectMapper().registerModule(new JavaTimeModule()).writeValueAsString(error));
     }
 }

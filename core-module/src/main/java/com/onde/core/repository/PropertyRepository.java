@@ -20,4 +20,7 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
         @Param("neLat") Double neLat,
         @Param("neLng") Double neLng
     );
+
+    long countByIsVerified(Boolean isVerified);
 }
+

@@ -1,8 +1,6 @@
 package com.onde.api.application.auth;
 
-import com.onde.api.application.auth.dto.LoginRequest;
-import com.onde.api.application.auth.dto.LoginResponse;
-import com.onde.api.application.auth.dto.SignupRequest;
+import com.onde.api.application.auth.dto.*;
 import com.onde.core.entity.auth.RefreshToken;
 import com.onde.core.entity.member.Member;
 import com.onde.core.entity.member.MemberStatus;
@@ -73,6 +71,37 @@ public class AuthService {
                 .expiresIn(1800L) // 30분
                 .memberId(member.getId())
                 .role(member.getRole().name())
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public TokenRefreshResponse refresh(String refreshToken) {
+        // 1. Refresh Token 유효성 검증
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
+            throw new IllegalArgumentException("유효하지 않거나 만료된 Refresh Token입니다.");
+        }
+
+        // 2. Token에서 식별자(email 혹은 providerId) 추출
+        String identifier = jwtTokenProvider.getSubject(refreshToken);
+
+        // 3. Redis에 저장된 토큰과 일치하는지 확인
+        RefreshToken savedToken = refreshTokenRepository.findById(identifier)
+                .orElseThrow(() -> new IllegalArgumentException("로그인 정보가 없거나 만료되었습니다."));
+
+        if (!savedToken.getRefreshToken().equals(refreshToken)) {
+            throw new IllegalArgumentException("Refresh Token이 일치하지 않습니다.");
+        }
+
+        // 4. 회원 정보 조회 및 새로운 Access Token 발급
+        Member member = memberRepository.findByEmail(identifier)
+                .or(() -> memberRepository.findByProviderId(identifier))
+                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+
+        String newAccessToken = jwtTokenProvider.createAccessToken(identifier, member.getRole().getSecurityRole());
+
+        return TokenRefreshResponse.builder()
+                .accessToken(newAccessToken)
+                .tokenType("Bearer")
                 .build();
     }
 }

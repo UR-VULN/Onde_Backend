@@ -4,19 +4,18 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID:dummy_google_id}          # 구글 클라이언트 ID 입력
-            client-secret: ${GOOGLE_CLIENT_SECRET:dummy_google_secret}  # 구글 클라이언트 시크릿 입력
+            client-id: ${GOOGLE_CLIENT_ID}          # 구글 클라이언트 ID 입력
+            client-secret: ${GOOGLE_CLIENT_SECRET}  # 구글 클라이언트 시크릿 입력
             scope:
               - email
               - profile
           kakao:
-            client-id: ${KAKAO_CLIENT_ID:dummy_kakao_id}          # 카카오 REST API 키 입력
-            client-secret: ${KAKAO_CLIENT_SECRET:dummy_kakao_secret}  # 카카오 클라이언트 시크릿 입력
+            client-id: ${KAKAO_CLIENT_ID}          # 카카오 REST API 키 입력
+            client-secret: ${KAKAO_CLIENT_SECRET}  # 카카오 클라이언트 시크릿 입력
             redirect-uri: "{baseUrl}/login/oauth2/code/kakao"
             client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code
             scope:
-              - account_email
               - profile_nickname
         provider:
           kakao:

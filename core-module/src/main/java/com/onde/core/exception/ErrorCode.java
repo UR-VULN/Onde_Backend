@@ -43,6 +43,12 @@ public enum ErrorCode {
     COMMENT_NOT_OWNER(HttpStatus.FORBIDDEN, "C-007", "본인 댓글만 작업할 수 있습니다."),
 
     // =========================================================================
+    // A: Auth/Security 관련 오류
+    // =========================================================================
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH-001", "인증에 실패하였습니다."),
+    FORBIDDEN(HttpStatus.FORBIDDEN, "AUTH-002", "해당 API에 접근할 권한이 없습니다."),
+
+    // =========================================================================
     // S: Server 관련 오류
     // =========================================================================
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "S-001", "서버 오류가 발생했습니다.");

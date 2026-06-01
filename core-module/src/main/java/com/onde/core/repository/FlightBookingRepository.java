@@ -13,6 +13,7 @@ import java.util.List;
 @Repository
 public interface FlightBookingRepository extends JpaRepository<FlightBooking, Long> {
     List<FlightBooking> findByStatusAndReservedUntilBefore(BookingStatus status, LocalDateTime dateTime);
+    java.util.Optional<FlightBooking> findByBookingCode(String bookingCode);
 
     @Query("SELECT COUNT(fb) FROM FlightBooking fb WHERE fb.flightSchedule.id = :scheduleId AND fb.seatClass = :seatClass AND fb.status IN (com.onde.core.entity.flight.BookingStatus.CONFIRMED, com.onde.core.entity.flight.BookingStatus.RESERVED)")
     long countActiveBookings(
@@ -26,4 +27,22 @@ public interface FlightBookingRepository extends JpaRepository<FlightBooking, Lo
     })
     @Query("SELECT fb FROM FlightBooking fb WHERE fb.flightSchedule.id = :scheduleId")
     java.util.stream.Stream<FlightBooking> streamByFlightScheduleId(@Param("scheduleId") Long scheduleId);
+
+    org.springframework.data.domain.Page<FlightBooking> findByUserId(Long userId, org.springframework.data.domain.Pageable pageable);
+
+    org.springframework.data.domain.Page<FlightBooking> findByUserIdAndStatus(Long userId, BookingStatus status, org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT COALESCE(SUM(fb.totalPrice), 0) FROM FlightBooking fb WHERE fb.status = com.onde.core.entity.flight.BookingStatus.CONFIRMED AND fb.createdAt >= :start AND fb.createdAt < :end")
+    java.math.BigDecimal sumTotalPriceByStatusAndCreatedAtBetween(
+            @Param("start") LocalDateTime start, 
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("SELECT COUNT(fb) FROM FlightBooking fb WHERE fb.status = com.onde.core.entity.flight.BookingStatus.CONFIRMED AND fb.createdAt >= :start AND fb.createdAt < :end")
+    long countByStatusAndCreatedAtBetween(
+            @Param("start") LocalDateTime start, 
+            @Param("end") LocalDateTime end
+    );
 }
+
+

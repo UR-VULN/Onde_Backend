@@ -14,4 +14,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     // 타입 없이 ACTIVE만 조회 (전체 조회용)
     Page<Post> findByStatus(PostStatus status, Pageable pageable);
+
+    long countByStatus(PostStatus status);
 }
+

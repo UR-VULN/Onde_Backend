@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.math.BigDecimal;
 
 /**
  * 정산 및 마일리지 로직 검증을 위해 더미 데이터를 적재하고 강제 배치를 수행하는 테스트 전용 컨트롤러입니다.
@@ -156,6 +157,77 @@ public class TestSettlementController {
                     .representativeName("홍길동")
                     .openedAt("20200101")
                     .build());
+        }
+
+        // 4-2. 테스트용 항공 노선(FlightRoute) 및 스케줄/재고 가짜 데이터 동적 삽입
+        try {
+            JpaRepository routeRepo = context.getBean("flightRouteRepository", JpaRepository.class);
+            JpaRepository scheduleRepo = context.getBean("flightScheduleRepository", JpaRepository.class);
+            JpaRepository inventoryRepo = context.getBean("seatInventoryRepository", JpaRepository.class);
+
+            // 가짜 노선 (ICN -> NRT) 생성
+            com.onde.core.entity.flight.FlightRoute dummyRoute = new com.onde.core.entity.flight.FlightRoute();
+            dummyRoute.setId(1L);
+            dummyRoute.setDepartureAirport("ICN");
+            dummyRoute.setArrivalAirport("NRT");
+            dummyRoute.setDistanceKm(1000);
+            routeRepo.save(dummyRoute);
+
+            // 가짜 항공 스케줄 (ID: 1) 생성
+            com.onde.core.entity.flight.FlightSchedule dummySchedule = new com.onde.core.entity.flight.FlightSchedule();
+            dummySchedule.setId(1L);
+            dummySchedule.setRoute(dummyRoute);
+            dummySchedule.setFlightNumber("KE001");
+            dummySchedule.setDepartureTime(LocalDateTime.now().plusDays(30));
+            dummySchedule.setArrivalTime(LocalDateTime.now().plusDays(30).plusHours(2));
+            dummySchedule.setStatus(com.onde.core.entity.flight.ApprovalStatus.APPROVED);
+            scheduleRepo.save(dummySchedule);
+
+            // 가짜 좌석 재고 생성
+            com.onde.core.entity.flight.SeatInventory dummyInventory = new com.onde.core.entity.flight.SeatInventory();
+            dummyInventory.setFlightScheduleId(1L);
+            dummyInventory.setClassType(com.onde.core.entity.flight.SeatClass.ECONOMY);
+            dummyInventory.setTotalSeats(100);
+            dummyInventory.setRemainingSeats(50);
+            dummyInventory.setBasePrice(java.math.BigDecimal.valueOf(250000));
+            inventoryRepo.save(dummyInventory);
+
+            // 가짜 여행자 보험 상품 (ID: 1) 생성
+            JpaRepository insuranceProductRepo = context.getBean("insuranceProductRepository", JpaRepository.class);
+            com.onde.core.entity.insurance.InsuranceProduct dummyInsurance = new com.onde.core.entity.insurance.InsuranceProduct();
+            dummyInsurance.setId(1L);
+            dummyInsurance.setProductName("기본형 여행자 보험");
+            dummyInsurance.setBaseDailyRate(java.math.BigDecimal.valueOf(15000)); // 계산 공식에 대조되도록 하루 15000원으로 설정
+            dummyInsurance.setCoverageDetails("{\"medical\": 60000000}");
+            dummyInsurance.setStatus(com.onde.core.entity.flight.ApprovalStatus.APPROVED);
+            insuranceProductRepo.save(dummyInsurance);
+
+            // 가짜 숙소 객실 재고(Inventory) 및 렌터카 재고(Inventory) 적재 (7/1 ~ 7/5일치)
+            JpaRepository inventoryRepo2 = context.getBean("inventoryRepository", JpaRepository.class);
+            LocalDate start = LocalDate.of(2026, 7, 1);
+            for (int i = 0; i < 5; i++) {
+                LocalDate curDate = start.plusDays(i);
+
+                // 숙소 객실 재고 (ROOM, ID: 1)
+                com.onde.core.entity.accommodation.Inventory roomInv = new com.onde.core.entity.accommodation.Inventory();
+                roomInv.setTargetType(com.onde.core.entity.reservation.ReservationTarget.ROOM);
+                roomInv.setTargetId(1L);
+                roomInv.setDate(curDate);
+                roomInv.setStock(5);
+                roomInv.setBasePrice(BigDecimal.valueOf(100000));
+                inventoryRepo2.save(roomInv);
+
+                // 렌터카 재고 (CAR, ID: 1)
+                com.onde.core.entity.accommodation.Inventory carInv = new com.onde.core.entity.accommodation.Inventory();
+                carInv.setTargetType(com.onde.core.entity.reservation.ReservationTarget.CAR);
+                carInv.setTargetId(1L);
+                carInv.setDate(curDate);
+                carInv.setStock(3);
+                carInv.setBasePrice(BigDecimal.valueOf(50000));
+                inventoryRepo2.save(carInv);
+            }
+        } catch (Exception e) {
+            // 빈이 없거나 예외 발생 시 로그만 출력하고 진행
         }
 
         // 5. 테스트 대상인 사용자(userId)의 마일리지 변동 이력(MileageLog) 적재

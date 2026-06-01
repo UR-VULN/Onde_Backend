@@ -83,4 +83,34 @@ public class SellerAccommodationService {
             inventoryRepository.save(inventory);
         }
     }
+
+    @Transactional
+    public void updateRoomInventoriesBulk(List<RoomInventoryUpdateRequest> requests) {
+        for (RoomInventoryUpdateRequest request : requests) {
+            if (request.getRoomId() == null)
+                continue;
+
+            Optional<Inventory> inventoryOpt = inventoryRepository.findByTargetTypeAndTargetIdAndDate(
+                    ReservationTarget.ROOM, request.getRoomId(), request.getDate());
+
+            Inventory inventory;
+            if (inventoryOpt.isPresent()) {
+                inventory = inventoryOpt.get();
+            } else {
+                inventory = new Inventory();
+                inventory.setTargetType(ReservationTarget.ROOM);
+                inventory.setTargetId(request.getRoomId());
+                inventory.setDate(request.getDate());
+            }
+
+            if (request.getStock() != null) {
+                inventory.setStock(request.getStock());
+            }
+            if (request.getBasePrice() != null) {
+                inventory.setBasePrice(request.getBasePrice());
+            }
+
+            inventoryRepository.save(inventory);
+        }
+    }
 }

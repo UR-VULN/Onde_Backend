@@ -52,7 +52,8 @@ public class DistributedLockExecutor {
         } catch (com.onde.core.exception.BusinessException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("분산 락 트랜잭션 비즈니스 로직 실행 중 예외 발생", e);
+            log.error("❌ [LOCK EXECUTION ERROR] Exception inside lock execution callback: {}", e.getMessage(), e);
+            throw new RuntimeException("분산 락 트랜잭션 비즈니스 로직 실행 중 예외 발생: " + e.getMessage(), e);
         } finally {
             if (isAcquired) {
                 try {

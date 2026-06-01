@@ -32,7 +32,7 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
     public Map<String, Object> getAttributes() { return attributes; }
 
     @Override
-    public String getName() { return member.getEmail(); }
+    public String getName() { return member.getEmail() != null ? member.getEmail() : member.getProviderId(); }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -43,7 +43,7 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
     public String getPassword() { return member.getPassword(); }
 
     @Override
-    public String getUsername() { return member.getEmail(); }
+    public String getUsername() { return member.getEmail() != null ? member.getEmail() : member.getProviderId(); }
 
     @Override
     public boolean isAccountNonExpired() { return true; }
