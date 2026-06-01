@@ -30,7 +30,7 @@ public class AdminSecurityConfig {
             
             // 3. 인가(Authorization) 규칙 정의
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN") // 어드민 전용 API 권한 제한
+                .requestMatchers("/api/v1/admin/**").hasAnyRole("SUPER_ADMIN", "GENERAL_ADMIN") // 어드민 전용 API 권한 제한
                 .anyRequest().permitAll() // 그 외의 요청은 허용
             )
             

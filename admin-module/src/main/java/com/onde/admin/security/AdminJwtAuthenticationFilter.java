@@ -32,10 +32,21 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
         if (token != null && adminJwtTokenProvider.validateToken(token)) {
             Claims claims = adminJwtTokenProvider.getClaims(token);
             String email = claims.getSubject();
-            List<String> roles = claims.get("roles", List.class);
+            List<String> rolesList = claims.get("roles", List.class);
+            if (rolesList == null) {
+                String singleRole = claims.get("role", String.class);
+                if (singleRole != null) {
+                    rolesList = List.of(singleRole);
+                } else {
+                    rolesList = List.of();
+                }
+            }
 
-            List<SimpleGrantedAuthority> authorities = roles.stream()
-                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
+            List<SimpleGrantedAuthority> authorities = rolesList.stream()
+                    .map(role -> {
+                        String r = role.toUpperCase();
+                        return new SimpleGrantedAuthority(r.startsWith("ROLE_") ? r : "ROLE_" + r);
+                    })
                     .collect(Collectors.toList());
 
             UserDetails principal = new User(email, "", authorities);
@@ -44,30 +55,7 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } 
-        // 3. [우선순위 2] 토큰이 없거나 무효하지만, 테스트용 HTTP 헤더 정보가 넘어온 경우 (완전 수용)
-        else {
-            String adminId = request.getHeader("X-Admin-Id");
-            String adminRole = request.getHeader("X-Admin-Role");
 
-            if (adminRole != null && !adminRole.isBlank()) {
-                if (adminId == null || adminId.isBlank()) {
-                    adminId = "AD-999";
-                }
-                // 권한 식별자 포맷 통일 (ROLE_ADMIN, ROLE_SUPER_ADMIN 등)
-                String roleName = adminRole.toUpperCase().startsWith("ROLE_") ? adminRole.toUpperCase() : "ROLE_" + adminRole.toUpperCase();
-                List<SimpleGrantedAuthority> authorities = List.of(
-                        new SimpleGrantedAuthority(roleName),
-                        new SimpleGrantedAuthority("ROLE_ADMIN")
-                );
-                
-                // 첫 번째 필터와 두 번째 필터의 Principal 타입을 UserDetails(User) 구체 클래스로 통일하여 캐스팅 에러 방지
-                UserDetails principal = new User(adminId, "", authorities);
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(principal, null, authorities);
-                
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            }
-        }
 
         filterChain.doFilter(request, response);
     }
