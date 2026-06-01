@@ -102,6 +102,7 @@ public class AuthService {
         return TokenRefreshResponse.builder()
                 .accessToken(newAccessToken)
                 .tokenType("Bearer")
+                .expiresIn(1800L) // 30분
                 .build();
     }
 }
