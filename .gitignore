@@ -14,3 +14,8 @@ bin/
 
 # 하지만 Gradle Wrapper의 jar는 반드시 포함 (가장 아래에 두세요)
 !gradle/wrapper/gradle-wrapper.jar
+
+# 환경 변수 파일 제외
+.env
+.env.local
+.env.*.local
