@@ -15,6 +15,6 @@ public interface FcmTokenRepository extends JpaRepository<FcmToken, Long> {
 
     List<FcmToken> findByMemberId(Long memberId);
 
-    @Query("SELECT t FROM FcmToken t JOIN t.member m WHERE m.role IN :roles")
+    @Query("SELECT t FROM FcmToken t WHERE t.memberId IN (SELECT m.id FROM Member m WHERE m.role IN :roles)")
     List<FcmToken> findByMemberRoleIn(@Param("roles") List<MemberRole> roles);
 }

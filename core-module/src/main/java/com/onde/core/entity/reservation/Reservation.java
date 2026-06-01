@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 public class Reservation extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "reservation_id")
     private Long id;
 
     @Column(name = "user_id", nullable = false)

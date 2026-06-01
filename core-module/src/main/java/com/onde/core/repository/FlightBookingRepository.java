@@ -15,7 +15,7 @@ public interface FlightBookingRepository extends JpaRepository<FlightBooking, Lo
     List<FlightBooking> findByStatusAndReservedUntilBefore(BookingStatus status, LocalDateTime dateTime);
     java.util.Optional<FlightBooking> findByBookingCode(String bookingCode);
 
-    @Query("SELECT COUNT(fb) FROM FlightBooking fb WHERE fb.flightSchedule.id = :scheduleId AND fb.seatClass = :seatClass AND fb.status IN (com.onde.core.entity.flight.BookingStatus.CONFIRMED, com.onde.core.entity.flight.BookingStatus.RESERVED)")
+    @Query("SELECT COUNT(fb) FROM FlightBooking fb WHERE fb.flightSchedule.id = :scheduleId AND fb.seatClass = :seatClass AND fb.status IN (com.onde.core.entity.flight.BookingStatus.CONFIRMED, com.onde.core.entity.flight.BookingStatus.PENDING_PAYMENT)")
     long countActiveBookings(
         @Param("scheduleId") Long scheduleId,
         @Param("seatClass") SeatClass seatClass
