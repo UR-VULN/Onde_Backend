@@ -62,4 +62,8 @@ public class CarService {
                 .cars(listDtos)
                 .build();
     }
+
+    public List<Car> getCarsBySellerId(Long sellerId) {
+        return carRepository.findBySellerId(sellerId);
+    }
 }

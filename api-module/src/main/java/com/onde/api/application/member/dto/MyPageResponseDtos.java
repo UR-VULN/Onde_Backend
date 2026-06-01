@@ -83,4 +83,18 @@ public class MyPageResponseDtos {
         private BigDecimal totalPrice;
         private String status;
     }
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class MemberInfoResponse {
+        private Long memberId;
+        private String email;
+        private String name;
+        private String role;
+        private String provider;
+        private String status;
+        private LocalDateTime createdAt;
+    }
 }

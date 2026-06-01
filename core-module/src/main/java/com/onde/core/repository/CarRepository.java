@@ -36,6 +36,6 @@ public interface CarRepository extends JpaRepository<Car, Long> {
             Sort sort);
             
        List<Car> findByApprovalStatus(ApprovalStatus status);
-       
+       List<Car> findBySellerId(Long sellerId);
 }
 

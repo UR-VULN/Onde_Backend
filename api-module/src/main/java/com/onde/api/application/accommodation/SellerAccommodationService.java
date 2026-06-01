@@ -113,4 +113,8 @@ public class SellerAccommodationService {
             inventoryRepository.save(inventory);
         }
     }
+
+    public List<Accommodation> getAccommodations(Long sellerId) {
+        return accommodationRepository.findBySellerId(sellerId);
+    }
 }

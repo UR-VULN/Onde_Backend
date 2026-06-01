@@ -28,6 +28,7 @@ public class MemberMyPageService {
     private final com.onde.core.repository.ReservationRepository reservationRepository;
     private final com.onde.core.repository.RoomRepository roomRepository;
     private final com.onde.core.repository.CarRepository carRepository;
+    private final com.onde.core.repository.MemberRepository memberRepository;
 
     public MyPageListResponse<MyPageFlightBookingResponse> getMyFlightBookings(Long userId, String status, Pageable pageable) {
         Page<FlightBooking> pageResult;
@@ -204,6 +205,21 @@ public class MemberMyPageService {
                 .totalCount(pageResult.getTotalElements())
                 .page(pageable.getPageNumber())
                 .size(pageable.getPageSize())
+                .build();
+     }
+
+    public MemberInfoResponse getMyInfo(Long userId) {
+        com.onde.core.entity.member.Member member = memberRepository.findById(userId)
+                .orElseThrow(() -> new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.MEMBER_NOT_FOUND));
+
+        return MemberInfoResponse.builder()
+                .memberId(member.getId())
+                .email(member.getEmail())
+                .name(member.getName())
+                .role(member.getRole() != null ? member.getRole().name() : null)
+                .provider(member.getProvider() != null ? member.getProvider().name() : null)
+                .status(member.getStatus() != null ? member.getStatus().name() : null)
+                .createdAt(member.getCreatedAt())
                 .build();
     }
 }

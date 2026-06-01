@@ -42,4 +42,8 @@ public class SellerInsuranceService {
                 .status(savedProduct.getStatus())
                 .build();
     }
+
+    public java.util.List<InsuranceProduct> getAllProducts() {
+        return insuranceProductRepository.findAll();
+    }
 }

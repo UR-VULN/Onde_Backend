@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import com.onde.core.support.ApiResponse;
 
@@ -26,6 +27,41 @@ public class SellerAccommodationController {
     public ResponseEntity<ApiResponse<Long>> register(@RequestBody SellerAccommodationRegisterRequest request) {
         Long id = sellerAccommodationService.registerAccommodation(request);
         return ResponseEntity.ok(ApiResponse.success(id, "숙소가 성공적으로 등록되었습니다."));
+    }
+
+    @GetMapping("/accommodations")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getAccommodations(
+            @RequestHeader(value = "X-Member-Id", required = false) String memberIdHeader) {
+        Long sellerId = 2L;
+        if (memberIdHeader != null && !memberIdHeader.isBlank()) {
+            try {
+                sellerId = Long.parseLong(memberIdHeader.trim());
+            } catch (NumberFormatException e) {
+                // ignore
+            }
+        }
+        List<com.onde.core.entity.accommodation.Accommodation> list = sellerAccommodationService.getAccommodations(sellerId);
+        
+        List<Map<String, Object>> mapped = list.stream().map(a -> {
+            Map<String, Object> item = new java.util.HashMap<>();
+            item.put("propertyId", a.getId());
+            item.put("name", a.getName());
+            String status = "ACTIVE";
+            if (a.getApprovalStatus() == com.onde.core.entity.accommodation.ApprovalStatus.PENDING) {
+                status = "PENDING";
+            } else if (a.getApprovalStatus() == com.onde.core.entity.accommodation.ApprovalStatus.REJECTED) {
+                status = "REJECTED";
+            }
+            item.put("status", status);
+            item.put("basePrice", 120000);
+            return item;
+        }).toList();
+
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("accommodations", mapped);
+        data.put("totalCount", mapped.size());
+
+        return ResponseEntity.ok(ApiResponse.success(data, "판매자 등록 숙소 목록 조회가 성공적으로 완료되었습니다."));
     }
 
     /**

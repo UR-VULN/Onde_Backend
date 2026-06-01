@@ -65,4 +65,10 @@ public class MemberMyPageController {
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "렌터카 예약 목록 조회 성공"));
     }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<MemberInfoResponse>> getMyInfo(@LoginMember(required = true) Long userId) {
+        MemberInfoResponse response = memberMyPageService.getMyInfo(userId);
+        return ResponseEntity.ok(ApiResponse.success(response, "회원 정보가 성공적으로 조회되었습니다."));
+    }
 }

@@ -191,4 +191,8 @@ public class SellerFlightService {
                 .currentPrice(savedInventory.getBasePrice())
                 .build();
     }
+
+    public List<FlightSchedule> getAllSchedules() {
+        return flightScheduleRepository.findAll();
+    }
 }
