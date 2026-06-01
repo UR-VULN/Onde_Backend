@@ -1,5 +1,6 @@
 package com.onde.api.application.accommodation;
 
+import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,15 +18,7 @@ public class SellerCarController {
 
     @GetMapping("/cars")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCars(
-            @RequestHeader(value = "X-Member-Id", required = false) String memberIdHeader) {
-        Long sellerId = 2L;
-        if (memberIdHeader != null && !memberIdHeader.isBlank()) {
-            try {
-                sellerId = Long.parseLong(memberIdHeader.trim());
-            } catch (NumberFormatException e) {
-                // ignore
-            }
-        }
+            @LoginMember Long sellerId) {
         List<com.onde.core.entity.accommodation.Car> list = carService.getCarsBySellerId(sellerId);
         List<Map<String, Object>> mapped = list.stream().map(c -> {
             Map<String, Object> item = new java.util.HashMap<>();

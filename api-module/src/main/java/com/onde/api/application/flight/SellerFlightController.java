@@ -5,6 +5,7 @@ import com.onde.api.application.flight.dto.SellerFlightRegisterRequest;
 import com.onde.api.application.flight.dto.SellerFlightRegisterResponse;
 import com.onde.api.application.flight.dto.SellerScheduleControlRequest;
 import com.onde.api.application.flight.dto.SellerScheduleControlResponse;
+import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,17 +23,8 @@ public class SellerFlightController {
     @PostMapping("/api/v1/seller/flights")
     public ResponseEntity<ApiResponse<SellerFlightRegisterResponse>> registerBulkSchedules(
             @RequestBody SellerFlightRegisterRequest req,
-            @RequestHeader(value = "X-Member-Id", required = false) String memberIdHeader) {
+            @LoginMember Long actualSellerId) {
         
-        Long actualSellerId = 2L;
-        if (memberIdHeader != null && !memberIdHeader.isBlank()) {
-            try {
-                actualSellerId = Long.parseLong(memberIdHeader.trim());
-            } catch (NumberFormatException e) {
-                // Ignore and fallback
-            }
-        }
-
         SellerFlightRegisterResponse response = sellerFlightService.registerBulkSchedules(req, actualSellerId);
         String message = String.format("총 %d개의 스케줄이 정상적으로 생성되어 본사 검수 대기 상태에 등록되었습니다.", response.getCreatedCount());
         
@@ -45,16 +37,7 @@ public class SellerFlightController {
     public ResponseEntity<ApiResponse<List<SellerCalendarResponse>>> getCalendarSchedules(
             @RequestParam("year") Integer year,
             @RequestParam("month") Integer month,
-            @RequestHeader(value = "X-Member-Id", required = false) String memberIdHeader) {
-
-        Long actualSellerId = 2L;
-        if (memberIdHeader != null && !memberIdHeader.isBlank()) {
-            try {
-                actualSellerId = Long.parseLong(memberIdHeader.trim());
-            } catch (NumberFormatException e) {
-                // Ignore
-            }
-        }
+            @LoginMember Long actualSellerId) {
 
         List<SellerCalendarResponse> response = sellerFlightService.getCalendarSchedules(year, month, actualSellerId);
         return ResponseEntity.ok(ApiResponse.success(response, "월별 스케줄 및 실시간 잔여석 목록을 성공적으로 조회했습니다."));
@@ -64,16 +47,7 @@ public class SellerFlightController {
     public ResponseEntity<ApiResponse<SellerScheduleControlResponse>> controlSchedule(
             @PathVariable("schedule_id") Long scheduleId,
             @RequestBody SellerScheduleControlRequest req,
-            @RequestHeader(value = "X-Member-Id", required = false) String memberIdHeader) {
-
-        Long actualSellerId = 2L;
-        if (memberIdHeader != null && !memberIdHeader.isBlank()) {
-            try {
-                actualSellerId = Long.parseLong(memberIdHeader.trim());
-            } catch (NumberFormatException e) {
-                // Ignore
-            }
-        }
+            @LoginMember Long actualSellerId) {
 
         SellerScheduleControlResponse response = sellerFlightService.controlSchedule(scheduleId, req, actualSellerId);
         return ResponseEntity.ok(ApiResponse.success(response, "선택하신 항공편의 실시간 재고 및 가격 조절을 완료했습니다."));

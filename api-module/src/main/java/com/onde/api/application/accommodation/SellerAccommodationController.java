@@ -12,6 +12,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
 
 @RestController
@@ -43,15 +44,7 @@ public class SellerAccommodationController {
      */
     @GetMapping("/accommodations")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getAccommodations(
-            @RequestHeader(value = "X-Member-Id", required = false) String memberIdHeader) {
-        Long sellerId = 2L;
-        if (memberIdHeader != null && !memberIdHeader.isBlank()) {
-            try {
-                sellerId = Long.parseLong(memberIdHeader.trim());
-            } catch (NumberFormatException e) {
-                // ignore
-            }
-        }
+            @LoginMember Long sellerId) {
         List<com.onde.core.entity.accommodation.Accommodation> list = sellerAccommodationService.getAccommodations(sellerId);
         
         List<Map<String, Object>> mapped = list.stream().map(a -> {

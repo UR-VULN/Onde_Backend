@@ -4,6 +4,7 @@ import com.onde.api.application.insurance.dto.InsuranceCalculateRequest;
 import com.onde.api.application.insurance.dto.InsuranceCalculateResponse;
 import com.onde.api.application.insurance.dto.InsurancePolicyRequest;
 import com.onde.api.application.insurance.dto.InsurancePolicyResponse;
+import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,18 +29,8 @@ public class InsuranceController {
     @PostMapping("/reservations/insurances")
     public ResponseEntity<ApiResponse<InsurancePolicyResponse>> applyPolicy(
             @RequestBody InsurancePolicyRequest req,
-            @RequestHeader(value = "X-Member-Id", required = false) String memberIdHeader) {
+            @LoginMember Long actualUserId) {
         
-        // 헤더 X-Member-Id 파싱 및 로컬 fallback 지원
-        Long actualUserId = 1L;
-        if (memberIdHeader != null && !memberIdHeader.isBlank()) {
-            try {
-                actualUserId = Long.parseLong(memberIdHeader.trim());
-            } catch (NumberFormatException e) {
-                // Ignore and fallback
-            }
-        }
-
         InsurancePolicyResponse response = insuranceService.applyPolicy(req, actualUserId);
         return ResponseEntity
                 .status(HttpStatus.CREATED)

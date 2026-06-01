@@ -5,6 +5,7 @@ import com.onde.api.application.flight.dto.FlightBookingResponse;
 import com.onde.api.application.flight.dto.FlightSearchRequest;
 import com.onde.api.application.flight.dto.FlightSearchResponse;
 import com.onde.api.config.DistributedLockExecutor;
+import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,16 +37,7 @@ public class FlightController {
     @PostMapping("/reservations/flights")
     public ResponseEntity<ApiResponse<FlightBookingResponse>> bookSeat(
             @RequestBody FlightBookingRequest req,
-            @RequestHeader(value = "X-Member-Id", required = false) String memberIdHeader) {
-        Long actualUserId = 1L;
-        if (memberIdHeader != null && !memberIdHeader.isBlank()) {
-            try {
-                actualUserId = Long.parseLong(memberIdHeader.trim());
-            } catch (NumberFormatException e) {
-                // Ignore and fallback
-            }
-        }
-        final Long userId = actualUserId;
+            @LoginMember Long userId) {
         String lockKey = "flight:lock:" + req.getScheduleId() + ":" + req.getSeatClass().name();
 
         // Redisson 분산 락 획득 시도 (대기 5초, 점유 10초) 및 비즈니스 콜백 격리 트랜잭션 실행

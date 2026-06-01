@@ -2,21 +2,16 @@ package com.onde.api.application.settlement;
 
 import com.onde.api.application.settlement.dto.SellerAccountRequest;
 import com.onde.api.application.settlement.dto.SellerAccountResponse;
-import com.onde.core.entity.member.Member;
+import com.onde.api.security.LoginMember;
 import com.onde.core.entity.settlement.SellerAccount;
 import com.onde.core.entity.settlement.Settlement;
-import com.onde.core.exception.BusinessException;
-import com.onde.core.exception.ErrorCode;
 import com.onde.core.repository.SettlementRepository;
-import com.onde.core.repository.MemberRepository;
 import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,19 +28,15 @@ public class SellerSettlementController {
 
     private final SettlementService settlementService;
     private final SettlementRepository settlementRepository;
-    private final MemberRepository memberRepository; // 👈 이메일로 ID를 찾기 위해 추가 주입
 
     /**
      * [Day 10] 로그인한 판매자의 정산 내역을 페이징하여 조회합니다.
      */
     @GetMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> getMySettlements(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestHeader(value = "X-Seller-Id", required = false) Long headerSellerId,
+            @LoginMember Long sellerId,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "12") int size) {
-
-        Long sellerId = (headerSellerId != null) ? headerSellerId : 1L;
 
         Page<Settlement> result = settlementRepository.findBySellerId(sellerId, PageRequest.of(page, size));
 
@@ -62,10 +53,8 @@ public class SellerSettlementController {
     @PostMapping("/{settlementId}/request")
     public ResponseEntity<ApiResponse<Map<String, Object>>> requestSettlement(
             @PathVariable("settlementId") Long settlementId,
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestHeader(value = "X-Seller-Id", required = false) Long headerSellerId) {
+            @LoginMember Long sellerId) {
 
-        Long sellerId = (headerSellerId != null) ? headerSellerId : 1L;
         Settlement updated = settlementService.requestSettlement(settlementId, sellerId);
 
         Map<String, Object> data = new HashMap<>();
@@ -81,15 +70,10 @@ public class SellerSettlementController {
      */
     @PutMapping("/accounts")
     public ResponseEntity<ApiResponse<Void>> registerOrUpdateAccount(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @LoginMember Long sellerId,
             @RequestBody SellerAccountRequest request) {
 
-        // 1. 시큐리티 세션의 이메일(String)로 회원 테이블을 찔러 진짜 고유 ID(Long) 확보
-        Member member = memberRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-
-        // 2. 확보한 Long 타입 식별자를 주입하여 서비스 인터페이스 규격 일치 (에러 해결 핵심)
-        settlementService.registerOrUpdateAccount(member.getId(), request);
+        settlementService.registerOrUpdateAccount(sellerId, request);
 
         // 3. 무거운 바디를 리턴하지 않는 깔끔한 RESTful 응답 반환
         return ResponseEntity.ok(ApiResponse.success(null, "정산 계좌가 성공적으로 등록/수정되었습니다."));
@@ -100,14 +84,10 @@ public class SellerSettlementController {
      */
     @GetMapping("/accounts")
     public ResponseEntity<ApiResponse<SellerAccountResponse>> getAccount(
-            @AuthenticationPrincipal UserDetails userDetails) {
-
-        // 1. 조회 시에도 동일하게 세션 이메일 기반으로 고유 ID 확보
-        Member member = memberRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+            @LoginMember Long sellerId) {
 
         // 2. 서비스 레이어 메서드 호출 스펙 일치
-        SellerAccount account = settlementService.getAccount(member.getId());
+        SellerAccount account = settlementService.getAccount(sellerId);
 
         // 3. 응답 DTO 조립 및 마스킹 처리 가두리화
         SellerAccountResponse response = SellerAccountResponse.builder()

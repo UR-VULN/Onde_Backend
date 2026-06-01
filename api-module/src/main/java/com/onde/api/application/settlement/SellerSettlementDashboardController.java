@@ -1,5 +1,6 @@
 package com.onde.api.application.settlement;
 
+import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +18,7 @@ public class SellerSettlementDashboardController {
      */
     @GetMapping("/statistics")
     public ResponseEntity<ApiResponse<com.onde.api.application.settlement.dto.SellerDashboardResponse>> getSellerDashboardStatistics(
-            @RequestHeader("X-Seller-Id") Long sellerId,
+            @LoginMember Long sellerId,
             @RequestParam(name = "period", defaultValue = "MONTHLY") String period,
             @RequestParam(name = "startDate") String startDate,
             @RequestParam(name = "endDate") String endDate) {

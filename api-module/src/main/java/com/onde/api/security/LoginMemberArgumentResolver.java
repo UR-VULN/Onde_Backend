@@ -25,20 +25,7 @@ public class LoginMemberArgumentResolver implements HandlerMethodArgumentResolve
                                   NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
         HttpServletRequest request = (HttpServletRequest) webRequest.getNativeRequest();
         
-        // 1. [우선순위 1] 헤더에서 X-Member-Id 조회 (기존 테스트 및 단독 테스트용)
-        String memberIdStr = request.getHeader("X-Member-Id");
-        if (memberIdStr != null && !memberIdStr.isEmpty()) {
-            try {
-                if (parameter.getParameterType().equals(Long.class)) {
-                    return Long.parseLong(memberIdStr);
-                }
-                return memberIdStr;
-            } catch (NumberFormatException e) {
-                // 파싱 실패 시 스프링 시큐리티 컨텍스트로 넘어감
-            }
-        }
-
-        // 2. [우선순위 2] Spring Security Context의 인증 객체에서 Member ID 추출
+        // Spring Security Context의 인증 객체에서 Member ID 추출
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails) {
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();

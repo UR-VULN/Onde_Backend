@@ -25,11 +25,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final CustomUserDetailsService customUserDetailsService;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        
-try {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+
+        try {
             System.out.println("\n===== [JWT 필터 디버깅 시작] =====");
-            
+
             // 1. 헤더에서 토큰 추출
             String token = resolveTokenFromHeader(request);
             System.out.println("▶️ 1. 헤더 토큰: " + (token != null ? "발견됨 (길이: " + token.length() + ")" : "없음"));
@@ -44,14 +45,14 @@ try {
             if (token != null) {
                 boolean isValid = jwtTokenProvider.validateToken(token);
                 System.out.println("▶️ 3. 토큰 유효성 검사 결과: " + (isValid ? "✅ 통과" : "❌ 실패 (만료 또는 훼손)"));
-                
+
                 if (isValid) {
                     String identifier = jwtTokenProvider.getSubject(token);
                     UserDetails userDetails = customUserDetailsService.loadUserByUsername(identifier);
-                    
-                    UsernamePasswordAuthenticationToken authentication = 
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    
+
+                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
+
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                     System.out.println("▶️ 4. 인증 완료! 부여된 권한: " + userDetails.getAuthorities());
                 }
@@ -83,7 +84,8 @@ try {
                         com.onde.core.entity.member.MemberRole role = com.onde.core.entity.member.MemberRole.USER;
                         try {
                             role = com.onde.core.entity.member.MemberRole.valueOf(memberRoleHeader.toUpperCase());
-                        } catch (Exception ignored) {}
+                        } catch (Exception ignored) {
+                        }
 
                         com.onde.core.entity.member.Member mockMember = com.onde.core.entity.member.Member.builder()
                                 .id(memberId)
@@ -93,12 +95,14 @@ try {
                                 .status(com.onde.core.entity.member.MemberStatus.ACTIVE)
                                 .build();
 
-                        com.onde.api.security.CustomUserDetails userDetails = new com.onde.api.security.CustomUserDetails(mockMember);
-                        UsernamePasswordAuthenticationToken authentication =
-                                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                        com.onde.api.security.CustomUserDetails userDetails = new com.onde.api.security.CustomUserDetails(
+                                mockMember);
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities());
 
                         SecurityContextHolder.getContext().setAuthentication(authentication);
-                        System.out.println("▶️ [멤버 테스트 헬퍼] 인증 완료! ID: " + memberId + ", 역할: " + role + ", 부여된 권한: " + userDetails.getAuthorities());
+                        System.out.println("▶️ [멤버 테스트 헬퍼] 인증 완료! ID: " + memberId + ", 역할: " + role + ", 부여된 권한: "
+                                + userDetails.getAuthorities());
                     } catch (NumberFormatException e) {
                         System.out.println("❌ 멤버 ID 파싱 실패: " + memberIdHeader);
                     }
@@ -106,16 +110,18 @@ try {
                     if (adminId == null || adminId.isBlank()) {
                         adminId = "AD-999";
                     }
-                    String roleName = adminRole.toUpperCase().startsWith("ROLE_") ? adminRole.toUpperCase() : "ROLE_" + adminRole.toUpperCase();
-                    java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities = java.util.List.of(
-                            new SimpleGrantedAuthority(roleName),
-                            new SimpleGrantedAuthority("ROLE_ADMIN")
-                    );
-                    
-                    UserDetails principal = new org.springframework.security.core.userdetails.User(adminId, "", authorities);
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(principal, null, authorities);
-                    
+                    String roleName = adminRole.toUpperCase().startsWith("ROLE_") ? adminRole.toUpperCase()
+                            : "ROLE_" + adminRole.toUpperCase();
+                    java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities = java.util.List
+                            .of(
+                                    new SimpleGrantedAuthority(roleName),
+                                    new SimpleGrantedAuthority("ROLE_ADMIN"));
+
+                    UserDetails principal = new org.springframework.security.core.userdetails.User(adminId, "",
+                            authorities);
+                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                            principal, null, authorities);
+
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                     System.out.println("▶️ [어드민 테스트 헬퍼] 인증 완료! 부여된 권한: " + authorities);
                 } else {
@@ -123,7 +129,7 @@ try {
                 }
             }
             System.out.println("==================================\n");
-            
+
         } catch (Exception e) {
             System.out.println("❌ JWT 필터 통과 중 에러 발생: " + e.getMessage());
         }
@@ -151,6 +157,6 @@ try {
                 }
             }
         }
-        return null; 
+        return null;
     }
 }

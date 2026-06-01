@@ -2,6 +2,7 @@ package com.onde.api.application.insurance;
 
 import com.onde.api.application.insurance.dto.SellerInsuranceRegisterRequest;
 import com.onde.api.application.insurance.dto.SellerInsuranceRegisterResponse;
+import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,17 +19,7 @@ public class SellerInsuranceController {
     @PostMapping("/insurance")
     public ResponseEntity<ApiResponse<SellerInsuranceRegisterResponse>> proposeInsuranceProduct(
             @RequestBody SellerInsuranceRegisterRequest req,
-            @RequestHeader(value = "X-Member-Id", required = false) String memberIdHeader) {
-        
-        // 헤더 X-Member-Id 파싱 및 로컬 fallback 지원 (기본 판매자 ID = 2L)
-        Long actualSellerId = 2L;
-        if (memberIdHeader != null && !memberIdHeader.isBlank()) {
-            try {
-                actualSellerId = Long.parseLong(memberIdHeader.trim());
-            } catch (NumberFormatException e) {
-                // Ignore and fallback
-            }
-        }
+            @LoginMember Long actualSellerId) {
 
         SellerInsuranceRegisterResponse response = sellerInsuranceService.proposeInsuranceProduct(req, actualSellerId);
         return ResponseEntity
