@@ -28,7 +28,7 @@ public class FlightController {
     @GetMapping("/flights/search")
     public ResponseEntity<ApiResponse<FlightSearchResponse>> searchFlights(@ModelAttribute FlightSearchRequest req) {
         FlightSearchResponse response = flightService.searchFlights(req);
-        return ResponseEntity.ok(ApiResponse.success(response, "항공권 실시간 통합 검색 결과를 성공적으로 조회했습니다."));
+        return ResponseEntity.ok(ApiResponse.success(response, "항공편 검색 성공"));
     }
 
     /**

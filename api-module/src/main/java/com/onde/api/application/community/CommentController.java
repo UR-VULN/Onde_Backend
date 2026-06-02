@@ -3,6 +3,7 @@ package com.onde.api.application.community;
 import com.onde.api.application.community.dto.CommentCreateRequest;
 import com.onde.api.application.community.dto.CommentDeleteResponse;
 import com.onde.api.application.community.dto.CommentDto;
+import com.onde.api.application.community.dto.CommentListResponse;
 import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
 import jakarta.validation.Valid;
@@ -32,10 +33,11 @@ public class CommentController {
     }
 
     @GetMapping("/posts/{postId}/comments")
-    public ResponseEntity<ApiResponse<List<CommentDto>>> getComments(
+    public ResponseEntity<ApiResponse<CommentListResponse>> getComments(
             @PathVariable("postId") Long postId) {
 
-        List<CommentDto> response = commentService.getComments(postId);
+        List<CommentDto> comments = commentService.getComments(postId);
+        CommentListResponse response = new CommentListResponse(comments, comments.size());
         return ResponseEntity.ok(ApiResponse.success(response, "댓글 목록 조회가 완료되었습니다."));
     }
 

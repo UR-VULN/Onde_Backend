@@ -3,6 +3,7 @@ package com.onde.api.application.auth;
 import com.onde.api.application.auth.dto.*;
 import com.onde.core.entity.auth.RefreshToken;
 import com.onde.core.entity.member.Member;
+import com.onde.core.entity.member.MemberRole;
 import com.onde.core.entity.member.MemberStatus;
 import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.RefreshTokenRepository;
@@ -22,9 +23,9 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
 
     @Transactional
-    public String signup(SignupRequest request) {
+    public SignupResponse signup(SignupRequest request) {
         // 비밀번호 확인 일치 여부 검증
-        if (!request.getPassword().equals(request.getPasswordConfirm())) {
+        if (request.getPasswordConfirm() != null && !request.getPassword().equals(request.getPasswordConfirm())) {
             throw new IllegalArgumentException("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
         }
 
@@ -34,17 +35,25 @@ public class AuthService {
         }
 
         // 비밀번호 암호화 및 Member 엔티티 생성
+        MemberRole role = request.getRole() != null ? request.getRole() : MemberRole.USER;
         Member member = Member.builder()
                 .email(request.getEmail())
+                .name(request.getName())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phoneNumber(request.getPhoneNumber())
-                .role(request.getRole())
+                .role(role)
                 .status(MemberStatus.ACTIVE)
                 .build();
 
-        memberRepository.save(member);
+        Member savedMember = memberRepository.save(member);
 
-        return "회원가입이 성공적으로 완료되었습니다.";
+        return SignupResponse.builder()
+                .memberId(savedMember.getId())
+                .email(savedMember.getEmail())
+                .name(savedMember.getName())
+                .role(savedMember.getRole())
+                .createdAt(savedMember.getCreatedAt())
+                .build();
     }
 
     @Transactional

@@ -3,9 +3,9 @@ package com.onde.api.application.auth;
 import com.onde.api.application.auth.dto.EmailAuthRequest;
 import com.onde.api.application.auth.dto.EmailVerifyRequest;
 import com.onde.api.security.CustomUserDetails;
+import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,22 +22,20 @@ public class EmailAuthController {
     private final EmailAuthService emailAuthService;
 
     @PostMapping("/send")
-    @PreAuthorize("hasRole('GUEST')")
-    public ResponseEntity<Void> sendVerificationCode(
+    public ResponseEntity<ApiResponse<Void>> sendVerificationCode(
             @RequestBody EmailAuthRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         
-        emailAuthService.sendVerificationCode(request.getEmail(), userDetails.getMember());
-        return ResponseEntity.ok().build();
+        emailAuthService.sendVerificationCode(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success(null, "인증번호가 발송되었습니다."));
     }
 
     @PostMapping("/verify")
-    @PreAuthorize("hasRole('GUEST')")
-    public ResponseEntity<Map<String, String>> verifyEmail(
+    public ResponseEntity<ApiResponse<Map<String, String>>> verifyEmail(
             @RequestBody EmailVerifyRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         
-        Map<String, String> tokens = emailAuthService.verifyEmailAndPromote(request.getEmail(), request.getCode(), userDetails.getMember());
-        return ResponseEntity.ok(tokens);
+        Map<String, String> tokens = emailAuthService.verifyEmailAndIssueTokens(request.getEmail(), request.getCode());
+        return ResponseEntity.ok(ApiResponse.success(tokens, "인증이 완료되었습니다."));
     }
 }

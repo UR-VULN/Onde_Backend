@@ -42,14 +42,18 @@ public class SellerFlightService {
     public SellerFlightRegisterResponse registerBulkSchedules(SellerFlightRegisterRequest req, Long sellerId) {
         log.info("✈️ Bulk flight schedules generation triggered by sellerId={}, routeId={}", sellerId, req.getRouteId());
 
-        FlightRoute route = flightRouteRepository.findById(req.getRouteId())
-                .orElseThrow(() -> new NotFoundException(ErrorCode.INVALID_INPUT_VALUE));
+        if (req.getFlights() != null && !req.getFlights().isEmpty()) {
+            return registerPdfSpecifiedFlights(req, sellerId);
+        }
+
+        FlightRoute route = resolveOrCreateRoute(req.getRouteId(), req.getDepartureAirport(), req.getArrivalAirport(), req.getDurationMinutes(), sellerId);
 
         LocalDate current = req.getStartDate();
         LocalDate end = req.getEndDate();
         List<Integer> targetDays = req.getOperatingDays();
 
         int createdCount = 0;
+        List<Long> registeredScheduleIds = new ArrayList<>();
 
         while (!current.isAfter(end)) {
             int dayOfWeekValue = current.getDayOfWeek().getValue();
@@ -66,6 +70,7 @@ public class SellerFlightService {
                         .build();
 
                 FlightSchedule savedSchedule = flightScheduleRepository.save(schedule);
+                registeredScheduleIds.add(savedSchedule.getId());
 
                 for (SellerFlightRegisterRequest.SeatSetupDto seat : req.getSeatSetup()) {
                     SeatInventory inventory = SeatInventory.builder()
@@ -91,10 +96,74 @@ public class SellerFlightService {
         log.info("✈️ Bulk generation completed. batchGroupId={}, createdCount={}", batchGroupId, createdCount);
 
         return SellerFlightRegisterResponse.builder()
+                .registeredScheduleIds(registeredScheduleIds)
                 .batchGroupId(batchGroupId)
                 .createdCount(createdCount)
                 .status("PENDING_APPROVAL")
                 .build();
+    }
+
+    private SellerFlightRegisterResponse registerPdfSpecifiedFlights(SellerFlightRegisterRequest req, Long sellerId) {
+        List<Long> registeredScheduleIds = new ArrayList<>();
+
+        for (SellerFlightRegisterRequest.FlightItemDto item : req.getFlights()) {
+            int duration = item.getDurationMinutes() != null
+                    ? item.getDurationMinutes()
+                    : (int) java.time.Duration.between(item.getDepartureTime(), item.getArrivalTime()).toMinutes();
+            FlightRoute route = resolveOrCreateRoute(null, item.getDepartureAirport(), item.getArrivalAirport(), duration, sellerId);
+
+            FlightSchedule schedule = FlightSchedule.builder()
+                    .route(route)
+                    .flightNumber(item.getFlightNumber())
+                    .departureTime(item.getDepartureTime())
+                    .arrivalTime(item.getArrivalTime())
+                    .status(ApprovalStatus.PENDING_APPROVAL)
+                    .build();
+
+            FlightSchedule savedSchedule = flightScheduleRepository.save(schedule);
+            registeredScheduleIds.add(savedSchedule.getId());
+
+            if (item.getSeats() != null) {
+                for (Map.Entry<String, SellerFlightRegisterRequest.SeatSetupDto> entry : item.getSeats().entrySet()) {
+                    SellerFlightRegisterRequest.SeatSetupDto seat = entry.getValue();
+                    SeatClass classType = seat.getClassType() != null ? seat.getClassType() : SeatClass.valueOf(entry.getKey());
+                    seatInventoryRepository.save(SeatInventory.builder()
+                            .flightScheduleId(savedSchedule.getId())
+                            .classType(classType)
+                            .totalSeats(seat.getTotalSeats())
+                            .remainingSeats(seat.getTotalSeats())
+                            .basePrice(seat.getBasePrice())
+                            .build());
+                }
+            }
+        }
+
+        String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String randomSuffix = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        String batchGroupId = "BG-" + todayStr + "-" + randomSuffix;
+
+        return SellerFlightRegisterResponse.builder()
+                .registeredScheduleIds(registeredScheduleIds)
+                .batchGroupId(batchGroupId)
+                .createdCount(registeredScheduleIds.size())
+                .status("PENDING_APPROVAL")
+                .build();
+    }
+
+    private FlightRoute resolveOrCreateRoute(Long routeId, String departureAirport, String arrivalAirport, Integer durationMinutes, Long sellerId) {
+        if (routeId != null) {
+            return flightRouteRepository.findById(routeId)
+                    .orElseThrow(() -> new NotFoundException(ErrorCode.INVALID_INPUT_VALUE));
+        }
+
+        FlightRoute route = FlightRoute.builder()
+                .sellerId(sellerId)
+                .departureAirport(departureAirport)
+                .arrivalAirport(arrivalAirport)
+                .durationMinutes(durationMinutes)
+                .status(ApprovalStatus.PENDING_APPROVAL)
+                .build();
+        return flightRouteRepository.save(route);
     }
 
     /**
@@ -152,32 +221,35 @@ public class SellerFlightService {
     @Transactional
     public SellerScheduleControlResponse controlSchedule(Long scheduleId, SellerScheduleControlRequest req, Long sellerId) {
         log.info("🔒 Controlling scheduleId={} by sellerId={}, type={}", scheduleId, sellerId, req.getControlType());
+        SeatClass seatClass = req.getEffectiveSeatClass();
+        Integer availableSeats = req.getEffectiveAvailableSeats();
+        java.math.BigDecimal newPrice = req.getEffectiveNewPrice();
 
         // 1. 스케줄 유효성 검증
         FlightSchedule schedule = flightScheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.FLIGHT_SCHEDULE_NOT_FOUND));
 
         // 2. 대상 등급의 재고 비관적 락 조회
-        SeatInventory inventory = seatInventoryRepository.findWithLockByFlightScheduleIdAndClassType(scheduleId, req.getClassType())
+        SeatInventory inventory = seatInventoryRepository.findWithLockByFlightScheduleIdAndClassType(scheduleId, seatClass)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.SEAT_INVENTORY_NOT_FOUND));
 
         // 3. 재고 차감/수동 조정 시 Active 예약 개수 대조 무결성 검증 추가
-        if (req.getRemainingSeats() != null) {
-            long activeBookingsCount = flightBookingRepository.countActiveBookings(scheduleId, req.getClassType());
+        if (availableSeats != null) {
+            long activeBookingsCount = flightBookingRepository.countActiveBookings(scheduleId, seatClass);
             
             // 조정하려는 남은 좌석(remainingSeats)이 전체 좌석에서 실시간 결제된 좌석 수량을 뺀 한도를 초과하여 음수 재고를 유발하는지 검사
-            if (req.getRemainingSeats() > (inventory.getTotalSeats() - activeBookingsCount)) {
+            if (availableSeats > (inventory.getTotalSeats() - activeBookingsCount)) {
                 log.warn("⚠️ Invalid seat control attempt. Tried to set remainingSeats={}, but max limit is {}",
-                        req.getRemainingSeats(), inventory.getTotalSeats() - activeBookingsCount);
+                        availableSeats, inventory.getTotalSeats() - activeBookingsCount);
                 throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
             }
             
-            inventory.setRemainingSeats(req.getRemainingSeats());
+            inventory.setRemainingSeats(availableSeats);
         }
 
         // 4. 특별 가격 Override 조정
-        if (req.getOverridePrice() != null) {
-            inventory.setBasePrice(req.getOverridePrice());
+        if (newPrice != null) {
+            inventory.setBasePrice(newPrice);
         }
 
         SeatInventory savedInventory = seatInventoryRepository.save(inventory);
@@ -186,9 +258,9 @@ public class SellerFlightService {
 
         return SellerScheduleControlResponse.builder()
                 .scheduleId(scheduleId)
-                .classType(savedInventory.getClassType())
-                .remainingSeats(savedInventory.getRemainingSeats())
-                .currentPrice(savedInventory.getBasePrice())
+                .seatClass(savedInventory.getClassType())
+                .updatedSeats(savedInventory.getRemainingSeats())
+                .updatedPrice(savedInventory.getBasePrice())
                 .build();
     }
 

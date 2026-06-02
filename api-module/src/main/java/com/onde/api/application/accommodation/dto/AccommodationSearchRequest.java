@@ -7,6 +7,7 @@ import java.util.List;
 
 @Getter @Setter
 public class AccommodationSearchRequest {
+    private String location;
     private String region;
     private LocalDate checkIn;
     private LocalDate checkOut;
@@ -15,4 +16,8 @@ public class AccommodationSearchRequest {
     private String category;
     private String sort;
     private List<String> amenities;
+
+    public String getRegion() {
+        return region != null ? region : location;
+    }
 }

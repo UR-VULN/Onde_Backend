@@ -18,10 +18,11 @@ public class AdminMemberService {
     private final MemberRepository memberRepository;
 
     @Transactional(readOnly = true)
-    public Page<MemberAdminResponse> getMembers(String role, String keyword, LocalDate startDate, LocalDate endDate, Pageable pageable) {
+    public Page<MemberAdminResponse> getMembers(String role, String status, String name, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         Page<Member> members = memberRepository.searchMembersAdmin(
                 role,
-                keyword,
+                status,
+                name,
                 startDate,
                 endDate,
                 pageable

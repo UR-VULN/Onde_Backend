@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/inventory")
+@RequestMapping({"/api/v1/inventory", "/api/inventory"})
 @RequiredArgsConstructor
 public class InventoryController {
     private final ReservationService reservationService;

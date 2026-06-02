@@ -1,6 +1,8 @@
 package com.onde.api.application.accommodation;
 
 import com.onde.api.application.accommodation.dto.RoomInventoryUpdateRequest;
+import com.onde.api.application.accommodation.dto.RoomInventoryBulkUpdateRequest;
+import com.onde.api.application.accommodation.dto.RoomInventoryBulkUpdateResponse;
 import com.onde.api.application.accommodation.dto.SellerAccommodationRegisterRequest;
 import com.onde.core.entity.accommodation.Accommodation;
 import com.onde.core.entity.accommodation.ApprovalStatus;
@@ -49,12 +51,14 @@ public class SellerAccommodationService {
 
         Accommodation savedAccommodation = accommodationRepository.save(accommodation);
 
-        for (SellerAccommodationRegisterRequest.RoomRegisterRequest roomReq : request.getRooms()) {
-            Room room = new Room();
-            room.setAccommodation(savedAccommodation);
-            room.setName(roomReq.getName());
-            room.setCapacity(roomReq.getCapacity());
-            roomRepository.save(room);
+        if (request.getRooms() != null) {
+            for (SellerAccommodationRegisterRequest.RoomRegisterRequest roomReq : request.getRooms()) {
+                Room room = new Room();
+                room.setAccommodation(savedAccommodation);
+                room.setName(roomReq.getName());
+                room.setCapacity(roomReq.getCapacity());
+                roomRepository.save(room);
+            }
         }
 
         return savedAccommodation.getId();
@@ -120,6 +124,27 @@ public class SellerAccommodationService {
 
             inventoryRepository.save(inventory);
         }
+    }
+
+    @Transactional
+    public RoomInventoryBulkUpdateResponse updateRoomInventoriesBulk(RoomInventoryBulkUpdateRequest request) {
+        List<RoomInventoryUpdateRequest> normalizedUpdates = request.updates().stream()
+                .map(update -> {
+                    RoomInventoryUpdateRequest item = new RoomInventoryUpdateRequest();
+                    item.setRoomId(request.roomId());
+                    item.setDate(update.date());
+                    item.setBasePrice(update.basePrice());
+                    item.setStock(update.stock());
+                    return item;
+                })
+                .toList();
+
+        updateRoomInventories(request.roomId(), normalizedUpdates);
+
+        List<LocalDate> updatedDates = request.updates().stream()
+                .map(RoomInventoryBulkUpdateRequest.UpdateItem::date)
+                .toList();
+        return new RoomInventoryBulkUpdateResponse(request.roomId(), updatedDates, updatedDates.size());
     }
 
     /**

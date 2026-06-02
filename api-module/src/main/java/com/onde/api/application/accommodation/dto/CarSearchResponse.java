@@ -10,4 +10,5 @@ import java.util.List;
 @NoArgsConstructor @AllArgsConstructor
 public class CarSearchResponse {
     private List<CarListDto> cars;
+    private Integer totalCount;
 }

@@ -3,13 +3,17 @@ package com.onde.api.application.auth;
 import com.onde.api.application.auth.dto.LoginRequest;
 import com.onde.api.application.auth.dto.LoginResponse;
 import com.onde.api.application.auth.dto.SignupRequest;
+import com.onde.api.application.auth.dto.SignupResponse;
 import com.onde.api.application.auth.dto.TokenRefreshRequest;
 import com.onde.api.application.auth.dto.TokenRefreshResponse;
+import com.onde.core.support.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,13 +27,15 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/signup")
-    public ResponseEntity<String> signup(@Valid @RequestBody SignupRequest request) {
-        String result = authService.signup(request);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<ApiResponse<SignupResponse>> signup(@Valid @RequestBody SignupRequest request) {
+        SignupResponse result = authService.signup(request);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(result, "회원가입이 완료되었습니다."));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse loginResponse = authService.login(request);
 
         // Access Token 쿠키 설정 (30분)
@@ -54,12 +60,43 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
-                .body(loginResponse);
+                .body(ApiResponse.success(loginResponse, "로그인에 성공하였습니다."));
+    }
+
+    @PostMapping(value = "/refresh", headers = HttpHeaders.AUTHORIZATION)
+    public ResponseEntity<ApiResponse<TokenRefreshResponse>> refreshWithAuthorizationHeader(
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
+        String refreshToken = extractBearerToken(authorization);
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new IllegalArgumentException("Refresh Token은 필수입니다.");
+        }
+
+        TokenRefreshResponse response = authService.refresh(refreshToken);
+        return ResponseEntity.ok(ApiResponse.success(response, "Access Token이 재발급되었습니다."));
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<TokenRefreshResponse> refresh(@Valid @RequestBody TokenRefreshRequest request) {
-        TokenRefreshResponse response = authService.refresh(request.getRefreshToken());
-        return ResponseEntity.ok(response);
+    public ResponseEntity<ApiResponse<TokenRefreshResponse>> refresh(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
+            @RequestBody(required = false) TokenRefreshRequest request) {
+        String refreshToken = null;
+        if (authorization != null && authorization.startsWith("Bearer ")) {
+            refreshToken = extractBearerToken(authorization);
+        } else if (request != null) {
+            refreshToken = request.getRefreshToken();
+        }
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new IllegalArgumentException("Refresh Token은 필수입니다.");
+        }
+
+        TokenRefreshResponse response = authService.refresh(refreshToken);
+        return ResponseEntity.ok(ApiResponse.success(response, "Access Token이 재발급되었습니다."));
+    }
+
+    private String extractBearerToken(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            return null;
+        }
+        return authorization.substring(7);
     }
 }

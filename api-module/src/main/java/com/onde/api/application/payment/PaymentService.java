@@ -7,7 +7,14 @@ import com.onde.api.application.membergrade.MemberGradeService;
 import com.onde.core.entity.payment.MileageLogType;
 import com.onde.core.entity.payment.Payment;
 import com.onde.core.entity.payment.PaymentStatus;
+import com.onde.core.entity.flight.BookingStatus;
+import com.onde.core.entity.flight.FlightBooking;
+import com.onde.core.entity.insurance.InsurancePolicy;
+import com.onde.core.entity.insurance.InsurancePolicyStatus;
 import com.onde.core.entity.reservation.Reservation;
+import com.onde.core.entity.reservation.ReservationStatus;
+import com.onde.core.repository.FlightBookingRepository;
+import com.onde.core.repository.InsurancePolicyRepository;
 import com.onde.core.repository.PaymentRepository;
 import com.onde.core.repository.ReservationRepository;
 import com.onde.api.infrastructure.portone.PortOneService;
@@ -37,6 +44,8 @@ public class PaymentService {
     private final MileageService mileageService;
     private final MemberGradeService memberGradeService;
     private final ReservationRepository reservationRepository;
+    private final FlightBookingRepository flightBookingRepository;
+    private final InsurancePolicyRepository insurancePolicyRepository;
     private final com.onde.core.repository.AccommodationRepository accommodationRepository;
     private final com.onde.core.repository.CarRepository carRepository;
     private final PortOneService portOneService;
@@ -60,7 +69,8 @@ public class PaymentService {
 
         // 2. 마일리지 사용액과 실제 PG사 청구액 계산
         Integer usedMileage = req.getUsedMileage() != null ? req.getUsedMileage() : 0;
-        BigDecimal pgAmount = req.getTotalAmount().subtract(BigDecimal.valueOf(usedMileage));
+        BigDecimal verifiedTotalAmount = resolveServerTotalAmount(req);
+        BigDecimal pgAmount = verifiedTotalAmount.subtract(BigDecimal.valueOf(usedMileage));
 
         // 3. 고유한 주문번호 생성 (포맷: ORDER-연도-난수8글자)
         String merchantUid = "ORDER-" + LocalDateTime.now().getYear() + "-"
@@ -71,7 +81,7 @@ public class PaymentService {
                 .userId(userId)
                 .reservationId(req.getReservationId())
                 .reservationType(req.getReservationType())
-                .totalAmount(req.getTotalAmount())
+                .totalAmount(verifiedTotalAmount)
                 .pgAmount(pgAmount)
                 .usedMileage(usedMileage)
                 .accumulatedMileage(0) // 아직 결제 성공 전이므로 적립 마일리지는 0
@@ -133,6 +143,7 @@ public class PaymentService {
         payment.setImpUid(req.getImpUid());
         payment.setAccumulatedMileage(accumulatedMileage);
         payment.setStatus(PaymentStatus.PAID);
+        confirmReservation(payment);
 
         // 6. 복합 결제에 사용된 마일리지를 차감 처리 (마일리지 로그 음수(-) 기록)
         if (payment.getUsedMileage() > 0) {
@@ -174,26 +185,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 결제 건입니다."));
 
-        // 2. 연관된 예약 조회를 통한 권한 검증 (구매자 또는 판매자인지 확인)
-        Reservation reservation = reservationRepository.findById(payment.getReservationId())
-                .orElseThrow(() -> new IllegalArgumentException("연관된 예약 정보가 존재하지 않습니다."));
-
-        boolean isBuyer = payment.getUserId().equals(userId);
-        boolean isSeller = false;
-        
-        if (reservation.getTargetType() == com.onde.core.entity.reservation.ReservationTarget.ROOM) {
-            isSeller = accommodationRepository.findById(reservation.getTargetId())
-                    .map(acc -> acc.getSellerId().equals(userId))
-                    .orElse(false);
-        } else if (reservation.getTargetType() == com.onde.core.entity.reservation.ReservationTarget.CAR) {
-            isSeller = carRepository.findById(reservation.getTargetId())
-                    .map(car -> car.getSellerId().equals(userId))
-                    .orElse(false);
-        }
-
-        if (!isBuyer && !isSeller) {
-            throw new IllegalArgumentException("해당 예약을 취소할 권한이 없습니다.");
-        }
+        validateCancelPermissionAndMarkCancelled(userId, payment);
 
         // 3. 이미 취소되었는지 상태 검증
         if (payment.getStatus() == PaymentStatus.CANCELLED || payment.getStatus() == PaymentStatus.REFUNDED) {
@@ -205,8 +197,8 @@ public class PaymentService {
             portOneService.cancelPayment(payment.getImpUid(), payment.getPgAmount(), req.getReason());
         }
 
-        // 4. 결제 상태를 REFUNDED로 변경
-        payment.setStatus(PaymentStatus.REFUNDED);
+        // 4. 결제 상태를 CANCELLED로 변경
+        payment.setStatus(PaymentStatus.CANCELLED);
 
         // 5. 결제 시 사용했던 마일리지 돌려주기 (마일리지 로그 양수(+) 기록) - 실구매자(payment.getUserId()) 기준
         if (payment.getUsedMileage() > 0) {
@@ -261,5 +253,86 @@ public class PaymentService {
                 paymentRepository.save(payment);
             }
         });
+    }
+
+    private BigDecimal resolveServerTotalAmount(PaymentPrepareRequest req) {
+        if (req.getReservationId() == null || req.getReservationType() == null) {
+            return req.getTotalAmount();
+        }
+
+        String type = req.getReservationType().trim().toUpperCase();
+        return switch (type) {
+            case "ROOM", "CAR" -> reservationRepository.findById(req.getReservationId())
+                    .map(Reservation::getTotalPrice)
+                    .orElse(req.getTotalAmount());
+            case "FLIGHT" -> flightBookingRepository.findById(req.getReservationId())
+                    .map(FlightBooking::getTotalPrice)
+                    .orElse(req.getTotalAmount());
+            case "INSURANCE" -> insurancePolicyRepository.findById(req.getReservationId())
+                    .map(InsurancePolicy::getTotalPremium)
+                    .orElse(req.getTotalAmount());
+            default -> req.getTotalAmount();
+        };
+    }
+
+    private void confirmReservation(Payment payment) {
+        String type = payment.getReservationType() != null ? payment.getReservationType().trim().toUpperCase() : "";
+        switch (type) {
+            case "ROOM", "CAR" -> reservationRepository.findById(payment.getReservationId())
+                    .ifPresent(reservation -> reservation.setStatus(ReservationStatus.CONFIRMED));
+            case "FLIGHT" -> flightBookingRepository.findById(payment.getReservationId())
+                    .ifPresent(booking -> booking.setStatus(BookingStatus.CONFIRMED));
+            case "INSURANCE" -> insurancePolicyRepository.findById(payment.getReservationId())
+                    .ifPresent(policy -> policy.setStatus(InsurancePolicyStatus.ACTIVE));
+            default -> {
+            }
+        }
+    }
+
+    private void validateCancelPermissionAndMarkCancelled(Long userId, Payment payment) {
+        boolean isBuyer = payment.getUserId().equals(userId);
+        boolean isSeller = false;
+
+        String type = payment.getReservationType() != null ? payment.getReservationType().trim().toUpperCase() : "";
+        switch (type) {
+            case "ROOM", "CAR" -> {
+                Reservation reservation = reservationRepository.findById(payment.getReservationId())
+                        .orElseThrow(() -> new IllegalArgumentException("연관된 예약 정보가 존재하지 않습니다."));
+                if (reservation.getTargetType() == com.onde.core.entity.reservation.ReservationTarget.ROOM) {
+                    isSeller = accommodationRepository.findById(reservation.getTargetId())
+                            .map(acc -> acc.getSellerId().equals(userId))
+                            .orElse(false);
+                } else if (reservation.getTargetType() == com.onde.core.entity.reservation.ReservationTarget.CAR) {
+                    isSeller = carRepository.findById(reservation.getTargetId())
+                            .map(car -> car.getSellerId().equals(userId))
+                            .orElse(false);
+                }
+                if (!isBuyer && !isSeller) {
+                    throw new IllegalArgumentException("해당 예약을 취소할 권한이 없습니다.");
+                }
+                reservation.setStatus(ReservationStatus.CANCELLED);
+            }
+            case "FLIGHT" -> {
+                FlightBooking booking = flightBookingRepository.findById(payment.getReservationId())
+                        .orElseThrow(() -> new IllegalArgumentException("연관된 항공 예약 정보가 존재하지 않습니다."));
+                if (!booking.getUserId().equals(userId) && !isBuyer) {
+                    throw new IllegalArgumentException("해당 예약을 취소할 권한이 없습니다.");
+                }
+                booking.setStatus(BookingStatus.CANCELLED);
+            }
+            case "INSURANCE" -> {
+                InsurancePolicy policy = insurancePolicyRepository.findById(payment.getReservationId())
+                        .orElseThrow(() -> new IllegalArgumentException("연관된 보험 가입 정보가 존재하지 않습니다."));
+                if (!policy.getUserId().equals(userId) && !isBuyer) {
+                    throw new IllegalArgumentException("해당 예약을 취소할 권한이 없습니다.");
+                }
+                policy.setStatus(InsurancePolicyStatus.CANCELLED);
+            }
+            default -> {
+                if (!isBuyer) {
+                    throw new IllegalArgumentException("해당 예약을 취소할 권한이 없습니다.");
+                }
+            }
+        }
     }
 }

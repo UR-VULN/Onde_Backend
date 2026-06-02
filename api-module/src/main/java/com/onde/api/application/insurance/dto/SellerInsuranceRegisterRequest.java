@@ -12,5 +12,5 @@ import java.math.BigDecimal;
 public class SellerInsuranceRegisterRequest {
     private String productName;
     private BigDecimal baseDailyRate;
-    private String coverageDetails; // JSON String
+    private Object coverageDetails; // JSON object or JSON string
 }

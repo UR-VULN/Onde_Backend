@@ -54,11 +54,14 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // ALL (누구나 접근 가능한 공개 경로)
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/flights/search").permitAll()
-                        .requestMatchers("/api/v1/insurance/calculate").permitAll() // 👈 우리 보험 경로 추가
+                        .requestMatchers("/api/v1/insurance/calculate", "/api/v1/insurances/calculate").permitAll()
+                        .requestMatchers("/api/v1/inventory/**", "/api/inventory/**").permitAll()
                         .requestMatchers("/api/v1/accommodations/**", "/api/v1/cars/**", "/api/v1/rental_cars/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/properties", "/api/v1/property").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/posts", "/api/v1/posts/*/comments").permitAll()
 
                         // SELLER (판매자만 접근 가능)
                         .requestMatchers("/api/v1/seller/**").hasRole("SELLER")

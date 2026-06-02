@@ -1,13 +1,21 @@
 package com.onde.api.application.accommodation;
 
+import com.onde.api.application.accommodation.dto.RoomInventoryBulkUpdateRequest;
+import com.onde.api.application.accommodation.dto.RoomInventoryBulkUpdateResponse;
 import com.onde.api.application.accommodation.dto.RoomInventoryUpdateRequest;
 import com.onde.api.application.accommodation.dto.SellerAccommodationRegisterRequest;
+import com.onde.api.application.accommodation.dto.SellerAccommodationRegisterResponse;
+import com.onde.api.config.MockS3Uploader;
 import com.onde.core.entity.accommodation.Inventory;
+import com.onde.core.entity.accommodation.Accommodation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -24,13 +32,57 @@ import jakarta.validation.Valid;
 @PreAuthorize("hasRole('SELLER')")
 public class SellerAccommodationController {
     private final SellerAccommodationService sellerAccommodationService;
+    private final com.onde.core.repository.AccommodationRepository accommodationRepository;
+    private final MockS3Uploader s3Uploader;
 
     // 판매자 등록 숙소 신규 등록 API (주소 규격 보정 포함)
 
-    @PostMapping("/accommodations")
-    public ResponseEntity<ApiResponse<Long>> register(@RequestBody SellerAccommodationRegisterRequest request) {
+    @PostMapping(value = "/accommodations", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<SellerAccommodationRegisterResponse>> registerJson(
+            @RequestBody SellerAccommodationRegisterRequest request,
+            @LoginMember Long sellerId) {
+        request.setSellerId(sellerId);
         Long id = sellerAccommodationService.registerAccommodation(request);
-        return ResponseEntity.ok(ApiResponse.success(id, "숙소가 성공적으로 등록되었습니다."));
+        SellerAccommodationRegisterResponse response = buildRegisterResponse(id);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "숙소 등록 신청 완료. 관리자 승인 후 노출됩니다."));
+    }
+
+    @PostMapping(value = "/accommodations", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<SellerAccommodationRegisterResponse>> registerMultipart(
+            @RequestParam(required = false) MultipartFile thumbnail,
+            @RequestParam String name,
+            @RequestParam String description,
+            @RequestParam String category,
+            @RequestParam String location,
+            @RequestParam String businessLicense,
+            @LoginMember Long sellerId) {
+        SellerAccommodationRegisterRequest request = new SellerAccommodationRegisterRequest();
+        request.setSellerId(sellerId);
+        request.setName(name);
+        request.setDescription(description);
+        request.setCategory(category);
+        request.setLocation(location);
+        request.setBusinessLicense(businessLicense);
+        request.setThumbnailUrl(s3Uploader.upload(thumbnail, "accommodations"));
+
+        Long id = sellerAccommodationService.registerAccommodation(request);
+        SellerAccommodationRegisterResponse response = buildRegisterResponse(id);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "숙소 등록 신청 완료. 관리자 승인 후 노출됩니다."));
+    }
+
+    private SellerAccommodationRegisterResponse buildRegisterResponse(Long id) {
+        Accommodation accommodation = accommodationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("숙소 등록 정보를 찾을 수 없습니다."));
+        return SellerAccommodationRegisterResponse.builder()
+                .accommodationId(accommodation.getId())
+                .name(accommodation.getName())
+                .thumbnailUrl(accommodation.getThumbnailUrl())
+                .approvalStatus(accommodation.getApprovalStatus())
+                .build();
     }
 
     // 판매자 등록 숙소 목록 조회 API
@@ -72,9 +124,9 @@ public class SellerAccommodationController {
 
     // 객실 재고/가격 수정 (벌크)
     @PutMapping("/inventories/rooms")
-    public ResponseEntity<ApiResponse<Void>> updateInventories(
-            @RequestBody List<@Valid RoomInventoryUpdateRequest> requests) {
-        sellerAccommodationService.updateRoomInventoriesBulk(requests);
-        return ResponseEntity.ok(ApiResponse.success(null, "재고 정보가 성공적으로 수정되었습니다."));
+    public ResponseEntity<ApiResponse<RoomInventoryBulkUpdateResponse>> updateInventories(
+            @Valid @RequestBody RoomInventoryBulkUpdateRequest request) {
+        RoomInventoryBulkUpdateResponse response = sellerAccommodationService.updateRoomInventoriesBulk(request);
+        return ResponseEntity.ok(ApiResponse.success(response, "객실 재고/가격 수정 성공"));
     }
 }

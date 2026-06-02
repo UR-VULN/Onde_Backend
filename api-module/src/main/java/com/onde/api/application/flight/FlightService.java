@@ -44,7 +44,7 @@ public class FlightService {
         Integer passengers = req.getPassengerCount() != null ? req.getPassengerCount() : 1;
 
         int journeyCount = dates.size();
-        List<FlightSearchResponse.JourneyDto> journeys = new ArrayList<>();
+        List<FlightSearchResponse.ScheduleDto> resultSchedules = new ArrayList<>();
 
         for (int i = 0; i < journeyCount; i++) {
             String dep = deps.get(Math.min(i, deps.size() - 1));
@@ -56,7 +56,6 @@ public class FlightService {
 
             List<FlightSchedule> schedules = flightScheduleRepository.findApprovedSchedules(dep, arr, startTime, endTime);
 
-            List<FlightSearchResponse.FlightDto> flightDtos = new ArrayList<>();
             if (!schedules.isEmpty()) {
                 List<Long> scheduleIds = schedules.stream()
                         .map(FlightSchedule::getId)
@@ -70,42 +69,29 @@ public class FlightService {
                 for (FlightSchedule fs : schedules) {
                     List<SeatInventory> fsInventories = inventoryMap.getOrDefault(fs.getId(), Collections.emptyList());
 
-                    List<FlightSearchResponse.SeatInventoryDto> seatDtos = fsInventories.stream()
+                    fsInventories.stream()
                             .filter(si -> targetClass == null || si.getClassType() == targetClass)
                             .filter(si -> si.getRemainingSeats() >= passengers)
-                            .map(si -> FlightSearchResponse.SeatInventoryDto.builder()
-                                    .classType(si.getClassType())
+                            .map(si -> FlightSearchResponse.ScheduleDto.builder()
+                                    .scheduleId(fs.getId())
+                                    .flightNumber(fs.getFlightNumber())
+                                    .origin(fs.getRoute().getDepartureAirport())
+                                    .destination(fs.getRoute().getArrivalAirport())
+                                    .departureTime(fs.getDepartureTime())
+                                    .arrivalTime(fs.getArrivalTime())
+                                    .durationMinutes(fs.getRoute().getDurationMinutes())
+                                    .seatClass(si.getClassType())
                                     .remainingSeats(si.getRemainingSeats())
-                                    .price(si.getBasePrice())
+                                    .basePrice(si.getBasePrice())
                                     .build())
-                            .collect(Collectors.toList());
-
-                    if (!seatDtos.isEmpty()) {
-                        flightDtos.add(FlightSearchResponse.FlightDto.builder()
-                                .scheduleId(fs.getId())
-                                .flightNumber(fs.getFlightNumber())
-                                .departureAirport(fs.getRoute().getDepartureAirport())
-                                .arrivalAirport(fs.getRoute().getArrivalAirport())
-                                .departureTime(fs.getDepartureTime())
-                                .arrivalTime(fs.getArrivalTime())
-                                .durationMinutes(fs.getRoute().getDurationMinutes())
-                                .availableSeats(seatDtos)
-                                .build());
-                    }
+                            .forEach(resultSchedules::add);
                 }
             }
-
-            journeys.add(FlightSearchResponse.JourneyDto.builder()
-                    .journeyIndex(i)
-                    .description(String.format("%s 여정 (%s -> %s)", i == 0 ? "가는 날" : "오는 날", dep, arr))
-                    .flights(flightDtos)
-                    .build());
         }
 
         return FlightSearchResponse.builder()
-                .tripType(req.getTripType())
-                .passengerCount(passengers)
-                .journeys(journeys)
+                .schedules(resultSchedules)
+                .totalCount(resultSchedules.size())
                 .build();
     }
 
@@ -125,13 +111,14 @@ public class FlightService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.SEAT_INVENTORY_NOT_FOUND));
 
         // 3. 잔여석 검증
-        if (inventory.getRemainingSeats() <= 0) {
+        int passengerCount = Math.max(1, req.passengerCount());
+        if (inventory.getRemainingSeats() < passengerCount) {
             log.warn("⚠️ Seat sold out for scheduleId={}, classType={}", req.getScheduleId(), req.getSeatClass());
             throw new ValidationException(ErrorCode.SEAT_SOLD_OUT);
         }
 
         // 4. 잔여석 1 감소 차감
-        inventory.setRemainingSeats(inventory.getRemainingSeats() - 1);
+        inventory.setRemainingSeats(inventory.getRemainingSeats() - passengerCount);
         seatInventoryRepository.save(inventory);
 
         // 5. 고유 예약 코드 생성 (30자 이하 규격 준수)
@@ -152,7 +139,7 @@ public class FlightService {
                 .userId(userId)
                 .passenger(passenger)
                 .seatClass(req.getSeatClass())
-                .totalPrice(req.getTotalPrice())
+                .totalPrice(req.getTotalPrice() != null ? req.getTotalPrice() : inventory.getBasePrice().multiply(java.math.BigDecimal.valueOf(passengerCount)))
                 .status(BookingStatus.PENDING_PAYMENT)
                 .reservedUntil(LocalDateTime.now().plusMinutes(10))
                 .build();
@@ -161,11 +148,15 @@ public class FlightService {
         log.info("🎉 Held seat successfully. bookingCode={}, reservedUntil={}", savedBooking.getBookingCode(), savedBooking.getReservedUntil());
 
         return FlightBookingResponse.builder()
+                .bookingId(savedBooking.getId())
                 .bookingCode(savedBooking.getBookingCode())
+                .scheduleId(savedBooking.getFlightSchedule().getId())
+                .flightNumber(savedBooking.getFlightSchedule().getFlightNumber())
                 .passengerName(savedBooking.getPassenger().getPassengerName())
                 .seatClass(savedBooking.getSeatClass())
                 .totalPrice(savedBooking.getTotalPrice())
                 .status(savedBooking.getStatus())
+                .reservedUntil(savedBooking.getReservedUntil())
                 .build();
     }
 

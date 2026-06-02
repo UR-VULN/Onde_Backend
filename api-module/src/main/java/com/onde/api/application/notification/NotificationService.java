@@ -192,6 +192,10 @@ public class NotificationService {
         return baos.toByteArray();
     }
 
+    public byte[] generatePdfTicket(Long reservationId, Long memberId) {
+        return generatePdfReceipt(reservationId, memberId);
+    }
+
     private void addTableCell(Table table, String text, boolean isBold) {
         Paragraph p = new Paragraph(text).setFontSize(10);
         if (isBold) {
@@ -224,7 +228,9 @@ public class NotificationService {
         String downloadUrl = awsS3Service.generatePresignedUrl("receipts", filename);
 
         return PresignedUrlResponse.builder()
-                .downloadUrl(downloadUrl)
+                .reservationId(reservationId)
+                .presignedUrl(downloadUrl)
+                .fileUrl(stripQueryString(downloadUrl))
                 .build();
     }
 
@@ -240,7 +246,14 @@ public class NotificationService {
         String downloadUrl = awsS3Service.generatePresignedUrl("tickets", filename);
 
         return PresignedUrlResponse.builder()
-                .downloadUrl(downloadUrl)
+                .reservationId(reservationId)
+                .presignedUrl(downloadUrl)
+                .fileUrl(stripQueryString(downloadUrl))
                 .build();
+    }
+
+    private String stripQueryString(String url) {
+        int queryIndex = url.indexOf('?');
+        return queryIndex >= 0 ? url.substring(0, queryIndex) : url;
     }
 }

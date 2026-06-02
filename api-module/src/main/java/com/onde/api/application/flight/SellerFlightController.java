@@ -33,7 +33,7 @@ public class SellerFlightController {
                 .body(ApiResponse.success(response, message));
     }
 
-    @GetMapping("/api/v1/seller/flights/calendar")
+    @GetMapping({"/api/v1/seller/schedules/calendar", "/api/v1/seller/flights/calendar"})
     public ResponseEntity<ApiResponse<List<SellerCalendarResponse>>> getCalendarSchedules(
             @RequestParam("year") Integer year,
             @RequestParam("month") Integer month,
@@ -43,9 +43,9 @@ public class SellerFlightController {
         return ResponseEntity.ok(ApiResponse.success(response, "월별 스케줄 및 실시간 잔여석 목록을 성공적으로 조회했습니다."));
     }
 
-    @PatchMapping({"/api/v1/seller/schedules/{schedule_id}/control", "/api/v1/seller/flights/schedules/{schedule_id}/control"}) // 다중 엔드포인트 오타 완전 수용
+    @PatchMapping({"/api/v1/seller/schedules/{scheduleId}/control", "/api/v1/seller/flights/schedules/{scheduleId}/control"}) // 다중 엔드포인트 오타 완전 수용
     public ResponseEntity<ApiResponse<SellerScheduleControlResponse>> controlSchedule(
-            @PathVariable("schedule_id") Long scheduleId,
+            @PathVariable("scheduleId") Long scheduleId,
             @RequestBody SellerScheduleControlRequest req,
             @LoginMember Long actualSellerId) {
 

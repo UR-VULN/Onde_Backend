@@ -10,4 +10,5 @@ import java.util.List;
 @NoArgsConstructor @AllArgsConstructor
 public class AccommodationSearchResponse {
     private List<AccommodationListDto> accommodations;
+    private Integer totalCount;
 }

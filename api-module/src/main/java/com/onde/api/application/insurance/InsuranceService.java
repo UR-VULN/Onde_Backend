@@ -1,9 +1,12 @@
 package com.onde.api.application.insurance;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.onde.api.application.insurance.dto.InsuranceCalculateRequest;
 import com.onde.api.application.insurance.dto.InsuranceCalculateResponse;
 import com.onde.api.application.insurance.dto.InsurancePolicyRequest;
 import com.onde.api.application.insurance.dto.InsurancePolicyResponse;
+import com.onde.core.entity.flight.ApprovalStatus;
 import com.onde.core.entity.insurance.InsurancePolicy;
 import com.onde.core.entity.insurance.InsurancePolicyStatus;
 import com.onde.core.entity.insurance.InsuranceProduct;
@@ -32,6 +35,7 @@ public class InsuranceService {
 
     private final InsuranceProductRepository insuranceProductRepository;
     private final InsurancePolicyRepository insurancePolicyRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * [Day 4] 실시간 동적 보험료 사전 계산 (만 나이, 여행 기간, 보장등급별 가산 요율 알고리즘 엔진)
@@ -42,6 +46,9 @@ public class InsuranceService {
         // 1. 보험 상품 조회
         InsuranceProduct product = insuranceProductRepository.findById(req.getInsuranceProductId())
                 .orElseThrow(() -> new NotFoundException(ErrorCode.INSURANCE_PRODUCT_NOT_FOUND));
+        if (product.getStatus() != ApprovalStatus.APPROVED) {
+            throw new NotFoundException(ErrorCode.INSURANCE_PRODUCT_NOT_FOUND);
+        }
 
         // 2. 여행 기간(일 수) 연산
         int tripDurationDays = (int) ChronoUnit.DAYS.between(req.getStartDate(), req.getEndDate()) + 1;
@@ -97,17 +104,12 @@ public class InsuranceService {
         log.info("🛡️ Premium calculation completed. Calculated={}, FinalPremium={}", calculated, finalPremium);
 
         return InsuranceCalculateResponse.builder()
-                .insuranceProductId(product.getId())
-                .tripDurationDays(tripDurationDays)
-                .age(age)
-                .ageMultiplier(ageMultiplier)
-                .coverageLevel(level)
-                .coverageMultiplier(coverageMultiplier)
-                .calculatedPremium(finalPremium)
-                .breakdown(InsuranceCalculateResponse.BreakdownDto.builder()
-                        .baseDailyRate(baseDailyRate)
-                        .basePremiumWithoutMultipliers(basePremiumWithoutMultipliers)
-                        .build())
+                .productId(product.getId())
+                .productName(product.getProductName())
+                .travelDays(tripDurationDays)
+                .baseDailyRate(baseDailyRate)
+                .totalPremium(finalPremium)
+                .coverageDetails(parseCoverageDetails(product.getCoverageDetails()))
                 .build();
     }
 
@@ -130,15 +132,19 @@ public class InsuranceService {
         InsuranceCalculateResponse calculated = calculatePremium(calcReq);
 
         // 2. 2중 요금 대조 검증 (Cross-Verification) 집행
-        if (calculated.getCalculatedPremium().compareTo(req.getTotalPremium()) != 0) {
+        BigDecimal requestedPremium = req.getTotalPremium() != null ? req.getTotalPremium() : calculated.getTotalPremium();
+        if (calculated.getTotalPremium().compareTo(requestedPremium) != 0) {
             log.error("❌ Insurance premium 위조 또는 일치하지 않는 가입 시도 감지. Expected={}, Inputted={}",
-                    calculated.getCalculatedPremium(), req.getTotalPremium());
+                    calculated.getTotalPremium(), requestedPremium);
             throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
         // 3. 보험 상품 조회
         InsuranceProduct product = insuranceProductRepository.findById(req.getInsuranceProductId())
                 .orElseThrow(() -> new NotFoundException(ErrorCode.INSURANCE_PRODUCT_NOT_FOUND));
+        if (product.getStatus() != ApprovalStatus.APPROVED) {
+            throw new NotFoundException(ErrorCode.INSURANCE_PRODUCT_NOT_FOUND);
+        }
 
         // 4. 고유 계약 가입 코드 생성
         String todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
@@ -155,7 +161,7 @@ public class InsuranceService {
                 .startDate(req.getStartDate())
                 .endDate(req.getEndDate())
                 .coverageLevel(req.getCoverageLevel().trim().toUpperCase())
-                .totalPremium(calculated.getCalculatedPremium())
+                .totalPremium(calculated.getTotalPremium())
                 .status(InsurancePolicyStatus.ACTIVE)
                 .build();
 
@@ -163,11 +169,24 @@ public class InsuranceService {
         log.info("🎉 Policy registration successfully. policyCode={}, premium={}", savedPolicy.getPolicyCode(), savedPolicy.getTotalPremium());
 
         return InsurancePolicyResponse.builder()
+                .policyId(savedPolicy.getId())
                 .policyCode(savedPolicy.getPolicyCode())
+                .productName(product.getProductName())
                 .insuredName(savedPolicy.getInsuredName())
+                .startDate(savedPolicy.getStartDate())
+                .endDate(savedPolicy.getEndDate())
                 .coverageLevel(savedPolicy.getCoverageLevel())
                 .totalPremium(savedPolicy.getTotalPremium())
                 .status(savedPolicy.getStatus().name())
                 .build();
+    }
+
+    private Object parseCoverageDetails(String coverageDetails) {
+        try {
+            return objectMapper.readValue(coverageDetails, new TypeReference<java.util.Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.warn("Coverage details are not valid JSON object. Returning raw value.");
+            return coverageDetails;
+        }
     }
 }

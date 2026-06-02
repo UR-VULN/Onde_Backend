@@ -16,7 +16,7 @@ public class SellerInsuranceController {
 
     private final SellerInsuranceService sellerInsuranceService;
 
-    @PostMapping("/insurance")
+    @PostMapping({"/insurances", "/insurance"})
     public ResponseEntity<ApiResponse<SellerInsuranceRegisterResponse>> proposeInsuranceProduct(
             @RequestBody SellerInsuranceRegisterRequest req,
             @LoginMember Long actualSellerId) {

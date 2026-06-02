@@ -1,9 +1,14 @@
 package com.onde.api.application.accommodation.dto;
 
 import com.onde.core.entity.accommodation.ApprovalStatus;
+import lombok.Builder;
+import lombok.Getter;
 
-public record SellerAccommodationRegisterResponse(
-    Long accommodationId,
-    ApprovalStatus approvalStatus, // 등록 직후이므로 주로 PENDING(대기) 상태 반환
-    String message
-) {}
+@Getter
+@Builder
+public class SellerAccommodationRegisterResponse {
+    private Long accommodationId;
+    private String name;
+    private String thumbnailUrl;
+    private ApprovalStatus approvalStatus;
+}

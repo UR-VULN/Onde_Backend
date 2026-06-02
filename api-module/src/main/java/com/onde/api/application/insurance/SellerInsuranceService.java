@@ -1,5 +1,7 @@
 package com.onde.api.application.insurance;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.onde.api.application.insurance.dto.SellerInsuranceRegisterRequest;
 import com.onde.api.application.insurance.dto.SellerInsuranceRegisterResponse;
 import com.onde.core.entity.flight.ApprovalStatus;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SellerInsuranceService {
 
     private final InsuranceProductRepository insuranceProductRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * [Day 5] 보험사 판매자의 신규 여행자 보험 요율 상품 등록 신청 제안
@@ -29,7 +32,7 @@ public class SellerInsuranceService {
         InsuranceProduct product = InsuranceProduct.builder()
                 .productName(req.getProductName())
                 .baseDailyRate(req.getBaseDailyRate())
-                .coverageDetails(req.getCoverageDetails()) // JSON 데이터 바인딩
+                .coverageDetails(toJson(req.getCoverageDetails())) // JSON 데이터 바인딩
                 .status(ApprovalStatus.PENDING_APPROVAL)
                 .build();
 
@@ -45,5 +48,19 @@ public class SellerInsuranceService {
 
     public java.util.List<InsuranceProduct> getAllProducts() {
         return insuranceProductRepository.findAll();
+    }
+
+    private String toJson(Object coverageDetails) {
+        if (coverageDetails == null) {
+            return "{}";
+        }
+        if (coverageDetails instanceof String value) {
+            return value;
+        }
+        try {
+            return objectMapper.writeValueAsString(coverageDetails);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("coverageDetails는 JSON 객체 또는 JSON 문자열이어야 합니다.", e);
+        }
     }
 }

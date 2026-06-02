@@ -18,7 +18,7 @@ public class InsuranceController {
 
     private final InsuranceService insuranceService;
 
-    @PostMapping("/insurance/calculate")
+    @PostMapping({"/insurances/calculate", "/insurance/calculate"})
     public ResponseEntity<ApiResponse<InsuranceCalculateResponse>> calculatePremium(
             @RequestBody InsuranceCalculateRequest req) {
         

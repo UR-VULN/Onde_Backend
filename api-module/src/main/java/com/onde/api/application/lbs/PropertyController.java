@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
 
 @RestController
 @RequestMapping({"/api/v1/properties", "/api/v1/property"}) // 프론트엔드 단수/복수형 오타 완전 수용
@@ -32,14 +31,13 @@ public class PropertyController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<PropertyMarkerDto>>> getProperties(
+    public ResponseEntity<ApiResponse<PropertySearchResponse>> getProperties(
             @RequestParam("swLat") Double swLat,
             @RequestParam("swLng") Double swLng,
             @RequestParam("neLat") Double neLat,
             @RequestParam("neLng") Double neLng) {
 
         PropertySearchResponse response = propertyService.getPropertiesByBoundingBox(swLat, swLng, neLat, neLng);
-        // 프론트엔드의 properties.map() 호출 실패(TypeError)를 원천 차단하기 위해 배열 자체를 바로 리턴
-        return ResponseEntity.ok(ApiResponse.success(response.getMarkers()));
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

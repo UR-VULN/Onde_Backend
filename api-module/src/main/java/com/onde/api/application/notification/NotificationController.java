@@ -54,15 +54,21 @@ public class NotificationController {
     }
 
     @GetMapping("/tickets/{reservationId}/download")
-    public ResponseEntity<ApiResponse<PresignedUrlResponse>> getTicketPresignedUrlFromDownload(
+    public ResponseEntity<byte[]> downloadTicket(
             @PathVariable("reservationId") Long reservationId,
             @LoginMember Long memberId) {
 
-        PresignedUrlResponse response = notificationService.getTicketPresignedUrl(reservationId, memberId);
-        return ResponseEntity.ok(ApiResponse.success(response, "E-ticket PDF 다운로드 Presigned URL 발급이 완료되었습니다."));
+        byte[] pdfBytes = notificationService.generatePdfTicket(reservationId, memberId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "ticket_reservation_" + reservationId + ".pdf");
+        headers.setCacheControl("must-revalidate, post-check=0, pre-check=0");
+
+        return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
     }
 
-    @GetMapping("/reservations/{reservationId}/ticket/presigned")
+    @RequestMapping(value = "/reservations/{reservationId}/ticket/presigned", method = {RequestMethod.POST, RequestMethod.GET})
     public ResponseEntity<ApiResponse<PresignedUrlResponse>> getTicketPresignedUrl(
             @PathVariable("reservationId") Long reservationId,
             @LoginMember Long memberId) {

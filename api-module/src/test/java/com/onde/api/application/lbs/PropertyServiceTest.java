@@ -45,7 +45,7 @@ class PropertyServiceTest {
         // when & then
         assertThatThrownBy(() -> propertyService.registerProperty(req, 1L))
                 .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("좌표는 소수점 4자리 이상 정밀도여야 합니다.");
+                .hasMessageContaining("소수점 4자리");
     }
 
     @Test

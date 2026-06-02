@@ -11,6 +11,7 @@ import java.time.LocalDate;
 @Builder
 @ToString
 public class InsurancePolicyRequest {
+    private Long productId;
     private Long insuranceProductId;
     private String insuredName;
     private LocalDate insuredBirthdate;
@@ -18,4 +19,8 @@ public class InsurancePolicyRequest {
     private LocalDate endDate;
     private String coverageLevel;
     private BigDecimal totalPremium;
+
+    public Long getInsuranceProductId() {
+        return insuranceProductId != null ? insuranceProductId : productId;
+    }
 }

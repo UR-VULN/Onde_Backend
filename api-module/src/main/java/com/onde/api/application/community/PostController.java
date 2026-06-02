@@ -47,7 +47,7 @@ public class PostController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<PostDto>>> getPosts(
+    public ResponseEntity<ApiResponse<PostSearchResponse>> getPosts(
             @RequestParam(value = "type", required = false) PostType type,
             @RequestParam(value = "status", required = false, defaultValue = "ACTIVE") PostStatus status,
             @RequestParam(value = "page", defaultValue = "0") int page,
@@ -55,8 +55,7 @@ public class PostController {
 
         Pageable pageable = PageRequest.of(page, size);
         PostSearchResponse response = postService.getPosts(type, status, pageable);
-        // 프론트엔드의 posts.map() TypeError를 완전히 예방하기 위해 content 배열 자체를 리턴
-        return ResponseEntity.ok(ApiResponse.success(response.getPosts()));
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @DeleteMapping("/{postId}")

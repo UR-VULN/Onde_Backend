@@ -1,11 +1,18 @@
 package com.onde.api.application.accommodation;
 
 import com.onde.api.security.LoginMember;
+import com.onde.core.entity.accommodation.Car;
+import com.onde.core.entity.accommodation.Inventory;
+import com.onde.core.entity.reservation.ReservationTarget;
+import com.onde.core.repository.CarRepository;
+import com.onde.core.repository.InventoryRepository;
 import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +22,8 @@ import java.util.Map;
 public class SellerCarController {
 
     private final CarService carService;
+    private final CarRepository carRepository;
+    private final InventoryRepository inventoryRepository;
 
     @GetMapping("/cars")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCars(
@@ -46,17 +55,82 @@ public class SellerCarController {
      * 렌터카 신규 등록
      */
     @PostMapping("/cars")
-    public ResponseEntity<ApiResponse<Long>> registerCar(@RequestBody Map<String, Object> request) {
-        // TODO: 비즈니스 로직 연동
-        return ResponseEntity.ok(ApiResponse.success(1L, "렌터카 등록 신청이 완료되었습니다."));
+    public ResponseEntity<ApiResponse<Long>> registerCar(
+            @RequestBody Map<String, Object> request,
+            @LoginMember Long sellerId) {
+        String licensePlate = stringValue(request.getOrDefault("licensePlate", request.get("licencePlate")));
+        if (licensePlate == null || licensePlate.isBlank()) {
+            throw new IllegalArgumentException("licensePlate은 필수입니다.");
+        }
+        if (carRepository.existsByLicensePlate(licensePlate)) {
+            throw new IllegalArgumentException("이미 등록된 차량 번호입니다.");
+        }
+
+        Car car = new Car();
+        car.setSellerId(sellerId);
+        car.setModelName(stringValue(request.get("modelName")));
+        car.setCarType(stringValue(request.get("carType")));
+        car.setLicensePlate(licensePlate);
+        car.setApprovalStatus(com.onde.core.entity.accommodation.ApprovalStatus.PENDING);
+        Car saved = carRepository.save(car);
+
+        Object dailyPrice = request.get("dailyPrice");
+        if (dailyPrice != null) {
+            Inventory inventory = new Inventory();
+            inventory.setTargetType(ReservationTarget.CAR);
+            inventory.setTargetId(saved.getId());
+            inventory.setDate(LocalDate.now());
+            inventory.setBasePrice(toBigDecimal(dailyPrice));
+            inventory.setStock(1);
+            inventoryRepository.save(inventory);
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(saved.getId(), "렌터카 등록 신청이 완료되었습니다."));
     }
 
     /**
      * 렌터카 재고/가격 수정
      */
     @PutMapping("/inventories/cars")
-    public ResponseEntity<ApiResponse<Void>> updateCarInventory(@RequestBody Map<String, Object> request) {
-        // TODO: 비즈니스 로직 연동
+    public ResponseEntity<ApiResponse<Void>> updateCarInventory(
+            @RequestBody Map<String, Object> request,
+            @LoginMember Long sellerId) {
+        Long carId = Long.valueOf(String.valueOf(request.get("carId")));
+        Car car = carRepository.findById(carId)
+                .orElseThrow(() -> new IllegalArgumentException("carId가 존재하지 않습니다."));
+        if (!car.getSellerId().equals(sellerId)) {
+            throw new IllegalArgumentException("본인 소유 차량만 수정할 수 있습니다.");
+        }
+
+        Inventory inventory = inventoryRepository.findByTargetTypeAndTargetIdAndDate(
+                        ReservationTarget.CAR, carId, LocalDate.now())
+                .orElseGet(() -> {
+                    Inventory created = new Inventory();
+                    created.setTargetType(ReservationTarget.CAR);
+                    created.setTargetId(carId);
+                    created.setDate(LocalDate.now());
+                    created.setBasePrice(BigDecimal.ZERO);
+                    created.setStock(0);
+                    return created;
+                });
+        if (request.get("dailyPrice") != null) {
+            inventory.setBasePrice(toBigDecimal(request.get("dailyPrice")));
+        }
+        if (request.get("availableCount") != null) {
+            inventory.setStock(Integer.valueOf(String.valueOf(request.get("availableCount"))));
+        }
+        inventoryRepository.save(inventory);
         return ResponseEntity.ok(ApiResponse.success(null, "렌터카 재고 및 가격이 수정되었습니다."));
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private BigDecimal toBigDecimal(Object value) {
+        if (value instanceof Number number) {
+            return BigDecimal.valueOf(number.doubleValue());
+        }
+        return new BigDecimal(String.valueOf(value));
     }
 }

@@ -1,5 +1,6 @@
 package com.onde.api.application.flight.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.onde.core.entity.flight.SeatClass;
 import lombok.*;
 import java.io.Serializable;
@@ -13,12 +14,37 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @ToString
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class FlightSearchResponse implements Serializable {
     private static final long serialVersionUID = 1L;
+
+    private List<ScheduleDto> schedules;
+    private Integer totalCount;
 
     private String tripType;
     private Integer passengerCount;
     private List<JourneyDto> journeys;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    @ToString
+    public static class ScheduleDto implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        private Long scheduleId;
+        private String flightNumber;
+        private String origin;
+        private String destination;
+        private LocalDateTime departureTime;
+        private LocalDateTime arrivalTime;
+        private Integer durationMinutes;
+        private SeatClass seatClass;
+        private Integer remainingSeats;
+        private BigDecimal basePrice;
+    }
 
     @Getter
     @Setter
