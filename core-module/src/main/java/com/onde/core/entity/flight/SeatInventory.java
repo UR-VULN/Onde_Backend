@@ -23,7 +23,7 @@ public class SeatInventory extends BaseEntity {
     private Long flightScheduleId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "class_type", nullable = false, length = 15)
+    @Column(name = "class_type", nullable = false, length = 15, columnDefinition = "VARCHAR(15)")
     private SeatClass classType; // FIRST, BUSINESS, ECONOMY
 
     @Column(name = "total_seats", nullable = false)

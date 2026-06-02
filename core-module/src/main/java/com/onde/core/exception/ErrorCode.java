@@ -30,6 +30,9 @@ public enum ErrorCode {
     // =========================================================================
     RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "R-001", "예약을 찾을 수 없습니다."),
     RESERVATION_NOT_OWNER(HttpStatus.FORBIDDEN, "R-002", "본인 예약 건만 작업 가능합니다."),
+    ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "R-003", "객실을 찾을 수 없습니다."),
+    CAR_NOT_FOUND(HttpStatus.NOT_FOUND, "R-004", "차량을 찾을 수 없습니다."),
+    INVENTORY_NOT_AVAILABLE(HttpStatus.CONFLICT, "R-005", "해당 기간에 예약 가능한 재고가 없습니다."),
 
     // =========================================================================
     // C: Community (커뮤니티/공통) 관련 오류

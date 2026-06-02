@@ -44,7 +44,7 @@ public class MileageLog {
      * 마일리지 변동 유형 (EARN / USE / RESTORE / REVOKE)
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "log_type", nullable = false, length = 10)
+    @Column(name = "log_type", nullable = false, length = 10, columnDefinition = "VARCHAR(10)")
     private MileageLogType logType;
 
     /**
@@ -60,4 +60,3 @@ public class MileageLog {
     @Column(name = "created_at", updatable = false, columnDefinition = "DATETIME DEFAULT NOW()")
     private LocalDateTime createdAt;
 }
-

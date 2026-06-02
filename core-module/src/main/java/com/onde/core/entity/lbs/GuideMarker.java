@@ -39,7 +39,7 @@ public class GuideMarker {
      * 마커 카테고리 (RESTAURANT / ATTRACTION / CAFE / etc.)
      */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 30, columnDefinition = "VARCHAR(30)")
     private MarkerCategory category;
 
     /**

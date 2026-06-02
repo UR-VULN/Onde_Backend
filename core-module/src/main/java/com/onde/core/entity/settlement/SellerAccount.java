@@ -1,18 +1,22 @@
 package com.onde.core.entity.settlement;
 
-import com.onde.core.entity.BaseEntity;
 import com.onde.core.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "seller_accounts")
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class SellerAccount extends BaseEntity {
+public class SellerAccount {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,9 +45,13 @@ public class SellerAccount extends BaseEntity {
     private String openedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false) 
+    @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'") 
     @Builder.Default
     private AccountStatus status = AccountStatus.PENDING;
+
+    @CreatedDate
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
 
     public void updateAccount(String bankName, String accountNumber, String accountHolder) {
         this.bankName = bankName;

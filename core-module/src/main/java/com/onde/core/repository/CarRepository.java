@@ -33,5 +33,5 @@ public interface CarRepository extends JpaRepository<Car, Long> {
             
        List<Car> findByApprovalStatus(ApprovalStatus status);
        List<Car> findBySellerId(Long sellerId);
+       boolean existsByLicensePlate(String licensePlate);
 }
-

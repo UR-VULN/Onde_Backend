@@ -33,7 +33,7 @@ public class FlightBooking extends BaseEntity {
     private Passenger passenger;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "seat_class", nullable = false, length = 15)
+    @Column(name = "seat_class", nullable = false, length = 15, columnDefinition = "VARCHAR(15)")
     private SeatClass seatClass;
 
     @Column(name = "total_price", precision = 12, scale = 2, nullable = false)

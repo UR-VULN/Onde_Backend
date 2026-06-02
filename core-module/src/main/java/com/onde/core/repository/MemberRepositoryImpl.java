@@ -23,13 +23,14 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public Page<Member> searchMembersAdmin(String role, String keyword, LocalDate startDate, LocalDate endDate, Pageable pageable) {
+    public Page<Member> searchMembersAdmin(String role, String status, String name, LocalDate startDate, LocalDate endDate, Pageable pageable) {
         
         List<Member> content = queryFactory
                 .selectFrom(member)
                 .where(
                         roleEq(role),
-                        keywordContains(keyword),
+                        statusEq(status),
+                        nameContains(name),
                         createdBetween(startDate, endDate)
                 )
                 .orderBy(member.id.desc())
@@ -42,7 +43,8 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
                 .from(member)
                 .where(
                         roleEq(role),
-                        keywordContains(keyword),
+                        statusEq(status),
+                        nameContains(name),
                         createdBetween(startDate, endDate)
                 );
 
@@ -56,9 +58,13 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
         return StringUtils.hasText(role) ? member.role.stringValue().eq(role) : null;
     }
 
-    private BooleanExpression keywordContains(String keyword) {
-        if (!StringUtils.hasText(keyword)) return null;
-        return member.email.containsIgnoreCase(keyword);
+    private BooleanExpression statusEq(String status) {
+        return StringUtils.hasText(status) ? member.status.stringValue().eq(status) : null;
+    }
+
+    private BooleanExpression nameContains(String name) {
+        if (!StringUtils.hasText(name)) return null;
+        return member.name.containsIgnoreCase(name).or(member.email.containsIgnoreCase(name));
     }
 
     private BooleanExpression createdBetween(LocalDate startDate, LocalDate endDate) {

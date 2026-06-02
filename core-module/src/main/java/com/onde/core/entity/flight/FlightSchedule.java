@@ -32,7 +32,7 @@ public class FlightSchedule extends BaseEntity {
     private LocalDateTime arrivalTime;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @Column(name = "status", nullable = false, length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING_APPROVAL'")
     @Builder.Default
     private ApprovalStatus status = ApprovalStatus.PENDING_APPROVAL;
 

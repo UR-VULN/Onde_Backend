@@ -41,7 +41,7 @@ public class FcmToken extends BaseEntity {
      * WEB / ANDROID / IOS 클라이언트 플랫폼 분류
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "device_type", length = 20)
+    @Column(name = "device_type", length = 20, columnDefinition = "VARCHAR(20)")
     private DeviceType deviceType;
 
     /**

@@ -14,11 +14,10 @@ import java.math.BigDecimal;
 public class Room extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "room_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "accommodation_id", nullable = false)
+    @JoinColumn(name = "accommodation_id", nullable = false, referencedColumnName = "id")
     private Accommodation accommodation;
 
     @Column(name = "name", nullable = false, length = 100)

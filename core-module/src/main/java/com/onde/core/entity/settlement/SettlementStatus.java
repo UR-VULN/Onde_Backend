@@ -21,8 +21,12 @@ public enum SettlementStatus {
     APPROVED_1ST,
 
     /**
+     * REJECTED: 영업 관리자 검토에서 반려된 상태
+     */
+    REJECTED,
+
+    /**
      * COMPLETED: 본사 최고 관리자가 최종 지급 확정을 완료한 상태
      */
     COMPLETED
 }
-

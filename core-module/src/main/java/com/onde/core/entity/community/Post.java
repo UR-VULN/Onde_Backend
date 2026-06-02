@@ -47,7 +47,7 @@ public class Post extends BaseEntity {
      * 게시글 유형 (REVIEW / COMPANION)
      */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20)")
     private PostType type;
 
     /**

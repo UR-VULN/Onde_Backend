@@ -21,14 +21,13 @@ import java.time.LocalDateTime;
 public class Reservation extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "reservation_id")
     private Long id;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "target_type", nullable = false, length = 10)
+    @Column(name = "target_type", nullable = false, length = 10, columnDefinition = "VARCHAR(10)")
     private ReservationTarget targetType;
 
     @Column(name = "target_id", nullable = false)

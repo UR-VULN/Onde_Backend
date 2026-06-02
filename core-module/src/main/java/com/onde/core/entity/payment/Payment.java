@@ -92,7 +92,7 @@ public class Payment {
      * 결제 상태 (PAID: 완료, CANCELLED: 취소, REFUNDED: 환불)
      */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20)")
     private PaymentStatus status;
 
     /**
@@ -109,4 +109,3 @@ public class Payment {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }
-
