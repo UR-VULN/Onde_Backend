@@ -3,6 +3,7 @@ package com.onde.admin.application.dashboard;
 import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -19,6 +20,7 @@ public class AdminDashboardController {
      * 일반 운영 지표 요약
      */
     @GetMapping("/operational")
+    @PreAuthorize("hasRole('GENERAL_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getOperational() {
         Map<String, Object> data = adminDashboardService.getOperationalMetrics();
         return ResponseEntity.ok(ApiResponse.success(data));
@@ -28,6 +30,7 @@ public class AdminDashboardController {
      * 전사 총매출 대시보드 요약
      */
     @GetMapping("/summary")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SALES_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getSummary(
             @RequestParam(name = "month") String month) {
         
@@ -39,6 +42,7 @@ public class AdminDashboardController {
      * 도메인별 매출 비중 차트
      */
     @GetMapping("/charts")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SALES_ADMIN', 'GENERAL_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCharts(
             @RequestParam(name = "month") String month) {
         
@@ -46,4 +50,3 @@ public class AdminDashboardController {
         return ResponseEntity.ok(ApiResponse.success(data));
     }
 }
-

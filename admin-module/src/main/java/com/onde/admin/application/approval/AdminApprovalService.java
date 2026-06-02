@@ -92,22 +92,55 @@ public class AdminApprovalService {
      */
     @Transactional
     public ApprovalProcessResponse processApproval(ApprovalProcessRequest request) {
-        log.info("💼 Processing body-based approval for targetId={}", request.targetId());
-        
-        ApprovalStatus status = ApprovalStatus.valueOf(request.status().toUpperCase());
+        String approvalType = normalizeApprovalType(request.approvalType());
+        String status = normalizeApprovalAction(request.action(), request.status());
+        LocalDateTime processedAt = LocalDateTime.now();
 
-        Accommodation accommodation = accommodationRepository.findById(request.targetId())
-                .orElseThrow(() -> new NotFoundException(ErrorCode.INTERNAL_SERVER_ERROR)); // 기존 RuntimeException 고도화
+        log.info("💼 Processing body-based approval. approvalType={}, targetId={}, status={}",
+                approvalType, request.targetId(), status);
 
-        // 팀원의 엔티티 메서드 또는 필드 형태에 맞춰 상태 반영 (팀원 코드가 스네이크/카멜 케이스 에넘을 동기화하게 바인딩)
-        accommodation.setApprovalStatus(status);
-        accommodationRepository.save(accommodation);
+        switch (approvalType) {
+            case "FLIGHT" -> {
+                FlightSchedule schedule = flightScheduleRepository.findById(request.targetId())
+                        .orElseThrow(() -> new NotFoundException(ErrorCode.FLIGHT_SCHEDULE_NOT_FOUND));
+                com.onde.core.entity.flight.ApprovalStatus flightStatus =
+                        com.onde.core.entity.flight.ApprovalStatus.valueOf(status);
+                schedule.setStatus(flightStatus);
+                if (flightStatus == com.onde.core.entity.flight.ApprovalStatus.REJECTED) {
+                    schedule.setRejectReason(request.rejectReason());
+                }
+                flightScheduleRepository.save(schedule);
+                if (flightStatus == com.onde.core.entity.flight.ApprovalStatus.APPROVED) {
+                    clearRedisCache("flightSearch*");
+                }
+            }
+            case "INSURANCE" -> {
+                InsuranceProduct product = insuranceProductRepository.findById(request.targetId())
+                        .orElseThrow(() -> new NotFoundException(ErrorCode.INSURANCE_PRODUCT_NOT_FOUND));
+                com.onde.core.entity.flight.ApprovalStatus insuranceStatus =
+                        com.onde.core.entity.flight.ApprovalStatus.valueOf(status);
+                product.setStatus(insuranceStatus);
+                if (insuranceStatus == com.onde.core.entity.flight.ApprovalStatus.REJECTED) {
+                    product.setRejectReason(request.rejectReason());
+                }
+                insuranceProductRepository.save(product);
+            }
+            case "ACCOMMODATION" -> {
+                Accommodation accommodation = accommodationRepository.findById(request.targetId())
+                        .orElseThrow(() -> new NotFoundException(ErrorCode.INTERNAL_SERVER_ERROR));
+                accommodation.setApprovalStatus(ApprovalStatus.valueOf(status));
+                accommodationRepository.save(accommodation);
+            }
+            case "CAR" -> {
+                Car car = carRepository.findById(request.targetId())
+                        .orElseThrow(() -> new NotFoundException(ErrorCode.INTERNAL_SERVER_ERROR));
+                car.setApprovalStatus(ApprovalStatus.valueOf(status));
+                carRepository.save(car);
+            }
+            default -> throw new com.onde.core.exception.ValidationException(ErrorCode.INVALID_INPUT_VALUE);
+        }
 
-        return new ApprovalProcessResponse(
-                accommodation.getId(), 
-                status,
-                "심사가 성공적으로 반영되었습니다."
-        );
+        return new ApprovalProcessResponse(approvalType, request.targetId(), status, processedAt);
     }
 
     /**
@@ -115,24 +148,28 @@ public class AdminApprovalService {
      */
     @Transactional
     public AdminApprovalResponse processApproval(Long requestId, AdminApprovalRequest req) {
+        com.onde.core.entity.flight.ApprovalStatus decision = req.getResolvedDecision();
+        if (decision == null) {
+            throw new com.onde.core.exception.ValidationException(ErrorCode.INVALID_INPUT_VALUE);
+        }
         log.info("💼 Processing path-based approval requestId={}, category={}, decision={}",
-                requestId, req.getCategory(), req.getDecision());
+                requestId, req.getCategory(), decision);
 
-        String category = req.getCategory().trim().toUpperCase();
+        String category = resolvePathApprovalCategory(requestId, req.getCategory());
         LocalDateTime now = LocalDateTime.now();
 
         if (category.equals("FLIGHT")) {
             FlightSchedule schedule = flightScheduleRepository.findById(requestId)
                     .orElseThrow(() -> new NotFoundException(ErrorCode.FLIGHT_SCHEDULE_NOT_FOUND));
 
-            schedule.setStatus(req.getDecision());
-            if (req.getDecision() == com.onde.core.entity.flight.ApprovalStatus.REJECTED) {
-                schedule.setRejectReason(req.getRejectReason());
+            schedule.setStatus(decision);
+            if (decision == com.onde.core.entity.flight.ApprovalStatus.REJECTED) {
+                schedule.setRejectReason(req.getResolvedRejectReason());
             }
             flightScheduleRepository.save(schedule);
 
             // 항공 상품 승인(APPROVED) 성공 시 관련된 Redis 항공 검색 캐시 즉시 일괄 무효화
-            if (req.getDecision() == com.onde.core.entity.flight.ApprovalStatus.APPROVED) {
+            if (decision == com.onde.core.entity.flight.ApprovalStatus.APPROVED) {
                 clearRedisCache("flightSearch*");
             }
 
@@ -140,9 +177,9 @@ public class AdminApprovalService {
             InsuranceProduct product = insuranceProductRepository.findById(requestId)
                     .orElseThrow(() -> new NotFoundException(ErrorCode.INSURANCE_PRODUCT_NOT_FOUND));
 
-            product.setStatus(req.getDecision());
-            if (req.getDecision() == com.onde.core.entity.flight.ApprovalStatus.REJECTED) {
-                product.setRejectReason(req.getRejectReason());
+            product.setStatus(decision);
+            if (decision == com.onde.core.entity.flight.ApprovalStatus.REJECTED) {
+                product.setRejectReason(req.getResolvedRejectReason());
             }
             insuranceProductRepository.save(product);
 
@@ -150,13 +187,48 @@ public class AdminApprovalService {
             throw new com.onde.core.exception.ValidationException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
-        log.info("🎉 Approval decision applied successfully. requestId={}, decision={}", requestId, req.getDecision());
+        log.info("🎉 Approval decision applied successfully. requestId={}, decision={}", requestId, decision);
 
         return AdminApprovalResponse.builder()
                 .requestId(requestId)
-                .decision(req.getDecision())
-                .updatedAt(now)
+                .status(decision)
+                .processedAt(now)
                 .build();
+    }
+
+    private String normalizeApprovalType(String approvalType) {
+        if (approvalType == null || approvalType.isBlank()) {
+            return "ACCOMMODATION";
+        }
+        return approvalType.trim().toUpperCase();
+    }
+
+    private String normalizeApprovalAction(String action, String status) {
+        String value = action != null && !action.isBlank() ? action : status;
+        if (value == null || value.isBlank()) {
+            throw new com.onde.core.exception.ValidationException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+        String normalized = value.trim().toUpperCase();
+        if (normalized.equals("APPROVE")) {
+            return "APPROVED";
+        }
+        if (normalized.equals("REJECT")) {
+            return "REJECTED";
+        }
+        return normalized;
+    }
+
+    private String resolvePathApprovalCategory(Long requestId, String category) {
+        if (category != null && !category.isBlank()) {
+            return category.trim().toUpperCase();
+        }
+        if (flightScheduleRepository.existsById(requestId)) {
+            return "FLIGHT";
+        }
+        if (insuranceProductRepository.existsById(requestId)) {
+            return "INSURANCE";
+        }
+        throw new com.onde.core.exception.ValidationException(ErrorCode.INVALID_INPUT_VALUE);
     }
 
     /**

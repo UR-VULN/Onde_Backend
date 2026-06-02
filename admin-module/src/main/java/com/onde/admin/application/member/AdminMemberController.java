@@ -1,9 +1,13 @@
 package com.onde.admin.application.member;
 
+import com.onde.admin.application.member.dto.BlacklistRequest;
 import com.onde.admin.application.member.dto.MemberAdminResponse;
 import com.onde.admin.application.member.dto.MemberSearchRequest;
 import com.onde.admin.application.member.dto.RoleUpdateRequest;
+import com.onde.core.entity.member.Member;
+import com.onde.core.entity.member.MemberRole;
 import com.onde.core.repository.MemberRepository;
+import com.onde.core.support.ApiResponse;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -13,6 +17,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/admin")
@@ -22,33 +30,53 @@ public class AdminMemberController {
     private final AdminMemberService adminMemberService;
     private final MemberRepository memberRepository;
 
-    // 전사 회원 리스트 다중 필터 (GET)
     @GetMapping("/members")
-    public ResponseEntity<Page<MemberAdminResponse>> searchMembers(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> searchMembers(
             @ModelAttribute MemberSearchRequest request,
-            @PageableDefault(size = 10) Pageable pageable) {
+            @PageableDefault(size = 20) Pageable pageable) {
         
-        Page<MemberAdminResponse> response = adminMemberService.getMembers(request, pageable);
-        return ResponseEntity.ok(response);
+        Page<MemberAdminResponse> page = adminMemberService.getMembers(request, pageable);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("members", page.getContent());
+        data.put("totalCount", page.getTotalElements());
+        data.put("page", page.getNumber());
+        data.put("size", page.getSize());
+        return ResponseEntity.ok(ApiResponse.success(data, "조회되었습니다."));
     }
 
-    // 회원 블랙리스트 처리 (POST)
     @PostMapping("/members/{id}/blacklist")
-    public ResponseEntity<String> blacklistMember(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> blacklistMember(
+            @PathVariable Long id,
+            @RequestBody(required = false) BlacklistRequest request) {
         
-        adminMemberService.blacklistMember(id);
-        return ResponseEntity.ok("해당 회원이 블랙리스트로 지정되었으며, 강제 로그아웃 처리되었습니다.");
+        adminMemberService.blacklistMember(id, request != null ? request.getReason() : null);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("memberId", id);
+        data.put("role", MemberRole.BLACKLIST.name());
+        data.put("blacklistedAt", LocalDateTime.now());
+        return ResponseEntity.ok(ApiResponse.success(data, "블랙리스트 처리되었습니다."));
     }
 
-    // ADM-003: 최고 관리자의 직원 권한 수정
     @PatchMapping("/roles/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public ResponseEntity<String> updateRole(@PathVariable Long id, 
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateRole(@PathVariable Long id,
                                              @RequestBody RoleUpdateRequest request,
                                              Principal principal) {
         Long currentAdminId = getAdminIdFromPrincipal(principal);
-        adminMemberService.updateMemberRole(id, currentAdminId, request.getNewRole());
-        return ResponseEntity.ok("권한이 성공적으로 변경되었습니다.");
+        MemberRole appliedRole = adminMemberService.updateMemberRole(id, currentAdminId, request.resolvePrimaryRole());
+        Member member = memberRepository.findById(id).orElseThrow();
+        List<String> roles = request.getRoles() != null && !request.getRoles().isEmpty()
+                ? request.getRoles().stream().map(MemberRole::name).toList()
+                : List.of(appliedRole.name());
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("memberId", id);
+        data.put("email", member.getEmail());
+        data.put("roles", roles);
+        data.put("updatedAt", LocalDateTime.now());
+        return ResponseEntity.ok(ApiResponse.success(data, "권한이 수정되었습니다."));
     }
 
     private Long getAdminIdFromPrincipal(Principal principal) {

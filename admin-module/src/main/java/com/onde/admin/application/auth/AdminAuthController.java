@@ -3,6 +3,7 @@ package com.onde.admin.application.auth;
 import com.onde.admin.application.auth.dto.PasswordChangeRequest;
 import com.onde.core.entity.member.Member;
 import com.onde.core.repository.MemberRepository;
+import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,7 +21,7 @@ public class AdminAuthController {
     private final MemberRepository memberRepository;
 
     @PostMapping("/password-change")
-    public ResponseEntity<String> changePassword(
+    public ResponseEntity<ApiResponse<Void>> changePassword(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody PasswordChangeRequest request) {
         
@@ -30,6 +31,6 @@ public class AdminAuthController {
 
         adminAuthService.changePassword(admin.getId(), request.getCurrentPassword(), request.getNewPassword());
         
-        return ResponseEntity.ok("비밀번호가 성공적으로 변경되었습니다. 다시 로그인해 주세요.");
+        return ResponseEntity.ok(ApiResponse.success(null, "비밀번호가 성공적으로 변경되었습니다."));
     }
 }

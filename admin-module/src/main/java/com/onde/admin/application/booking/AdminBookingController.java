@@ -3,6 +3,8 @@ package com.onde.admin.application.booking;
 import com.onde.admin.application.booking.dto.AdminBookingCancelResponse;
 import com.onde.admin.application.booking.dto.AdminBookingSearchRequest;
 import com.onde.admin.application.booking.dto.AdminBookingSearchResponse;
+import com.onde.admin.application.booking.dto.AdminBookingStatusUpdateRequest;
+import com.onde.admin.application.booking.dto.AdminBookingStatusUpdateResponse;
 import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,20 +22,21 @@ import java.nio.charset.StandardCharsets;
 @RestController
 @RequestMapping("/api/v1/admin/bookings") // 👈 v1 규격 및 도메인 베이스 패스 단일화
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN', 'GENERAL_ADMIN', 'SUPER_ADMIN')") // 👈 본사 관리자 권한 이중 잠금
+@PreAuthorize("hasAnyRole('SALES_ADMIN', 'GENERAL_ADMIN', 'SUPER_ADMIN')") // 👈 본사 관리자 권한 이중 잠금
 public class AdminBookingController {
 
     private final AdminBookingService adminBookingService;
 
     /**
-     * [첫 번째 코드 Skinner] 예약 이용 완료 강제 처리 (숙소/렌터카 도메인)
+     * 관리자 항공 예약 상태 수동 변경
      */
-    @PutMapping("/{bookingId}/status")
-    public ResponseEntity<ApiResponse<Void>> forceCompleteBooking(
-            @PathVariable("bookingId") Long bookingId) {
+    @RequestMapping(value = "/{bookingId}/status", method = {RequestMethod.PATCH, RequestMethod.PUT})
+    public ResponseEntity<ApiResponse<AdminBookingStatusUpdateResponse>> updateBookingStatus(
+            @PathVariable("bookingId") Long bookingId,
+            @RequestBody AdminBookingStatusUpdateRequest request) {
         
-        adminBookingService.forceCompleteBooking(bookingId);
-        return ResponseEntity.ok(ApiResponse.success(null, "해당 예약의 이용 상태가 완료로 강제 업데이트되었습니다."));
+        AdminBookingStatusUpdateResponse response = adminBookingService.updateFlightBookingStatus(bookingId, request);
+        return ResponseEntity.ok(ApiResponse.success(response, "예약 상태가 변경되었습니다."));
     }
 
     /**

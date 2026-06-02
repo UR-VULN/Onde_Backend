@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/admin/approvals")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN', 'GENERAL_ADMIN', 'SUPER_ADMIN')")
+@PreAuthorize("hasAnyRole('SALES_ADMIN', 'GENERAL_ADMIN', 'SUPER_ADMIN')")
 public class AdminApprovalController {
 
     private final AdminApprovalService adminApprovalService;
@@ -60,7 +60,7 @@ public class AdminApprovalController {
         log.info("🔑 Admin endpoint accessed: /{}", requestId);
 
         AdminApprovalResponse response = adminApprovalService.processApproval(requestId, req);
-        String message = String.format("해당 상품의 검수 상태가 %s(으)로 최종 업데이트되었습니다.", response.getDecision().name());
+        String message = String.format("해당 상품의 검수 상태가 %s(으)로 최종 업데이트되었습니다.", response.getStatus().name());
 
         return ResponseEntity.ok(ApiResponse.success(response, message));
     }

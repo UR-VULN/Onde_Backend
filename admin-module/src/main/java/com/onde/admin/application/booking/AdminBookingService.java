@@ -4,6 +4,8 @@ import com.onde.admin.application.booking.dto.AdminBookingCancelResponse;
 import com.onde.admin.application.booking.dto.AdminBookingDto;
 import com.onde.admin.application.booking.dto.AdminBookingSearchRequest;
 import com.onde.admin.application.booking.dto.AdminBookingSearchResponse;
+import com.onde.admin.application.booking.dto.AdminBookingStatusUpdateRequest;
+import com.onde.admin.application.booking.dto.AdminBookingStatusUpdateResponse;
 import com.onde.core.entity.flight.BookingStatus;
 import com.onde.core.entity.flight.FlightBooking;
 import com.onde.core.entity.flight.SeatInventory;
@@ -35,6 +37,9 @@ public class AdminBookingService {
     private final ReservationRepository reservationRepository;
     private final FlightBookingRepository flightBookingRepository;
     private final SeatInventoryRepository seatInventoryRepository;
+    private final com.onde.core.repository.MemberRepository memberRepository;
+    private final com.onde.core.repository.RoomRepository roomRepository;
+    private final com.onde.core.repository.CarRepository carRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -44,17 +49,54 @@ public class AdminBookingService {
         List<Reservation> reservations = reservationRepository.findAll();
         
         List<AdminBookingDto> dtos = reservations.stream()
+                .filter(r -> request.status() == null || r.getStatus() == request.status())
+                .filter(r -> matchesTargetType(r, request.targetType()))
+                .filter(r -> request.startDate() == null || !r.getCheckIn().toLocalDate().isBefore(request.startDate()))
+                .filter(r -> request.endDate() == null || !r.getCheckOut().toLocalDate().isAfter(request.endDate()))
                 .map(r -> new AdminBookingDto(
                         r.getId(),
-                        "예약자명", 
-                        "숙소/렌터카명", 
-                        null, 
-                        null, 
+                        resolveMemberName(r.getUserId()),
+                        resolveTargetName(r),
+                        r.getCheckIn(),
+                        r.getCheckOut(),
                         r.getStatus()
                 ))
+                .filter(dto -> request.memberName() == null || dto.memberName().contains(request.memberName()))
                 .collect(Collectors.toList());
 
         return new AdminBookingSearchResponse(dtos, dtos.size());
+    }
+
+    private boolean matchesTargetType(Reservation reservation, String targetType) {
+        if (targetType == null || targetType.isBlank()) {
+            return true;
+        }
+        String normalized = targetType.trim().toUpperCase();
+        return switch (normalized) {
+            case "ACCOMMODATION", "ROOM", "STAYS" -> reservation.getTargetType() == com.onde.core.entity.reservation.ReservationTarget.ROOM;
+            case "CAR", "CARS", "RENTAL_CAR" -> reservation.getTargetType() == com.onde.core.entity.reservation.ReservationTarget.CAR;
+            default -> true;
+        };
+    }
+
+    private String resolveMemberName(Long userId) {
+        return memberRepository.findById(userId)
+                .map(member -> member.getName() != null ? member.getName() : member.getEmail())
+                .orElse("알 수 없음");
+    }
+
+    private String resolveTargetName(Reservation reservation) {
+        if (reservation.getTargetType() == com.onde.core.entity.reservation.ReservationTarget.ROOM) {
+            return roomRepository.findById(reservation.getTargetId())
+                    .map(room -> room.getAccommodation().getName())
+                    .orElse("숙소");
+        }
+        if (reservation.getTargetType() == com.onde.core.entity.reservation.ReservationTarget.CAR) {
+            return carRepository.findById(reservation.getTargetId())
+                    .map(com.onde.core.entity.accommodation.Car::getModelName)
+                    .orElse("렌터카");
+        }
+        return "예약 상품";
     }
 
     /**
@@ -66,6 +108,28 @@ public class AdminBookingService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.INTERNAL_SERVER_ERROR));
 
         reservation.setStatus(ReservationStatus.COMPLETED); 
+    }
+
+    /**
+     * 관리자 항공 예약 상태 수동 변경
+     */
+    @Transactional
+    public AdminBookingStatusUpdateResponse updateFlightBookingStatus(Long bookingId, AdminBookingStatusUpdateRequest request) {
+        FlightBooking booking = flightBookingRepository.findById(bookingId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.BOOKING_NOT_FOUND));
+
+        BookingStatus previousStatus = booking.getStatus();
+        BookingStatus nextStatus = BookingStatus.valueOf(request.status().trim().toUpperCase());
+        booking.setStatus(nextStatus);
+
+        FlightBooking savedBooking = flightBookingRepository.save(booking);
+        return new AdminBookingStatusUpdateResponse(
+                savedBooking.getId(),
+                savedBooking.getBookingCode(),
+                previousStatus,
+                savedBooking.getStatus(),
+                savedBooking.getUpdatedAt()
+        );
     }
 
     /**

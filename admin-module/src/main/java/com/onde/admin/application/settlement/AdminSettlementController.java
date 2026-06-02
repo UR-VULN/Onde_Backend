@@ -8,8 +8,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,6 +41,7 @@ public class AdminSettlementController {
      * @return 페이징된 정산 데이터 목록, 입점사 계좌 정보 및 전체 엘리먼트 개수를 담은 성공 공통 응답 객체
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('SALES_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getSettlements(
             @RequestParam(name = "status", required = false) SettlementStatus status,
             @RequestParam(name = "page", defaultValue = "0") int page,
@@ -95,6 +98,7 @@ public class AdminSettlementController {
      * @return 1차 승인이 완료된 정산 식별 ID 및 갱신 상태 정보
      */
     @PostMapping("/{settlementId}/approve-first")
+    @PreAuthorize("hasRole('SALES_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> approveFirst(
             @PathVariable("settlementId") Long settlementId,
             @RequestBody Map<String, String> body) {
@@ -110,6 +114,43 @@ public class AdminSettlementController {
         return ResponseEntity.ok(ApiResponse.success(data, "1차 승인 처리되었습니다."));
     }
 
+    @PostMapping("/{settlementId}/approve")
+    @PreAuthorize("hasAnyRole('SALES_ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> approve(
+            @PathVariable("settlementId") Long settlementId,
+            @RequestBody(required = false) Map<String, String> body) {
+        Settlement updated = adminSettlementService.approveSettlement(
+                settlementId,
+                body != null ? body.get("comment") : null);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("settlementId", updated.getId());
+        data.put("status", updated.getStatus());
+        data.put("approvedAt", updated.getApprovedAt());
+
+        return ResponseEntity.ok(ApiResponse.success(data, "정산 승인 완료"));
+    }
+
+    @PostMapping("/{settlementId}/reject")
+    @PreAuthorize("hasAnyRole('SALES_ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> reject(
+            @PathVariable("settlementId") Long settlementId,
+            @RequestBody(required = false) Map<String, String> body) {
+        String rejectReason = body != null ? body.getOrDefault("rejectReason", body.get("comment")) : null;
+        LocalDateTime rejectedAt = LocalDateTime.now();
+        Settlement updated = adminSettlementService.rejectSettlement(
+                settlementId,
+                rejectReason);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("settlementId", updated.getId());
+        data.put("status", updated.getStatus());
+        data.put("rejectReason", rejectReason);
+        data.put("rejectedAt", rejectedAt);
+
+        return ResponseEntity.ok(ApiResponse.success(data, "정산이 반려되었습니다."));
+    }
+
     /**
      * [본사 최고 관리자(SUPER_ADMIN)의 최종 정산 확정 및 지급 완료 API]
      * 1차 승인(APPROVED_1ST)을 거친 정산 건에 대해 입금을 확정 짓고 정산 절차를 완료(COMPLETED) 상태로 종결합니다.
@@ -119,6 +160,7 @@ public class AdminSettlementController {
      * @return 최종 지급 및 확정이 완결된 정산 식별 ID 및 상태 정보
      */
     @PostMapping("/{settlementId}/finalize")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> finalizeSettlement(
             @PathVariable("settlementId") Long settlementId,
             @RequestBody Map<String, String> body) {
@@ -134,5 +176,3 @@ public class AdminSettlementController {
         return ResponseEntity.ok(ApiResponse.success(data, "정산이 최종 확정되었습니다."));
     }
 }
-
-

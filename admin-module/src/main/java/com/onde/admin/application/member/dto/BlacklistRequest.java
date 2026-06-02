@@ -1,3 +1,10 @@
 package com.onde.admin.application.member.dto;
 
-public class BlacklistRequest {}
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class BlacklistRequest {
+    private String reason;
+}

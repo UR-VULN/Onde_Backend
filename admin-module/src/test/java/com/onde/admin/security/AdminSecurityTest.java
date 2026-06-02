@@ -35,8 +35,8 @@ public class AdminSecurityTest {
     void testAccessDeniedWithoutToken() throws Exception {
         mockMvc.perform(get("/api/v1/admin/members"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("AUTH-001"))
-                .andExpect(jsonPath("$.status").value(401));
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("AUTH-001"));
     }
 
     @Test
@@ -47,7 +47,7 @@ public class AdminSecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"role\": \"GENERAL_ADMIN\"}"))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("AUTH-002"))
-                .andExpect(jsonPath("$.status").value(403));
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("AUTH-002"));
     }
 }
