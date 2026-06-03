@@ -25,7 +25,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/admin/accommodations")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('SALES_ADMIN', 'GENERAL_ADMIN', 'SUPER_ADMIN')")
+@PreAuthorize("hasAnyRole('SELLER_ADMIN', 'USER_ADMIN', 'SUPER_ADMIN')")
 public class AdminAccommodationController {
 
     private final AccommodationRepository accommodationRepository;
@@ -82,6 +82,7 @@ public class AdminAccommodationController {
      * 매물 승인/반려
      */
     @PutMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
     @Transactional
     public ResponseEntity<ApiResponse<AdminAccommodationStatusResponse>> updateAccommodationStatus(
             @PathVariable Long id,

@@ -20,7 +20,7 @@ public class AdminDashboardController {
      * 일반 운영 지표 요약
      */
     @GetMapping("/operational")
-    @PreAuthorize("hasRole('GENERAL_ADMIN')")
+    @PreAuthorize("hasRole('USER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getOperational() {
         Map<String, Object> data = adminDashboardService.getOperationalMetrics();
         return ResponseEntity.ok(ApiResponse.success(data));
@@ -30,7 +30,7 @@ public class AdminDashboardController {
      * 전사 총매출 대시보드 요약
      */
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SALES_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SELLER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getSummary(
             @RequestParam(name = "month") String month) {
         
@@ -42,7 +42,7 @@ public class AdminDashboardController {
      * 도메인별 매출 비중 차트
      */
     @GetMapping("/charts")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SALES_ADMIN', 'GENERAL_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SELLER_ADMIN', 'USER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCharts(
             @RequestParam(name = "month") String month) {
         

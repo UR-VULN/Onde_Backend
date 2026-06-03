@@ -46,6 +46,7 @@ public class AdminMemberController {
     }
 
     @PostMapping("/members/{id}/blacklist")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> blacklistMember(
             @PathVariable Long id,
             @RequestBody(required = false) BlacklistRequest request) {

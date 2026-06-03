@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/admin/markers")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('SUPER_ADMIN', 'GENERAL_ADMIN')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN', 'USER_ADMIN')")
 public class AdminMarkerController {
 
     private final AdminMarkerService adminMarkerService;

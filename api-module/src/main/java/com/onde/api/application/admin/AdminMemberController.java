@@ -30,7 +30,7 @@ public class AdminMemberController {
      * role, status, name, 가입일(startDate, endDate)을 통한 필터링 지원
      */
     @GetMapping("/members")
-    @PreAuthorize("hasAnyRole('SALES_ADMIN', 'GENERAL_ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'USER_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> searchMembers(
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String status,

@@ -126,7 +126,7 @@ public class SettlementService {
     }
  
     /**
-     * 본사의 1차 정산 담당자(SALES_ADMIN)가 판매자의 지급 신청(REQUESTED) 건을 검토한 후 승인합니다.
+     * 본사의 1차 정산 담당자(SELLER_ADMIN)가 판매자의 지급 신청(REQUESTED) 건을 검토한 후 승인합니다.
      * 상태가 APPROVED_1ST로 전이됩니다.
      *
      * @param settlementId 1차 승인할 정산 건의 식별자
