@@ -50,6 +50,7 @@ public enum ErrorCode {
     // =========================================================================
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH-001", "인증에 실패하였습니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "AUTH-002", "해당 API에 접근할 권한이 없습니다."),
+    SELLER_PENDING_APPROVAL(HttpStatus.BAD_REQUEST, "AUTH-003", "판매자 계정은 관리자 승인 대기 중입니다. 승인 완료 후 로그인할 수 있습니다."),
 
     // =========================================================================
     // S: Server 관련 오류

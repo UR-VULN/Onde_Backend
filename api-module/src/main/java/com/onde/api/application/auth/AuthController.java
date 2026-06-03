@@ -6,6 +6,8 @@ import com.onde.api.application.auth.dto.SignupRequest;
 import com.onde.api.application.auth.dto.SignupResponse;
 import com.onde.api.application.auth.dto.TokenRefreshRequest;
 import com.onde.api.application.auth.dto.TokenRefreshResponse;
+import com.onde.core.entity.member.MemberRole;
+import com.onde.core.entity.member.MemberStatus;
 import com.onde.core.support.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,9 +31,12 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<SignupResponse>> signup(@Valid @RequestBody SignupRequest request) {
         SignupResponse result = authService.signup(request);
+        String message = result.getRole() == MemberRole.SELLER && result.getStatus() == MemberStatus.PENDING
+                ? "판매자 회원가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다."
+                : "회원가입이 완료되었습니다.";
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(result, "회원가입이 완료되었습니다."));
+                .body(ApiResponse.success(result, message));
     }
 
     @PostMapping("/login")

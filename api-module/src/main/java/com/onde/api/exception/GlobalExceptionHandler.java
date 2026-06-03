@@ -26,9 +26,9 @@ public class GlobalExceptionHandler {
                 log.error("🔒 [BusinessException] 발생: {} | Message: {}", e.getErrorCode().getCode(), e.getMessage(), e);
 
                 ErrorCode errorCode = e.getErrorCode();
-                String systemMessage = e.getMessage() != null ? e.getMessage() : errorCode.getMessage();
+                String userMessage = e.getMessage() != null ? e.getMessage() : errorCode.getMessage();
 
-                ErrorResponse response = ErrorResponse.of(errorCode, systemMessage);
+                ErrorResponse response = ErrorResponse.of(errorCode, userMessage, userMessage, null);
 
                 return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
         }

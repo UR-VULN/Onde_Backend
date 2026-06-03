@@ -18,9 +18,10 @@ public class AdminGlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
         log.warn("Admin BusinessException: {}", e.getMessage(), e);
         ErrorCode errorCode = e.getErrorCode();
+        String userMessage = e.getMessage() != null ? e.getMessage() : errorCode.getMessage();
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
-                .body(ErrorResponse.of(errorCode));
+                .body(ErrorResponse.of(errorCode, userMessage, userMessage, null));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
