@@ -36,11 +36,10 @@ public class AccommodationController {
      */
     @PostMapping("/reservations/rooms")
     public ResponseEntity<ApiResponse<ReservationResponse>> reserveRoom(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal com.onde.api.security.CustomUserDetails userDetails,
             @RequestBody RoomReservationRequest req) {
 
-        // TODO: 객실 예약 비즈니스 로직 연동 (필요 시 userDetails.getUsername()으로 회원 식별자 추출 가능)
-        ReservationResponse response = new ReservationResponse(null, null, null, null, null, null, null);
+        ReservationResponse response = accommodationService.reserveRoom(userDetails.getMember().getId(), req);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

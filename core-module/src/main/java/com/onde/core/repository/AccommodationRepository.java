@@ -18,6 +18,7 @@ public interface AccommodationRepository extends JpaRepository<Accommodation, Lo
            "WHERE a.approvalStatus = :status " +
            "AND (:location IS NULL OR a.location LIKE %:location%) " +
            "AND (:category IS NULL OR a.category = :category) " +
+           "AND (:guests IS NULL OR r.maxCapacity >= :guests) " +
            "AND (:checkIn IS NULL OR :checkOut IS NULL OR EXISTS (" +
            "    SELECT i FROM Inventory i " +
            "    WHERE i.targetType = 'ROOM' AND i.targetId = r.id " +
@@ -29,6 +30,7 @@ public interface AccommodationRepository extends JpaRepository<Accommodation, Lo
             @Param("status") ApprovalStatus status,
             @Param("location") String location,
             @Param("category") String category,
+            @Param("guests") Integer guests,
             @Param("checkIn") LocalDate checkIn,
             @Param("checkOut") LocalDate checkOut,
             @Param("days") Long days,

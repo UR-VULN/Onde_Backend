@@ -25,4 +25,13 @@ public class Room extends BaseEntity {
 
     @Column(name = "capacity", nullable = false)
     private Integer capacity;
+
+    @Column(name = "standard_capacity", nullable = false)
+    private Integer standardCapacity;
+
+    @Column(name = "max_capacity", nullable = false)
+    private Integer maxCapacity;
+
+    @Column(name = "surcharge", nullable = false, precision = 12, scale = 2)
+    private BigDecimal surcharge;
 }
