@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -45,7 +47,7 @@ public class NtsBusinessVerificationService {
             return BusinessVerificationResult.invalid("사업자 진위확인 서비스 키가 설정되어 있지 않습니다.");
         }
 
-        String url = apiUrl + "?serviceKey=" + serviceKey.trim();
+        String url = buildValidateUrl();
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -71,12 +73,26 @@ public class NtsBusinessVerificationService {
                     Map<String, Object> item = dataList.get(0);
                     String valid = String.valueOf(item.getOrDefault("valid", ""));
                     String message = String.valueOf(item.getOrDefault("valid_msg", ""));
+                    Map<String, Object> status = item.get("status") instanceof Map
+                            ? (Map<String, Object>) item.get("status")
+                            : Collections.emptyMap();
+                    String businessStatusCode = String.valueOf(status.getOrDefault("b_stt_cd", ""));
                     if ("01".equals(valid)) {
-                        return BusinessVerificationResult.valid(message.isBlank() ? "사업자 진위 확인에 성공하였습니다." : message);
+                        if ("02".equals(businessStatusCode)) {
+                            return BusinessVerificationResult.invalid("휴업 상태인 사업자입니다.", businessStatusCode);
+                        }
+                        if ("03".equals(businessStatusCode)) {
+                            return BusinessVerificationResult.invalid("폐업한 사업자입니다.", businessStatusCode);
+                        }
+                        return BusinessVerificationResult.valid(
+                                message.isBlank() ? "사업자 진위 확인에 성공하였습니다." : message,
+                                businessStatusCode
+                        );
                     }
-                    return BusinessVerificationResult.invalid(message.isBlank()
-                            ? "사업자 정보가 국세청 등록정보와 일치하지 않습니다."
-                            : message);
+                    return BusinessVerificationResult.invalid(
+                            message.isBlank() ? "사업자 정보가 국세청 등록정보와 일치하지 않습니다." : message,
+                            businessStatusCode
+                    );
                 }
             }
             return BusinessVerificationResult.invalid("사업자 진위확인 응답을 확인할 수 없습니다.");
@@ -101,13 +117,27 @@ public class NtsBusinessVerificationService {
         return value == null ? "" : value.replaceAll("\\D", "");
     }
 
-    public record BusinessVerificationResult(boolean verified, String message) {
+    private String buildValidateUrl() {
+        String delimiter = apiUrl.contains("?") ? "&" : "?";
+        String encodedKey = URLEncoder.encode(serviceKey.trim(), StandardCharsets.UTF_8);
+        return apiUrl + delimiter + "serviceKey=" + encodedKey + "&returnType=JSON";
+    }
+
+    public record BusinessVerificationResult(boolean verified, String message, String businessStatusCode) {
         public static BusinessVerificationResult valid(String message) {
-            return new BusinessVerificationResult(true, message);
+            return valid(message, "");
+        }
+
+        public static BusinessVerificationResult valid(String message, String businessStatusCode) {
+            return new BusinessVerificationResult(true, message, businessStatusCode);
         }
 
         public static BusinessVerificationResult invalid(String message) {
-            return new BusinessVerificationResult(false, message);
+            return invalid(message, "");
+        }
+
+        public static BusinessVerificationResult invalid(String message, String businessStatusCode) {
+            return new BusinessVerificationResult(false, message, businessStatusCode);
         }
     }
 }

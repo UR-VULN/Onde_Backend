@@ -31,6 +31,7 @@ public class SellerAccountController {
                 );
         VerifyBusinessResponse response = VerifyBusinessResponse.builder()
                 .verified(result.verified())
+                .businessStatusCode(result.businessStatusCode())
                 .build();
         return ResponseEntity.ok(ApiResponse.success(response, result.message()));
     }
@@ -59,5 +60,6 @@ public class SellerAccountController {
     @Builder
     public static class VerifyBusinessResponse {
         private boolean verified;            // 검증 완료 여부
+        private String businessStatusCode;   // 계속사업자(01), 휴업(02), 폐업(03)
     }
 }

@@ -60,6 +60,21 @@ class NtsBusinessVerificationServiceTest {
     }
 
     @Test
+    void verifyBusinessRejectsClosedBusinessEvenWhenInformationMatches() throws Exception {
+        startServer(new AtomicReference<>(), """
+                {"request_cnt":1,"status_code":"OK","data":[{"b_no":"1234567890","valid":"01","status":{"b_stt_cd":"03"}}]}
+                """);
+        NtsBusinessVerificationService service = service();
+
+        NtsBusinessVerificationService.BusinessVerificationResult result =
+                service.verifyBusiness("1234567890", "홍길동", "20200101");
+
+        assertFalse(result.verified());
+        assertEquals("폐업한 사업자입니다.", result.message());
+        assertEquals("03", result.businessStatusCode());
+    }
+
+    @Test
     void verifyBusinessReturnsFalseWithoutServiceKey() {
         NtsBusinessVerificationService service = new NtsBusinessVerificationService();
         ReflectionTestUtils.setField(service, "serviceKey", "");
