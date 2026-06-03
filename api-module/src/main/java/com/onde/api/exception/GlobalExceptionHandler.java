@@ -6,6 +6,7 @@ import com.onde.core.support.ErrorDetail;
 import com.onde.core.support.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -60,6 +61,15 @@ public class GlobalExceptionHandler {
                 );
 
                 return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus()).body(response);
+        }
+
+        @ExceptionHandler(AccessDeniedException.class)
+        public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException e) {
+                log.warn("🚫 [AccessDeniedException] 권한 없는 요청: {}", e.getMessage());
+
+                ErrorResponse response = ErrorResponse.of(ErrorCode.FORBIDDEN, e.getMessage());
+
+                return ResponseEntity.status(ErrorCode.FORBIDDEN.getHttpStatus()).body(response);
         }
 
         /**
