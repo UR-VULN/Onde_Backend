@@ -6,6 +6,9 @@ import com.onde.admin.application.booking.dto.AdminBookingSearchRequest;
 import com.onde.admin.application.booking.dto.AdminBookingSearchResponse;
 import com.onde.admin.application.booking.dto.AdminBookingStatusUpdateRequest;
 import com.onde.admin.application.booking.dto.AdminBookingStatusUpdateResponse;
+import com.onde.admin.application.reservation.dto.AdminReservationCancelResponse;
+import com.onde.admin.application.reservation.dto.AdminReservationStatusUpdateRequest;
+import com.onde.admin.application.reservation.dto.AdminReservationStatusUpdateResponse;
 import com.onde.core.entity.flight.BookingStatus;
 import com.onde.core.entity.flight.FlightBooking;
 import com.onde.core.entity.flight.SeatInventory;
@@ -105,9 +108,49 @@ public class AdminBookingService {
     @Transactional
     public void forceCompleteBooking(Long reservationId) {
         Reservation reservation = reservationRepository.findById(reservationId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.INTERNAL_SERVER_ERROR));
+                .orElseThrow(() -> new NotFoundException(ErrorCode.RESERVATION_NOT_FOUND));
 
         reservation.setStatus(ReservationStatus.COMPLETED); 
+    }
+
+    /**
+     * 관리자 공통 예약 상태 수동 변경 (숙소/렌터카 도메인)
+     */
+    @Transactional
+    public AdminReservationStatusUpdateResponse updateReservationStatus(
+            Long reservationId,
+            AdminReservationStatusUpdateRequest request) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.RESERVATION_NOT_FOUND));
+
+        ReservationStatus previousStatus = reservation.getStatus();
+        ReservationStatus nextStatus = ReservationStatus.valueOf(request.status().trim().toUpperCase());
+        reservation.setStatus(nextStatus);
+        Reservation savedReservation = reservationRepository.save(reservation);
+
+        return new AdminReservationStatusUpdateResponse(
+                savedReservation.getId(),
+                previousStatus,
+                savedReservation.getStatus(),
+                savedReservation.getUpdatedAt()
+        );
+    }
+
+    /**
+     * 관리자 공통 예약 직권 취소 (숙소/렌터카 도메인)
+     */
+    @Transactional
+    public AdminReservationCancelResponse cancelReservationByAdmin(Long reservationId) {
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.RESERVATION_NOT_FOUND));
+
+        if (reservation.getStatus() == ReservationStatus.CANCELLED) {
+            throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        Reservation savedReservation = reservationRepository.save(reservation);
+        return new AdminReservationCancelResponse(savedReservation.getId(), savedReservation.getStatus());
     }
 
     /**

@@ -42,7 +42,7 @@ public class AdminDashboardController {
      * 도메인별 매출 비중 차트
      */
     @GetMapping("/charts")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SELLER_ADMIN', 'USER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SELLER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCharts(
             @RequestParam(name = "month") String month) {
         
