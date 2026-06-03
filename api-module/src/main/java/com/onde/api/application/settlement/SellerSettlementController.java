@@ -70,14 +70,14 @@ public class SellerSettlementController {
      * 판매자 정산 계좌 및 사업자 정보 등록/수정 API (Void 구조로 깔끔하게 최적화)
      */
     @PutMapping("/accounts")
-    public ResponseEntity<ApiResponse<Void>> registerOrUpdateAccount(
+    public ResponseEntity<ApiResponse<SellerAccountResponse>> registerOrUpdateAccount(
             @LoginMember Long sellerId,
             @RequestBody SellerAccountRequest request) {
 
-        settlementService.registerOrUpdateAccount(sellerId, request);
+        SellerAccount account = settlementService.registerOrUpdateAccount(sellerId, request);
+        SellerAccountResponse response = toSellerAccountResponse(account);
 
-        // 3. 무거운 바디를 리턴하지 않는 깔끔한 RESTful 응답 반환
-        return ResponseEntity.ok(ApiResponse.success(null, "정산 계좌가 성공적으로 등록/수정되었습니다."));
+        return ResponseEntity.ok(ApiResponse.success(response, "정산 계좌가 성공적으로 등록/수정되었습니다."));
     }
 
     /**
@@ -99,7 +99,13 @@ public class SellerSettlementController {
         SellerAccount account = accountOptional.get();
 
         // 3. 응답 DTO 조립 및 마스킹 처리 가두리화
-        SellerAccountResponse response = SellerAccountResponse.builder()
+        SellerAccountResponse response = toSellerAccountResponse(account);
+
+        return ResponseEntity.ok(ApiResponse.success(response, "정산 계좌 정보를 성공적으로 조회했습니다."));
+    }
+
+    private SellerAccountResponse toSellerAccountResponse(SellerAccount account) {
+        return SellerAccountResponse.builder()
                 .sellerId(account.getMember().getId())
                 .bankName(account.getBankName())
                 .accountNumber(settlementService.maskAccountNumber(account.getAccountNumber()))
@@ -107,9 +113,7 @@ public class SellerSettlementController {
                 .businessNumber(account.getBusinessNumber())
                 .representativeName(account.getRepresentativeName())
                 .openedAt(account.getOpenedAt())
-                .createdAt(java.time.LocalDateTime.now())
+                .createdAt(account.getCreatedAt())
                 .build();
-
-        return ResponseEntity.ok(ApiResponse.success(response, "정산 계좌 정보를 성공적으로 조회했습니다."));
     }
 }

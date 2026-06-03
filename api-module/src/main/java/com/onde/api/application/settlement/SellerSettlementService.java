@@ -26,7 +26,11 @@ public class SellerSettlementService {
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         // 1. 국세청 사업자 진위 확인
-        boolean isValidBusiness = ntsService.verifyBusinessNumber(request.getBusinessNumber());
+        boolean isValidBusiness = ntsService.verifyBusinessNumber(
+                request.getBusinessNumber(),
+                request.getRepresentativeName(),
+                request.getOpenedAt()
+        );
         if (!isValidBusiness) {
             throw new IllegalArgumentException("유효하지 않은 사업자등록번호 이거나 폐업 상태입니다.");
         }

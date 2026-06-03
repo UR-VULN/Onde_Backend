@@ -41,6 +41,7 @@ public class SettlementService {
     private final SettlementRepository settlementRepository;
     private final SellerAccountRepository sellerAccountRepository;
     private final MemberRepository memberRepository;
+    private final NtsBusinessVerificationService ntsBusinessVerificationService;
 
     /**
      * 특정 일자의 전체 결제 완료(PAID) 데이터를 기반으로 판매자별 정산 대기(PENDING) 레코드를 생성합니다.
@@ -180,11 +181,17 @@ public class SettlementService {
      */
     @Transactional
     public SellerAccount registerOrUpdateAccount(Long sellerId, com.onde.api.application.settlement.dto.SellerAccountRequest req) {
-        if (req.getBankName() == null || req.getAccountNumber() == null || req.getAccountHolder() == null) {
+        String bankName = trimToNull(req.getBankName());
+        String accountNumber = digitsOnly(req.getAccountNumber());
+        String accountHolder = trimToNull(req.getAccountHolder());
+        String businessNumber = digitsOnly(req.getBusinessNumber());
+        String representativeName = trimToNull(req.getRepresentativeName());
+        String openedAt = digitsOnly(req.getOpenedAt());
+
+        if (bankName == null || accountHolder == null) {
             throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
         }
-        // 간단한 국세청 검증 Mocking
-        if (req.getBusinessNumber() == null || req.getBusinessNumber().isEmpty()) {
+        if (businessNumber.length() != 10 || openedAt.length() != 8 || representativeName == null) {
             throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
@@ -194,12 +201,25 @@ public class SettlementService {
         SellerAccount account = sellerAccountRepository.findByMemberId(sellerId)
                 .orElse(SellerAccount.builder().member(seller).build());
 
-        account.setBankName(req.getBankName());
-        account.setAccountNumber(req.getAccountNumber()); // 실제 암호화 처리는 다른 작업자 몫이므로 테스트용으로 그대로 담음
-        account.setAccountHolder(req.getAccountHolder());
-        account.setBusinessNumber(req.getBusinessNumber());
-        account.setRepresentativeName(req.getRepresentativeName());
-        account.setOpenedAt(req.getOpenedAt());
+        if (accountNumber.isBlank()) {
+            if (account.getAccountNumber() == null || account.getAccountNumber().isBlank()) {
+                throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
+            }
+            accountNumber = account.getAccountNumber();
+        }
+
+        NtsBusinessVerificationService.BusinessVerificationResult verification =
+                ntsBusinessVerificationService.verifyBusiness(businessNumber, representativeName, openedAt);
+        if (!verification.verified()) {
+            throw new com.onde.core.exception.BusinessException(ErrorCode.INVALID_INPUT_VALUE, verification.message());
+        }
+
+        account.setBankName(bankName);
+        account.setAccountNumber(accountNumber); // 실제 암호화 처리는 다른 작업자 몫이므로 테스트용으로 그대로 담음
+        account.setAccountHolder(accountHolder);
+        account.setBusinessNumber(businessNumber);
+        account.setRepresentativeName(representativeName);
+        account.setOpenedAt(openedAt);
 
         return sellerAccountRepository.save(account);
     }
@@ -235,6 +255,18 @@ public class SettlementService {
         // 일반 숫자인 경우 가운데 영역 마스킹
         int len = accountNumber.length();
         return accountNumber.substring(0, 3) + "***" + accountNumber.substring(len - 3);
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String digitsOnly(String value) {
+        return value == null ? "" : value.replaceAll("\\D", "");
     }
 
 

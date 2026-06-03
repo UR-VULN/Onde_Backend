@@ -23,12 +23,16 @@ public class SellerAccountController {
      */
     @PostMapping("/verify-business")
     public ResponseEntity<ApiResponse<VerifyBusinessResponse>> verifyBusiness(@RequestBody VerifyBusinessRequest request) {
-        // 국세청 진위 확인 서비스를 통해 유효성 검증 수행
-        boolean verified = ntsBusinessVerificationService.verifyBusinessNumber(request.getBusinessNumber());
+        NtsBusinessVerificationService.BusinessVerificationResult result =
+                ntsBusinessVerificationService.verifyBusiness(
+                        request.getBusinessNumber(),
+                        request.getRepresentativeName(),
+                        request.getOpenDate()
+                );
         VerifyBusinessResponse response = VerifyBusinessResponse.builder()
-                .verified(verified)
+                .verified(result.verified())
                 .build();
-        return ResponseEntity.ok(ApiResponse.success(response, "사업자 진위 확인에 성공하였습니다."));
+        return ResponseEntity.ok(ApiResponse.success(response, result.message()));
     }
 
     /**
