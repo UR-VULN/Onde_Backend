@@ -9,7 +9,7 @@ public enum MemberRole {
     GUEST("ROLE_GUEST", "임시 가입자"),
     USER("ROLE_USER", "일반 사용자"),
     SELLER("ROLE_SELLER", "판매자"),
-    GENERAL_ADMIN("ROLE_GENERAL_ADMIN", "일반 관리자"),
+    USER_ADMIN("ROLE_USER_ADMIN", "일반 관리자"),
     SELLER_ADMIN("ROLE_SELLER_ADMIN", "영업 관리자"),
     SUPER_ADMIN("ROLE_SUPER_ADMIN", "최고 관리자"),
     BLACKLIST("ROLE_BLACKLIST", "블랙리스트");
