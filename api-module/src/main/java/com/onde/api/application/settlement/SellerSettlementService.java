@@ -48,6 +48,9 @@ public class SellerSettlementService {
                         .build());
 
         account.updateAccount(request.getBankName(), encryptedAccountNumber, request.getAccountHolder());
+        account.setBusinessName(request.getBusinessName());
+        account.setContactPhone(request.getContactPhone());
+        account.setBusinessAddress(request.getBusinessAddress());
         sellerAccountRepository.save(account);
     }
 
@@ -64,6 +67,9 @@ public class SellerSettlementService {
 
         return SellerAccountResponse.builder()
                 .bankName(account.getBankName())
+                .businessName(account.getBusinessName())
+                .contactPhone(account.getContactPhone())
+                .businessAddress(account.getBusinessAddress())
                 .accountNumber(decryptedAccountNumber)
                 .accountHolder(account.getAccountHolder())
                 .businessNumber(account.getBusinessNumber())

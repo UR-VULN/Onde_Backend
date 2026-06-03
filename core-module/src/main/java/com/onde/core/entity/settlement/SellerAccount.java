@@ -29,6 +29,15 @@ public class SellerAccount {
     @Column(nullable = false, length = 50)
     private String bankName;
 
+    @Column(length = 200)
+    private String businessName;
+
+    @Column(length = 30)
+    private String contactPhone;
+
+    @Column(length = 500)
+    private String businessAddress;
+
     @Column(nullable = false, length = 100)
     private String accountHolder; // 예금주명
 

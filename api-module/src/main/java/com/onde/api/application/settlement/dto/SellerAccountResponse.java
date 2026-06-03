@@ -11,6 +11,9 @@ import java.time.LocalDateTime;
 public class SellerAccountResponse {
     private Long sellerId;
     private String bankName;
+    private String businessName;
+    private String contactPhone;
+    private String businessAddress;
     private String accountNumber; // 마스킹 처리된 계좌번호 반환
     private String accountHolder;
     private String businessNumber;

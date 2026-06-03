@@ -58,6 +58,9 @@ class SettlementServiceAccountTest {
         SellerAccount saved = settlementService.registerOrUpdateAccount(41L, request("123-45-67890", "홍길동", "2020-01-01"));
 
         assertEquals("국민은행", saved.getBankName());
+        assertEquals("온데 테스트 파트너", saved.getBusinessName());
+        assertEquals("02-1111-2222", saved.getContactPhone());
+        assertEquals("서울시 중구 검증로 1", saved.getBusinessAddress());
         assertEquals("1234567890", saved.getBusinessNumber());
         assertEquals("홍길동", saved.getRepresentativeName());
         assertEquals("20200101", saved.getOpenedAt());
@@ -84,6 +87,9 @@ class SettlementServiceAccountTest {
     private SellerAccountRequest request(String businessNumber, String representativeName, String openedAt) {
         SellerAccountRequest request = new SellerAccountRequest();
         request.setBankName("국민은행");
+        request.setBusinessName("온데 테스트 파트너");
+        request.setContactPhone("02-1111-2222");
+        request.setBusinessAddress("서울시 중구 검증로 1");
         request.setAccountNumber("123-456-789012");
         request.setAccountHolder("온데테스트");
         request.setBusinessNumber(businessNumber);

@@ -187,6 +187,9 @@ public class SettlementService {
         String businessNumber = digitsOnly(req.getBusinessNumber());
         String representativeName = trimToNull(req.getRepresentativeName());
         String openedAt = digitsOnly(req.getOpenedAt());
+        String businessName = trimToNull(req.getBusinessName());
+        String contactPhone = trimToNull(req.getContactPhone());
+        String businessAddress = trimToNull(req.getBusinessAddress());
 
         if (bankName == null || accountHolder == null) {
             throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
@@ -215,6 +218,9 @@ public class SettlementService {
         }
 
         account.setBankName(bankName);
+        account.setBusinessName(businessName);
+        account.setContactPhone(contactPhone);
+        account.setBusinessAddress(businessAddress);
         account.setAccountNumber(accountNumber); // 실제 암호화 처리는 다른 작업자 몫이므로 테스트용으로 그대로 담음
         account.setAccountHolder(accountHolder);
         account.setBusinessNumber(businessNumber);
