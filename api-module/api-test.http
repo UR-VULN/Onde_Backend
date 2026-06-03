@@ -1,0 +1,64 @@
+### 1. 전체 숙소 목록 조회 (GET 요청)
+GET http://localhost:8080/api/v1/accommodations/search
+Accept: application/json
+
+
+### 렌터카 검색
+GET http://localhost:8080/api/v1/rental_cars/search?location=제주공항&type=SUV
+Accept: application/json
+
+### 렌터카 예약 요청 (POST)
+POST http://localhost:8080/api/v1/rental_cars/reservations
+Content-Type: application/json
+
+{
+  "carId": 1,
+  "memberId": 1,
+  "startDate": "2026-06-01",
+  "endDate": "2026-06-03",
+  "totalPrice": 150000 
+}
+
+### 숙소 상품 등록 신청
+POST http://localhost:8080/api/v1/seller/accommodations
+Content-Type: application/json
+
+{
+  "sellerId": 1,
+  "name": "온데 감성 펜션",
+  "description": "아름다운 바다 전망을 자랑하는 펜션입니다.",
+  "category": "PENSION",
+  "location": "강원도 강릉시 경강로 123",
+  "businessLicense": "123-45-67890",
+  "thumbnailUrl": "https://example.com/image.jpg",
+  "rooms": [
+    { 
+      "name": "디럭스룸", 
+      "capacity": 4, 
+      "baseCapacity": 2, 
+      "extraPersonFee": 20000 
+    }
+  ]
+}
+
+
+### 달력 데이터 조회 (GET)
+GET http://localhost:8080/api/v1/seller/accommodations/rooms/1/inventory?startDate=2026-06-01&endDate=2026-06-30
+Accept: application/json
+
+### 달력 데이터 수정 (PUT)
+PUT http://localhost:8080/api/v1/seller/accommodations/rooms/1/inventory
+Content-Type: application/json
+
+[
+  {
+    "date": "2026-06-01",
+    "stock": 5,
+    "basePrice": 150000
+  },
+  {
+    "date": "2026-06-02",
+    "stock": 3,
+    "basePrice": 180000
+  }
+]

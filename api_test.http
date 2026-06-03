@@ -1,0 +1,363 @@
+### 🟦 ONDE 서비스 LBS / 커뮤니티 / 알림 및 어드민 API 통합 테스트 시나리오
+
+# 본 HTTP 파일은 IntelliJ HTTP Client 규격에 맞추어 작성되었습니다.
+# 첫 테스트 실행 시 [0단계] 회원 데이터 생성을 가장 먼저 실행해 주십시오. (DB가 비어있어도 논스톱 테스트 가능!)
+# X-Member-Id, X-Member-Role 헤더 및 X-Admin-Id, X-Admin-Role 헤더를 활용해 인증/인가를 모킹합니다.
+
+@api_host = http://localhost:8080
+@admin_host = http://localhost:8081
+@post_id = 1
+@property_id = 1
+
+### =================================================================
+### 0단계: 테스트용 데이터 부트스트랩 (회원 강제 생성)
+### =================================================================
+
+### 0.1. 일반 사용자(USER - ID: 1) 회원 데이터 생성
+POST {{api_host}}/api/v1/members/test
+Content-Type: application/json
+
+{
+  "email": "hong1@aa.com",
+  "password": "hong1111",
+  "role": "USER"
+}
+
+### 0.2. 판매자(SELLER - ID: 2) 회원 데이터 생성
+POST {{api_host}}/api/v1/members/test
+Content-Type: application/json
+
+{
+  "id": 2,
+  "name": "김판매",
+  "role": "SELLER"
+}
+
+
+### =================================================================
+### 1단계: LBS (지도/위치) API 테스트
+### =================================================================
+
+### 1.1. 판매자(SELLER) 매물 좌표 변환 및 등록
+# 규칙: 위경도 좌표 소수점 4자리 이상 필수. (37.5665, 126.9781)
+# 처음 등록 시 isVerified = false 상태로 관리자 검증 전까지 지도에 미노출됩니다.
+POST {{api_host}}/api/v1/properties
+Content-Type: application/json
+X-Member-Id: 2
+X-Member-Role: SELLER
+
+{
+  "addressName": "서울시 강남구 테헤란로 1",
+  "latitude": 37.5665,
+  "longitude": 126.9781
+}
+
+> {%
+    var json = JSON.parse(response.body);
+    client.global.set("property_id", json.data.propertyId);
+    client.log("등록된 매물 ID: " + client.global.get("property_id"));
+%}
+
+### 1.2. 판매자 매물 등록 실패 케이스 (좌표 정밀도 부족)
+# 결과: HTTP 400 Bad Request, "좌표는 소수점 4자리 이상 정밀도여야 합니다." 에러 반환.
+POST {{api_host}}/api/v1/properties
+Content-Type: application/json
+X-Member-Id: 2
+X-Member-Role: SELLER
+
+{
+  "addressName": "서울시 강남구 테헤란로 1",
+  "latitude": 37.5,
+  "longitude": 126.97
+}
+
+### 1.3. 지도 화면 내 매물 실시간 조회 (Bounding Box)
+# 규칙: where is_verified = true 인 매물만 노출. (위 1.1에서 등록한 매물은 미검증 상태이므로 여기에 노출되지 않아야 정상입니다.)
+GET {{api_host}}/api/v1/properties?swLat=37.49&swLng=126.97&neLat=37.58&neLng=127.02
+Accept: application/json
+
+
+### =================================================================
+### 2단계: 커뮤니티 피드 API 테스트
+### =================================================================
+
+### 2.1. 게시글 및 다중 첨부 이미지 등록 (multipart/form-data)
+# 규칙: 이미지 최대 3장 (images 필드는 생략 가능). S3 병렬 업로드 및 CDN URL 반환.
+POST {{api_host}}/api/v1/posts
+Content-Type: multipart/form-data; boundary=boundary
+X-Member-Id: 1
+X-Member-Role: USER
+
+--boundary
+Content-Disposition: form-data; name="title"
+
+도쿄 3박 4일 감성 여행 후기
+--boundary
+Content-Disposition: form-data; name="content"
+
+정말 좋았어요! 신주쿠 라멘 맛집 추천합니다.
+--boundary
+Content-Disposition: form-data; name="type"
+
+REVIEW
+--boundary--
+
+> {%
+    var json = JSON.parse(response.body);
+    client.global.set("post_id", json.data.postId);
+    client.log("등록된 게시글 ID: " + client.global.get("post_id"));
+%}
+
+### 2.2. 게시글 필터링 페이징 조회
+# 규칙: status = 'ACTIVE' 조건 필수 (BLINDED / DELETED 노출 차단)
+GET {{api_host}}/api/v1/posts?type=REVIEW&status=ACTIVE&page=0&size=20
+Accept: application/json
+
+### 2.3. 타인의 게시글 삭제 시도 (실패 케이스)
+# 결과: HTTP 403 Forbidden, "본인 게시글만 작업할 수 있습니다." 반환.
+DELETE {{api_host}}/api/v1/posts/{{post_id}}
+X-Member-Id: 999
+X-Member-Role: USER
+
+### 2.4. 본인 게시글 삭제 (Soft Delete 성공)
+# 결과: 실제 DB DELETE 없이 status = DELETED 처리. 조회 API에서 즉시 필터링됨.
+DELETE {{api_host}}/api/v1/posts/{{post_id}}
+X-Member-Id: 1
+X-Member-Role: USER
+
+
+### =================================================================
+### 3단계: 알림 인프라 및 PDF 영수증 다운로드 테스트
+### =================================================================
+
+### 3.1. FCM 기기 푸시 토큰 수집 (Upsert)
+# 규칙: memberId + deviceType 조합이 이미 존재하면 fcmToken 업데이트, 없으면 신규 INSERT.
+POST {{api_host}}/api/v1/notifications/fcm_token
+Content-Type: application/json
+X-Member-Id: 1
+X-Member-Role: USER
+
+{
+  "fcmToken": "fcm_token_string_web_client_12345",
+  "deviceType": "WEB"
+}
+
+### 3.2. 영수증 PDF 다운로드
+# 규칙: NotificationService.generatePdfReceipt()를 호출하여 본인 예약 건에 대해 PDF 다운로드.
+# 결과: Content-Type: application/pdf 및 파일 attachment 다운로드.
+# (reservationId가 1인 테스트 데이터가 있어야 정상 응답을 줍니다. 본인 소유가 아니면 403 반환)
+GET {{api_host}}/api/v1/reservations/1/receipt
+X-Member-Id: 1
+X-Member-Role: USER
+
+
+### =================================================================
+### 4단계: 본사 관리자 운영 API 테스트 (admin-module)
+### =================================================================
+
+### 4.1. 관광지/맛집 추천 마커 수동 등록
+# 역할: SUPER_ADMIN 또는 GENERAL_ADMIN 권한 인증.
+POST {{admin_host}}/api/v1/admin/markers
+Content-Type: application/json
+X-Admin-Id: AD-999
+X-Admin-Role: GENERAL_ADMIN
+
+{
+  "name": "경복궁 가을 야간개장",
+  "category": "ATTRACTION",
+  "latitude": 37.5796,
+  "longitude": 126.9770
+}
+
+### 4.2. 유해 게시글 블라인드 처리 (어드민 운영)
+# 역할: SUPER_ADMIN 또는 GENERAL_ADMIN.
+# 결과: posts.status = BLINDED 처리되어 일반 사용자 피드에서 미노출. 작성자 FCM 단건 푸시 발송.
+PATCH {{admin_host}}/api/v1/admin/posts/{{post_id}}/blind
+Content-Type: application/json
+X-Admin-Id: AD-999
+X-Admin-Role: GENERAL_ADMIN
+
+{
+  "reason": "광고성 스팸 및 부적절한 이미지 포함"
+}
+
+### 4.2-A. 유해 게시글 정상 복구 처리 (ACTIVE 상태 원복)
+# 역할: SUPER_ADMIN 또는 GENERAL_ADMIN.
+# 결과: posts.status = ACTIVE 처리되어 일반 피드에 재노출. 작성자 FCM 복구 푸시 발송.
+PATCH {{admin_host}}/api/v1/admin/posts/{{post_id}}/restore
+Content-Type: application/json
+X-Admin-Id: AD-999
+X-Admin-Role: GENERAL_ADMIN
+
+### 4.3. 전사 FCM 단체 공지 발송 (SUPER_ADMIN 전용)
+# 역할: SUPER_ADMIN (GENERAL_ADMIN이 시도 시 403 Forbidden 발생)
+# 규칙: fcm_tokens 전체 조회 후 500개씩 청크 분할하여 FCM Multicast(sendMulticast) 전송.
+POST {{admin_host}}/api/v1/admin/notifications/broadcast
+Content-Type: application/json
+X-Admin-Id: AD-001
+X-Admin-Role: SUPER_ADMIN
+
+{
+  "title": " ON DE 서비스 정기 서버 점검 안내",
+  "body": "2026-06-01 02:00 ~ 04:00 사이에 무중단 패치 점검이 있을 예정입니다.",
+  "targetAll": true,
+  "targetRoles": null
+}
+
+### 4.4. 전사 FCM 단체 공지 발송 실패 케이스 (일반 어드민 권한 미달)
+# 결과: HTTP 403 Forbidden 반환.
+POST {{admin_host}}/api/v1/admin/notifications/broadcast
+Content-Type: application/json
+X-Admin-Id: AD-999
+X-Admin-Role: GENERAL_ADMIN
+
+{
+  "title": "일반 권한의 테스트",
+  "body": "발송 차단되어야 합니다.",
+  "targetAll": true
+}
+
+### 0. 포트원 외부 API 연동 연결성 단독 테스트
+GET http://localhost:8080/api/test/settlement/test-connection
+Content-Type: application/json
+
+### 1. 테스트용 정산/결제 더미 데이터 생성 (TestSettlementController)
+POST http://localhost:8080/api/test/settlement/dummy
+Content-Type: application/json
+
+### 2. 정산 스케줄러 강제 실행 (매월 1일 배치 시뮬레이션)
+POST http://localhost:8080/api/test/settlement/execute
+Content-Type: application/json
+
+### 3. [Phase 1] 내 마일리지 요약 조회
+GET http://localhost:8080/api/v1/members/me/mileage
+X-User-Id: 1
+
+### 4. [Phase 1] 내 마일리지 이력 조회
+GET http://localhost:8080/api/v1/members/me/mileage/history?page=0&size=10
+X-User-Id: 1
+
+### 4-1. 내 항공 예약 목록 조회 (status 생략 시 전체)
+GET http://localhost:8080/api/v1/members/me/reservations/flights?page=0&size=20
+X-Member-Id: 1
+
+### 4-2. 내 항공 예약 목록 조회 (CONFIRMED 상태 필터)
+GET http://localhost:8080/api/v1/members/me/reservations/flights?page=0&size=20&status=CONFIRMED
+X-Member-Id: 1
+
+### 4-3. 내 보험 가입 목록 조회 (status 생략 시 전체)
+GET http://localhost:8080/api/v1/members/me/insurances?page=0&size=20
+X-Member-Id: 1
+
+### 4-4. 내 보험 가입 목록 조회 (ACTIVE 상태 필터)
+GET http://localhost:8080/api/v1/members/me/insurances?page=0&size=20&status=ACTIVE
+X-Member-Id: 1
+
+### 5. [Phase 2] 결제 사전 검증 (마일리지 차감)
+POST http://localhost:8080/api/v1/payments/prepare
+X-User-Id: 1
+Content-Type: application/json
+
+{
+  "reservationId": 1,
+  "reservationType": "ROOM",
+  "usedMileage": 5000,
+  "totalAmount": 100000
+}
+
+### 6. [Phase 2] 결제 사후 검증 및 최종 승인
+# 주의: 위의 5번(prepare) 응답에서 받은 merchantUid와 pgAmount를 사용해야 합니다.
+POST http://localhost:8080/api/v1/payments/validate
+X-User-Id: 1
+Content-Type: application/json
+
+{
+  "impUid": "imp_1234567890_1",
+  "merchantUid": "ORDER-2026-74157b73", 
+  "pgAmount": 95000
+}
+
+### 7. [Phase 3] 결제 취소 및 환불
+# 주의: 위의 6번(validate) 응답에서 받은 paymentId를 URL에 넣어야 합니다.
+POST http://localhost:8080/api/v1/payments/46/cancel
+X-User-Id: 1
+Content-Type: application/json
+
+{
+  "reason": "고객 변심"
+}
+
+### 8. [Phase 5] 판매자 내 정산 내역 조회
+GET http://localhost:8080/api/v1/seller/settlements?page=0&size=10
+X-Seller-Id: 1
+
+### 8.1 [Phase 5-New] 판매자 정산 계좌 등록/수정
+PUT http://localhost:8080/api/v1/seller/settlements/accounts
+X-Seller-Id: 1
+Content-Type: application/json
+
+{
+  "bankName": "KB국민은행",
+  "accountNumber": "123-456-789012",
+  "accountHolder": "홍길동",
+  "businessNumber": "123-45-67890",
+  "representativeName": "홍길동",
+  "openedAt": "20200101"
+}
+
+### 8.2 [Phase 5-New] 판매자 정산 계좌 조회
+GET http://localhost:8080/api/v1/seller/settlements/accounts
+X-Seller-Id: 1
+
+### 9. [Phase 5] 판매자 정산 신청
+POST http://localhost:8080/api/v1/seller/settlements/1/request
+X-Seller-Id: 1
+
+### 10. [Phase 6] 본사 정산 리스트 조회
+GET http://localhost:8080/api/v1/admin/settlements?status=REQUESTED&page=0&size=20
+X-Admin-Id: AD-001
+X-Admin-Role: SUPER_ADMIN
+
+### 11. [Phase 6] 본사 정산 1차 승인
+POST http://localhost:8080/api/v1/admin/settlements/1/approve-first
+X-Admin-Id: AD-001
+X-Admin-Role: SUPER_ADMIN
+Content-Type: application/json
+
+{
+  "comment": "1차 검토 완료"
+}
+
+### 12. [Phase 6] 본사 정산 최종 확정
+POST http://localhost:8080/api/v1/admin/settlements/1/finalize
+X-Admin-Id: AD-001
+X-Admin-Role: SUPER_ADMIN
+Content-Type: application/json
+
+{
+  "comment": "송금 완료"
+}
+
+### 13. [Phase 7] 판매자 대시보드 매출 통계 조회
+GET http://localhost:8080/api/v1/seller/dashboard/statistics?period=MONTHLY&startDate=2026-01-01&endDate=2026-05-31
+X-Seller-Id: 1
+
+### 14. [Phase 7] 플랫폼 전사 매출 통계 요약 조회 (Admin Dashboard Summary)
+GET http://localhost:8081/api/v1/admin/dashboard/summary?month=2026-05
+X-Admin-Id: AD-001
+X-Admin-Role: SUPER_ADMIN
+
+### 15. [Phase 7] 플랫폼 도메인별 매출 비중 차트 조회 (Admin Dashboard Charts)
+GET http://localhost:8081/api/v1/admin/dashboard/charts?month=2026-05
+X-Admin-Id: AD-001
+X-Admin-Role: SUPER_ADMIN
+
+### 16. 내 숙소 예약 목록 조회
+GET http://localhost:8080/api/v1/members/me/reservations/rooms?page=0&size=20&status=RESERVED
+X-Member-Id: 1
+
+### 17. 내 렌터카 예약 목록 조회
+GET http://localhost:8080/api/v1/members/me/reservations/cars?page=0&size=20&status=RESERVED
+X-Member-Id: 1
+
+
