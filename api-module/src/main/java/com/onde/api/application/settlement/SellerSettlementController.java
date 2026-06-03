@@ -15,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 판매자(Seller) 관점에서의 정산 및 정산 계좌 관련 API를 처리하는 통합 컨트롤러 클래스입니다.
@@ -87,7 +88,15 @@ public class SellerSettlementController {
             @LoginMember Long sellerId) {
 
         // 2. 서비스 레이어 메서드 호출 스펙 일치
-        SellerAccount account = settlementService.getAccount(sellerId);
+        Optional<SellerAccount> accountOptional = settlementService.getAccount(sellerId);
+        if (accountOptional.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.<SellerAccountResponse>success(
+                    null,
+                    "등록된 정산 계좌가 없습니다."
+            ));
+        }
+
+        SellerAccount account = accountOptional.get();
 
         // 3. 응답 DTO 조립 및 마스킹 처리 가두리화
         SellerAccountResponse response = SellerAccountResponse.builder()

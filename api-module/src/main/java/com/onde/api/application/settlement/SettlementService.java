@@ -5,6 +5,10 @@ import com.onde.core.entity.payment.PaymentStatus;
 import com.onde.core.entity.settlement.SellerAccount;
 import com.onde.core.entity.settlement.Settlement;
 import com.onde.core.entity.settlement.SettlementStatus;
+import com.onde.core.exception.ErrorCode;
+import com.onde.core.exception.NotFoundException;
+import com.onde.core.exception.ValidationException;
+import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.PaymentRepository;
 import com.onde.core.repository.SellerAccountRepository;
 import com.onde.core.repository.SettlementRepository;
@@ -19,6 +23,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import com.onde.api.application.payment.dto.response.SellerStatisticsResponse;
 import com.onde.api.application.payment.dto.response.PlatformStatisticsResponse;
 
@@ -35,6 +40,7 @@ public class SettlementService {
     private final PaymentRepository paymentRepository;
     private final SettlementRepository settlementRepository;
     private final SellerAccountRepository sellerAccountRepository;
+    private final MemberRepository memberRepository;
 
     /**
      * 특정 일자의 전체 결제 완료(PAID) 데이터를 기반으로 판매자별 정산 대기(PENDING) 레코드를 생성합니다.
@@ -175,15 +181,18 @@ public class SettlementService {
     @Transactional
     public SellerAccount registerOrUpdateAccount(Long sellerId, com.onde.api.application.settlement.dto.SellerAccountRequest req) {
         if (req.getBankName() == null || req.getAccountNumber() == null || req.getAccountHolder() == null) {
-            throw new IllegalArgumentException("필수값 누락");
+            throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
         }
         // 간단한 국세청 검증 Mocking
         if (req.getBusinessNumber() == null || req.getBusinessNumber().isEmpty()) {
-            throw new IllegalArgumentException("국세청 검증 실패 - 유효하지 않은 사업자 번호");
+            throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
+        Member seller = memberRepository.findById(sellerId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
+
         SellerAccount account = sellerAccountRepository.findByMemberId(sellerId)
-                .orElse(SellerAccount.builder().member(Member.builder().id(sellerId).build()).build());
+                .orElse(SellerAccount.builder().member(seller).build());
 
         account.setBankName(req.getBankName());
         account.setAccountNumber(req.getAccountNumber()); // 실제 암호화 처리는 다른 작업자 몫이므로 테스트용으로 그대로 담음
@@ -199,9 +208,8 @@ public class SettlementService {
      * 테스트용 정산 계좌 조회 비즈니스 로직입니다.
      */
     @Transactional(readOnly = true)
-    public SellerAccount getAccount(Long sellerId) {
-        return sellerAccountRepository.findByMemberId(sellerId)
-                .orElseThrow(() -> new IllegalArgumentException("등록된 계좌 없음"));
+    public Optional<SellerAccount> getAccount(Long sellerId) {
+        return sellerAccountRepository.findByMemberId(sellerId);
     }
 
     /**
