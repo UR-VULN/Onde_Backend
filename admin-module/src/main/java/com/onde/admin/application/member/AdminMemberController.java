@@ -3,9 +3,11 @@ package com.onde.admin.application.member;
 import com.onde.admin.application.member.dto.BlacklistRequest;
 import com.onde.admin.application.member.dto.MemberAdminResponse;
 import com.onde.admin.application.member.dto.MemberSearchRequest;
+import com.onde.admin.application.member.dto.MemberStatusUpdateRequest;
 import com.onde.admin.application.member.dto.RoleUpdateRequest;
 import com.onde.core.entity.member.Member;
 import com.onde.core.entity.member.MemberRole;
+import com.onde.core.entity.member.MemberStatus;
 import com.onde.core.repository.MemberRepository;
 import com.onde.core.support.ApiResponse;
 
@@ -46,6 +48,7 @@ public class AdminMemberController {
     }
 
     @PostMapping("/members/{id}/blacklist")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> blacklistMember(
             @PathVariable Long id,
             @RequestBody(required = false) BlacklistRequest request) {
@@ -77,6 +80,28 @@ public class AdminMemberController {
         data.put("roles", roles);
         data.put("updatedAt", LocalDateTime.now());
         return ResponseEntity.ok(ApiResponse.success(data, "권한이 수정되었습니다."));
+    }
+
+    @PatchMapping("/members/{id}/status")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateStatus(
+            @PathVariable Long id,
+            @RequestBody MemberStatusUpdateRequest request) {
+
+        MemberStatus appliedStatus = adminMemberService.updateMemberStatus(id, request.getStatus());
+        Member member = memberRepository.findById(id).orElseThrow();
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("memberId", id);
+        data.put("email", member.getEmail());
+        data.put("role", member.getRole().name());
+        data.put("status", appliedStatus.name());
+        data.put("updatedAt", LocalDateTime.now());
+
+        String message = appliedStatus == MemberStatus.ACTIVE && member.getRole() == MemberRole.SELLER
+                ? "판매자 계정이 승인되었습니다."
+                : "회원 상태가 수정되었습니다.";
+        return ResponseEntity.ok(ApiResponse.success(data, message));
     }
 
     private Long getAdminIdFromPrincipal(Principal principal) {

@@ -5,6 +5,10 @@ import com.onde.core.entity.auth.RefreshToken;
 import com.onde.core.entity.member.Member;
 import com.onde.core.entity.member.MemberRole;
 import com.onde.core.entity.member.MemberStatus;
+import com.onde.core.exception.BusinessException;
+import com.onde.core.exception.ErrorCode;
+import com.onde.core.exception.ForbiddenException;
+import com.onde.core.exception.UnauthorizedException;
 import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.RefreshTokenRepository;
 import com.onde.core.security.JwtTokenProvider;
@@ -36,13 +40,14 @@ public class AuthService {
 
         // 비밀번호 암호화 및 Member 엔티티 생성
         MemberRole role = request.getRole() != null ? request.getRole() : MemberRole.USER;
+        MemberStatus initialStatus = role == MemberRole.SELLER ? MemberStatus.PENDING : MemberStatus.ACTIVE;
         Member member = Member.builder()
                 .email(request.getEmail())
                 .name(request.getName())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phoneNumber(request.getPhoneNumber())
                 .role(role)
-                .status(MemberStatus.ACTIVE)
+                .status(initialStatus)
                 .build();
 
         Member savedMember = memberRepository.save(member);
@@ -52,6 +57,7 @@ public class AuthService {
                 .email(savedMember.getEmail())
                 .name(savedMember.getName())
                 .role(savedMember.getRole())
+                .status(savedMember.getStatus())
                 .createdAt(savedMember.getCreatedAt())
                 .build();
     }
@@ -59,10 +65,18 @@ public class AuthService {
     @Transactional
     public LoginResponse login(LoginRequest request) {
         Member member = memberRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 이메일입니다."));
+                .orElseThrow(() -> new UnauthorizedException(ErrorCode.UNAUTHORIZED));
 
         if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
-            throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (member.getRole() == MemberRole.BLACKLIST || member.getStatus() == MemberStatus.BANNED) {
+            throw new ForbiddenException(ErrorCode.FORBIDDEN);
+        }
+
+        if (member.getRole() == MemberRole.SELLER && member.getStatus() == MemberStatus.PENDING) {
+            throw new BusinessException(ErrorCode.SELLER_PENDING_APPROVAL);
         }
 
         // 토큰 발급

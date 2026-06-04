@@ -4,6 +4,8 @@ import com.onde.core.exception.ErrorCode;
 import com.onde.core.exception.UnauthorizedException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.MethodParameter;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -25,9 +27,12 @@ public class LoginAdminArgumentResolver implements HandlerMethodArgumentResolver
         String adminId = request.getHeader("X-Admin-Id");
         
         if (adminId == null || adminId.isEmpty()) {
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                adminId = authHeader.substring(7).trim();
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null
+                    && authentication.isAuthenticated()
+                    && authentication.getName() != null
+                    && !"anonymousUser".equals(authentication.getName())) {
+                adminId = authentication.getName();
             }
         }
 

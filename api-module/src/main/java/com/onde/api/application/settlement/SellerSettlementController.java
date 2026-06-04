@@ -15,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 판매자(Seller) 관점에서의 정산 및 정산 계좌 관련 API를 처리하는 통합 컨트롤러 클래스입니다.
@@ -69,14 +70,14 @@ public class SellerSettlementController {
      * 판매자 정산 계좌 및 사업자 정보 등록/수정 API (Void 구조로 깔끔하게 최적화)
      */
     @PutMapping("/accounts")
-    public ResponseEntity<ApiResponse<Void>> registerOrUpdateAccount(
+    public ResponseEntity<ApiResponse<SellerAccountResponse>> registerOrUpdateAccount(
             @LoginMember Long sellerId,
             @RequestBody SellerAccountRequest request) {
 
-        settlementService.registerOrUpdateAccount(sellerId, request);
+        SellerAccount account = settlementService.registerOrUpdateAccount(sellerId, request);
+        SellerAccountResponse response = toSellerAccountResponse(account);
 
-        // 3. 무거운 바디를 리턴하지 않는 깔끔한 RESTful 응답 반환
-        return ResponseEntity.ok(ApiResponse.success(null, "정산 계좌가 성공적으로 등록/수정되었습니다."));
+        return ResponseEntity.ok(ApiResponse.success(response, "정산 계좌가 성공적으로 등록/수정되었습니다."));
     }
 
     /**
@@ -87,20 +88,35 @@ public class SellerSettlementController {
             @LoginMember Long sellerId) {
 
         // 2. 서비스 레이어 메서드 호출 스펙 일치
-        SellerAccount account = settlementService.getAccount(sellerId);
+        Optional<SellerAccount> accountOptional = settlementService.getAccount(sellerId);
+        if (accountOptional.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.<SellerAccountResponse>success(
+                    null,
+                    "등록된 정산 계좌가 없습니다."
+            ));
+        }
+
+        SellerAccount account = accountOptional.get();
 
         // 3. 응답 DTO 조립 및 마스킹 처리 가두리화
-        SellerAccountResponse response = SellerAccountResponse.builder()
+        SellerAccountResponse response = toSellerAccountResponse(account);
+
+        return ResponseEntity.ok(ApiResponse.success(response, "정산 계좌 정보를 성공적으로 조회했습니다."));
+    }
+
+    private SellerAccountResponse toSellerAccountResponse(SellerAccount account) {
+        return SellerAccountResponse.builder()
                 .sellerId(account.getMember().getId())
                 .bankName(account.getBankName())
+                .businessName(account.getBusinessName())
+                .contactPhone(account.getContactPhone())
+                .businessAddress(account.getBusinessAddress())
                 .accountNumber(settlementService.maskAccountNumber(account.getAccountNumber()))
                 .accountHolder(account.getAccountHolder())
                 .businessNumber(account.getBusinessNumber())
                 .representativeName(account.getRepresentativeName())
                 .openedAt(account.getOpenedAt())
-                .createdAt(java.time.LocalDateTime.now())
+                .createdAt(account.getCreatedAt())
                 .build();
-
-        return ResponseEntity.ok(ApiResponse.success(response, "정산 계좌 정보를 성공적으로 조회했습니다."));
     }
 }

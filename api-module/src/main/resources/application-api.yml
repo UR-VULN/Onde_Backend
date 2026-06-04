@@ -32,5 +32,5 @@ encryption:
 nts:
   api:
     # 공공데이터포털에서 발급받은 서비스 키 입력
-    service-key: ${NTS_SERVICE_KEY}
-    url: "https://api.odcloud.kr/api/nts-businessman/v1/status"
+    service-key: ${NTS_SERVICE_KEY:}
+    url: ${NTS_API_URL:https://api.odcloud.kr/api/nts-businessman/v1/validate}

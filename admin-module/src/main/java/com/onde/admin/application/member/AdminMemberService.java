@@ -84,6 +84,19 @@ public class AdminMemberService {
         return newRole;
     }
 
+    @Transactional
+    public MemberStatus updateMemberStatus(Long memberId, MemberStatus newStatus) {
+        if (newStatus == null) {
+            throw new IllegalArgumentException("변경할 회원 상태가 필요합니다.");
+        }
+
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
+
+        member.updateStatus(newStatus);
+        return newStatus;
+    }
+
     private void sendSinglePush(Long memberId, String title, String body) {
         List<FcmToken> tokens = fcmTokenRepository.findByMemberId(memberId);
         tokens.forEach(token -> {

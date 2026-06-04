@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/admin/approvals")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('SALES_ADMIN', 'GENERAL_ADMIN', 'SUPER_ADMIN')")
+@PreAuthorize("hasAnyRole('SELLER_ADMIN', 'USER_ADMIN', 'SUPER_ADMIN')")
 public class AdminApprovalController {
 
     private final AdminApprovalService adminApprovalService;
@@ -39,6 +39,7 @@ public class AdminApprovalController {
      * 숙소,렌터카 승인
      */
     @PostMapping("/process")
+    @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<ApprovalProcessResponse>> processApproval(
             @RequestBody ApprovalProcessRequest request) {
 
@@ -53,6 +54,7 @@ public class AdminApprovalController {
      * 항공, 보험 승인
      */
     @PostMapping("/{requestId}")
+    @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<AdminApprovalResponse>> processApproval(
             @PathVariable("requestId") Long requestId,
             @RequestBody AdminApprovalRequest req) {

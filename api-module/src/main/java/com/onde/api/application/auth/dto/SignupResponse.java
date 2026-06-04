@@ -1,6 +1,7 @@
 package com.onde.api.application.auth.dto;
 
 import com.onde.core.entity.member.MemberRole;
+import com.onde.core.entity.member.MemberStatus;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -13,5 +14,6 @@ public class SignupResponse {
     private String email;
     private String name;
     private MemberRole role;
+    private MemberStatus status;
     private LocalDateTime createdAt;
 }
