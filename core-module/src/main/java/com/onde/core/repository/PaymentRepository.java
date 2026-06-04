@@ -36,6 +36,12 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findFirstByReservationIdOrderByIdDesc(Long reservationId);
 
     /**
+     * 예약 식별자와 예약 타입으로 가장 최근의 결제 내역 1건을 조회합니다.
+     */
+    Optional<Payment> findFirstByReservationIdAndReservationTypeOrderByIdDesc(Long reservationId, String reservationType);
+
+
+    /**
      * 지정된 기간 동안 특정 결제 상태를 가진 거래를 대상으로 판매자별 총 정산 대상 금액(수수료 차감 전)을 조회합니다.
      * 월별 정산 데이터 생성을 위해 결제 테이블과 예약 테이블을 조인하여 판매자별 grossAmount의 합계를 집계합니다.
      *

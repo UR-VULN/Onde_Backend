@@ -29,6 +29,8 @@ public class MemberMyPageService {
     private final com.onde.core.repository.RoomRepository roomRepository;
     private final com.onde.core.repository.CarRepository carRepository;
     private final com.onde.core.repository.MemberRepository memberRepository;
+    private final com.onde.core.repository.PaymentRepository paymentRepository;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     public MyPageListResponse<MyPageFlightBookingResponse> getMyFlightBookings(Long userId, String status, Pageable pageable) {
         Page<FlightBooking> pageResult;
@@ -58,11 +60,13 @@ public class MemberMyPageService {
                         .flightNumber(fb.getFlightSchedule() != null ? fb.getFlightSchedule().getFlightNumber() : null)
                         .origin(fb.getFlightSchedule() != null && fb.getFlightSchedule().getRoute() != null ? fb.getFlightSchedule().getRoute().getDepartureAirport() : null)
                         .destination(fb.getFlightSchedule() != null && fb.getFlightSchedule().getRoute() != null ? fb.getFlightSchedule().getRoute().getArrivalAirport() : null)
-                        .departureTime(fb.getFlightSchedule() != null ? fb.getFlightSchedule().getDepartureTime() : null)
-                        .arrivalTime(fb.getFlightSchedule() != null ? fb.getFlightSchedule().getArrivalTime() : null)
+                        .departureTime(fb.getFlightSchedule() != null && fb.getFlightSchedule().getDepartureTime() != null ? fb.getFlightSchedule().getDepartureTime().toLocalDate().toString() : null)
+                        .arrivalTime(fb.getFlightSchedule() != null && fb.getFlightSchedule().getArrivalTime() != null ? fb.getFlightSchedule().getArrivalTime().toLocalDate().toString() : null)
                         .seatClass(fb.getSeatClass())
                         .passengerName(fb.getPassenger() != null ? fb.getPassenger().getPassengerName() : null)
-                        .totalPrice(fb.getTotalPrice())
+                        .totalPrice(paymentRepository.findFirstByReservationIdAndReservationTypeOrderByIdDesc(fb.getId(), "FLIGHT")
+                                .map(com.onde.core.entity.payment.Payment::getPgAmount)
+                                .orElse(fb.getTotalPrice()))
                         .status(fb.getStatus())
                         .build())
                 .collect(Collectors.toList());
@@ -93,7 +97,9 @@ public class MemberMyPageService {
                         .startDate(ip.getStartDate() != null ? ip.getStartDate().toString() : null)
                         .endDate(ip.getEndDate() != null ? ip.getEndDate().toString() : null)
                         .coverageLevel(ip.getCoverageLevel())
-                        .totalPremium(ip.getTotalPremium())
+                        .totalPremium(paymentRepository.findFirstByReservationIdAndReservationTypeOrderByIdDesc(ip.getId(), "INSURANCE")
+                                .map(com.onde.core.entity.payment.Payment::getPgAmount)
+                                .orElse(ip.getTotalPremium()))
                         .status(ip.getStatus() != null ? ip.getStatus().name() : null)
                         .build())
                 .collect(Collectors.toList());
@@ -142,9 +148,11 @@ public class MemberMyPageService {
                             .reservationId(res.getId())
                             .accommodationName(accommodationName)
                             .roomName(roomName)
-                            .checkIn(res.getCheckIn())
-                            .checkOut(res.getCheckOut())
-                            .totalPrice(res.getTotalPrice())
+                            .checkIn(res.getCheckIn() != null ? res.getCheckIn().toLocalDate().toString() : null)
+                            .checkOut(res.getCheckOut() != null ? res.getCheckOut().toLocalDate().toString() : null)
+                            .totalPrice(paymentRepository.findFirstByReservationIdAndReservationTypeOrderByIdDesc(res.getId(), "ROOM")
+                                    .map(com.onde.core.entity.payment.Payment::getPgAmount)
+                                    .orElse(res.getTotalPrice()))
                             .status(res.getStatus().name())
                             .build();
                 })
@@ -194,7 +202,9 @@ public class MemberMyPageService {
                             .carType(carType)
                             .checkIn(res.getCheckIn() != null ? res.getCheckIn().toLocalDate().toString() : null)
                             .checkOut(res.getCheckOut() != null ? res.getCheckOut().toLocalDate().toString() : null)
-                            .totalPrice(res.getTotalPrice())
+                            .totalPrice(paymentRepository.findFirstByReservationIdAndReservationTypeOrderByIdDesc(res.getId(), "CAR")
+                                    .map(com.onde.core.entity.payment.Payment::getPgAmount)
+                                    .orElse(res.getTotalPrice()))
                             .status(res.getStatus().name())
                             .build();
                 })
@@ -229,5 +239,32 @@ public class MemberMyPageService {
                 .status(member.getStatus() != null ? member.getStatus().name() : null)
                 .createdAt(member.getCreatedAt())
                 .build();
+    }
+
+    @Transactional
+    public void cancelFlightBooking(Long userId, Long bookingId) {
+        FlightBooking booking = flightBookingRepository.findById(bookingId)
+                .orElseThrow(() -> new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.BOOKING_NOT_FOUND));
+        if (!booking.getUserId().equals(userId)) {
+            throw new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.FORBIDDEN);
+        }
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
+            throw new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.INVALID_INPUT_VALUE);
+        }
+        booking.setStatus(BookingStatus.CANCELLED);
+        // 결제 및 마일리지 복구를 위해 이벤트 발행
+        eventPublisher.publishEvent(new com.onde.core.event.AdminBookingCancelEvent(this, bookingId, userId, "FLIGHT"));
+    }
+
+    @Transactional
+    public void cancelInsurancePolicy(Long userId, Long policyId) {
+        InsurancePolicy policy = insurancePolicyRepository.findById(policyId)
+                .orElseThrow(() -> new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.INSURANCE_POLICY_NOT_FOUND));
+        if (!policy.getUserId().equals(userId)) {
+            throw new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.FORBIDDEN);
+        }
+        policy.setStatus(com.onde.core.entity.insurance.InsurancePolicyStatus.CANCELLED);
+        // 결제 및 마일리지 복구를 위해 이벤트 발행
+        eventPublisher.publishEvent(new com.onde.core.event.AdminBookingCancelEvent(this, policyId, userId, "INSURANCE"));
     }
 }

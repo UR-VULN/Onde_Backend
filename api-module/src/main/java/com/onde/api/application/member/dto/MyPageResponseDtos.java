@@ -32,8 +32,8 @@ public class MyPageResponseDtos {
         private String flightNumber;
         private String origin;
         private String destination;
-        private LocalDateTime departureTime;
-        private LocalDateTime arrivalTime;
+        private String departureTime;
+        private String arrivalTime;
         private SeatClass seatClass;
         private String passengerName;
         private BigDecimal totalPrice;
@@ -64,8 +64,8 @@ public class MyPageResponseDtos {
         private Long reservationId;
         private String accommodationName;
         private String roomName;
-        private LocalDateTime checkIn;
-        private LocalDateTime checkOut;
+        private String checkIn;
+        private String checkOut;
         private BigDecimal totalPrice;
         private String status;
     }

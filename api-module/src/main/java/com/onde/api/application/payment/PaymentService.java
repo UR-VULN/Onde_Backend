@@ -49,6 +49,7 @@ public class PaymentService {
     private final com.onde.core.repository.AccommodationRepository accommodationRepository;
     private final com.onde.core.repository.CarRepository carRepository;
     private final PortOneService portOneService;
+    private final WalletService walletService;
 
     /**
      * PG 결제창 진입 전 사전 등록 및 검증을 수행합니다.
@@ -67,10 +68,17 @@ public class PaymentService {
             throw new IllegalArgumentException("사용 가능한 마일리지를 초과했습니다.");
         }
 
-        // 2. 마일리지 사용액과 실제 PG사 청구액 계산
-        Integer usedMileage = req.getUsedMileage() != null ? req.getUsedMileage() : 0;
+        // 지갑 잔액 검증 로직 추가
+        BigDecimal walletBalance = walletService.getBalance(userId);
         BigDecimal verifiedTotalAmount = resolveServerTotalAmount(req);
+        Integer usedMileage = req.getUsedMileage() != null ? req.getUsedMileage() : 0;
         BigDecimal pgAmount = verifiedTotalAmount.subtract(BigDecimal.valueOf(usedMileage));
+        
+        if (walletBalance.compareTo(pgAmount) < 0) {
+            throw new IllegalArgumentException("지갑 잔액이 부족합니다.");
+        }
+
+        // 2. 마일리지 사용액과 실제 지갑 청구액 계산 (이미 위에서 계산됨)
 
         // 3. 고유한 주문번호 생성 (포맷: ORDER-연도-난수8글자)
         String merchantUid = "ORDER-" + LocalDateTime.now().getYear() + "-"
@@ -119,19 +127,8 @@ public class PaymentService {
             throw new IllegalArgumentException("결제 요청 금액이 일치하지 않습니다.");
         }
 
-        // --- PG사 실제 결제 내역 조회 및 실 금액 검증 (포트원 연동 우회 - 가상계좌 모의 입금 처리) ---
-        // PortOneService.PaymentAnnotation pgInfo = portOneService.getPaymentInfo(req.getImpUid(), payment.getPgAmount());
-        // if (payment.getPgAmount().compareTo(pgInfo.getAmount()) != 0) {
-        //     throw new IllegalArgumentException("실제 PG 결제 금액과 요청된 결제 금액이 일치하지 않습니다. (위변조 위험)");
-        // }
-        // if (!"paid".equals(pgInfo.getStatus())) {
-        //     throw new IllegalArgumentException("PG사 결제 상태가 완료(paid) 상태가 아닙니다.");
-        // }
-
-        // 로컬 가상계좌 검증: 클라이언트가 보낸 승인 요청 금액과 DB 사전등록(prepare) 금액이 완벽히 일치하는지 순수 자체 검증
-        if (payment.getPgAmount().compareTo(req.getPgAmount()) != 0) {
-            throw new IllegalArgumentException("요청된 결제 금액과 사전 등록된 금액이 일치하지 않습니다. (위변조 감지)");
-        }
+        // 지갑에서 결제 금액 차감 시도 (잔액 부족 시 예외 발생)
+        walletService.deduct(userId, payment.getPgAmount(), req.getMerchantUid());
 
         // 3. 중복 처리 방지 검증
         if (payment.getStatus() == PaymentStatus.PAID) {
@@ -197,10 +194,8 @@ public class PaymentService {
             throw new IllegalArgumentException("이미 취소 혹은 환불된 결제입니다.");
         }
 
-        // --- 외부 PG사 결제 취소(환불) API 호출 우회 (가상계좌 환불 모의) ---
-        // if (payment.getImpUid() != null) {
-        //     portOneService.cancelPayment(payment.getImpUid(), payment.getPgAmount(), req.getReason());
-        // }
+        // 지갑으로 결제 금액 환불
+        walletService.refund(payment.getUserId(), payment.getPgAmount(), req.getReason());
 
         // 4. 결제 상태를 CANCELLED로 변경
         payment.setStatus(PaymentStatus.CANCELLED);
@@ -231,8 +226,8 @@ public class PaymentService {
     @EventListener
     @Transactional
     public void handleAdminBookingCancelEvent(AdminBookingCancelEvent event) {
-        // 예약 ID로 연관 결제건 조회
-        paymentRepository.findByReservationId(event.getBookingId()).ifPresent(payment -> {
+        // 예약 ID와 타입으로 연관 결제건 조회
+        paymentRepository.findFirstByReservationIdAndReservationTypeOrderByIdDesc(event.getBookingId(), event.getTargetType()).ifPresent(payment -> {
             if (payment.getStatus() != PaymentStatus.CANCELLED && payment.getStatus() != PaymentStatus.REFUNDED) {
                 PaymentCancelRequest req = new PaymentCancelRequest();
                 req.setReason("Admin force cancellation for " + event.getTargetType());
@@ -240,10 +235,8 @@ public class PaymentService {
                 // 권한 체크(isBuyer/isSeller)가 포함된 cancelPayment 재사용 시 어드민 여부 판단이 불가능하므로, 
                 // 환불/마일리지 복구 핵심 로직을 직접 수행합니다.
 
-                // --- 외부 PG사 결제 취소(환불) API 호출 우회 (가상계좌 환불 모의) ---
-                // if (payment.getImpUid() != null) {
-                //     portOneService.cancelPayment(payment.getImpUid(), payment.getPgAmount(), req.getReason());
-                // }
+                // 어드민 직권 취소이므로 지갑으로 환불
+                walletService.refund(payment.getUserId(), payment.getPgAmount(), req.getReason());
 
                 payment.setStatus(PaymentStatus.REFUNDED);
 

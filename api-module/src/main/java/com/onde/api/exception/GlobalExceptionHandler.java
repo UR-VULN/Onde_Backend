@@ -63,6 +63,15 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus()).body(response);
         }
 
+        @ExceptionHandler(IllegalArgumentException.class)
+        public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
+                log.warn("⚠️ [IllegalArgumentException] 잘못된 요청: {}", e.getMessage());
+
+                ErrorResponse response = ErrorResponse.of(ErrorCode.INVALID_INPUT_VALUE, e.getMessage());
+
+                return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus()).body(response);
+        }
+
         @ExceptionHandler(AccessDeniedException.class)
         public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException e) {
                 log.warn("🚫 [AccessDeniedException] 권한 없는 요청: {}", e.getMessage());

@@ -63,4 +63,20 @@ public class MemberMyPageController {
         MyPageListResponse<MyPageCarReservationResponse> response = memberMyPageService.getMyCarReservations(userId, status, pageable);
         return ResponseEntity.ok(ApiResponse.success(response, "렌터카 예약 목록 조회 성공"));
     }
+
+    @DeleteMapping("/reservations/flights/{bookingId}")
+    public ResponseEntity<ApiResponse<Void>> cancelMyFlightBooking(
+            @LoginMember(required = true) Long userId,
+            @PathVariable Long bookingId) {
+        memberMyPageService.cancelFlightBooking(userId, bookingId);
+        return ResponseEntity.ok(ApiResponse.success(null, "항공 예약이 취소되었습니다."));
+    }
+
+    @DeleteMapping("/insurances/{policyId}")
+    public ResponseEntity<ApiResponse<Void>> cancelMyInsurancePolicy(
+            @LoginMember(required = true) Long userId,
+            @PathVariable Long policyId) {
+        memberMyPageService.cancelInsurancePolicy(userId, policyId);
+        return ResponseEntity.ok(ApiResponse.success(null, "보험 가입이 취소되었습니다."));
+    }
 }

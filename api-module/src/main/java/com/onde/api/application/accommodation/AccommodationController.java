@@ -9,8 +9,7 @@ import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import com.onde.api.security.LoginMember;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -36,11 +35,11 @@ public class AccommodationController {
      */
     @PostMapping("/reservations/rooms")
     public ResponseEntity<ApiResponse<ReservationResponse>> reserveRoom(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @LoginMember Long userId,
             @RequestBody RoomReservationRequest req) {
 
-        // TODO: 객실 예약 비즈니스 로직 연동 (필요 시 userDetails.getUsername()으로 회원 식별자 추출 가능)
-        ReservationResponse response = new ReservationResponse(null, null, null, null, null, null, null);
+        com.onde.core.entity.reservation.Reservation reservation = accommodationService.reserveRoom(userId, req);
+        ReservationResponse response = new ReservationResponse(reservation.getId(), null, null, null, null, null, null);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -52,11 +51,11 @@ public class AccommodationController {
      */
     @PostMapping("/reservations/cars")
     public ResponseEntity<ApiResponse<ReservationResponse>> reserveCar(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @LoginMember Long userId,
             @RequestBody CarReservationRequest req) {
 
-        // TODO: 렌터카 예약 비즈니스 로직 연동
-        ReservationResponse response = new ReservationResponse(null, null, null, null, null, null, null);
+        com.onde.core.entity.reservation.Reservation reservation = accommodationService.reserveCar(userId, req);
+        ReservationResponse response = new ReservationResponse(reservation.getId(), null, null, null, null, null, null);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
