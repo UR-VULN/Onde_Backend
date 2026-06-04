@@ -97,10 +97,8 @@ public class FlightController {
 
     private void triggerCompensatingRefund(String pgTransactionId, BigDecimal amount) {
         try {
-            portOneService.cancelPayment(pgTransactionId, amount, "로컬 DB 갱신 장애로 인한 SAGA 보상 트랜잭션 자동 취소");
-            log.info(
-                    "💰 [SAGA COMPENSATION SUCCESS] Auto-refund completed successfully via PortOne for pgTransactionId={} with amount={}",
-                    pgTransactionId, amount);
+            // portOneService.cancelPayment(pgTransactionId, amount, "로컬 DB 갱신 장애로 인한 SAGA 보상 트랜잭션 자동 취소");
+            log.info("💰 [SAGA COMPENSATION MOCK SUCCESS] Auto-refund mock completed via PortOne for pgTransactionId={} with amount={}", pgTransactionId, amount);
         } catch (Exception e) {
             log.error("❌ [SAGA COMPENSATION FAIL] Failed to refund via PortOne for pgTransactionId={}: {}", pgTransactionId, e.getMessage());
         }

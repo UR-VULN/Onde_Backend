@@ -119,13 +119,18 @@ public class PaymentService {
             throw new IllegalArgumentException("결제 요청 금액이 일치하지 않습니다.");
         }
 
-        // --- PG사 실제 결제 내역 조회 및 실 금액 검증 ---
-        PortOneService.PaymentAnnotation pgInfo = portOneService.getPaymentInfo(req.getImpUid(), payment.getPgAmount());
-        if (payment.getPgAmount().compareTo(pgInfo.getAmount()) != 0) {
-            throw new IllegalArgumentException("실제 PG 결제 금액과 요청된 결제 금액이 일치하지 않습니다. (위변조 위험)");
-        }
-        if (!"paid".equals(pgInfo.getStatus())) {
-            throw new IllegalArgumentException("PG사 결제 상태가 완료(paid) 상태가 아닙니다.");
+        // --- PG사 실제 결제 내역 조회 및 실 금액 검증 (포트원 연동 우회 - 가상계좌 모의 입금 처리) ---
+        // PortOneService.PaymentAnnotation pgInfo = portOneService.getPaymentInfo(req.getImpUid(), payment.getPgAmount());
+        // if (payment.getPgAmount().compareTo(pgInfo.getAmount()) != 0) {
+        //     throw new IllegalArgumentException("실제 PG 결제 금액과 요청된 결제 금액이 일치하지 않습니다. (위변조 위험)");
+        // }
+        // if (!"paid".equals(pgInfo.getStatus())) {
+        //     throw new IllegalArgumentException("PG사 결제 상태가 완료(paid) 상태가 아닙니다.");
+        // }
+
+        // 로컬 가상계좌 검증: 클라이언트가 보낸 승인 요청 금액과 DB 사전등록(prepare) 금액이 완벽히 일치하는지 순수 자체 검증
+        if (payment.getPgAmount().compareTo(req.getPgAmount()) != 0) {
+            throw new IllegalArgumentException("요청된 결제 금액과 사전 등록된 금액이 일치하지 않습니다. (위변조 감지)");
         }
 
         // 3. 중복 처리 방지 검증
@@ -192,10 +197,10 @@ public class PaymentService {
             throw new IllegalArgumentException("이미 취소 혹은 환불된 결제입니다.");
         }
 
-        // --- 외부 PG사 결제 취소(환불) API 호출 ---
-        if (payment.getImpUid() != null) {
-            portOneService.cancelPayment(payment.getImpUid(), payment.getPgAmount(), req.getReason());
-        }
+        // --- 외부 PG사 결제 취소(환불) API 호출 우회 (가상계좌 환불 모의) ---
+        // if (payment.getImpUid() != null) {
+        //     portOneService.cancelPayment(payment.getImpUid(), payment.getPgAmount(), req.getReason());
+        // }
 
         // 4. 결제 상태를 CANCELLED로 변경
         payment.setStatus(PaymentStatus.CANCELLED);
@@ -235,9 +240,10 @@ public class PaymentService {
                 // 권한 체크(isBuyer/isSeller)가 포함된 cancelPayment 재사용 시 어드민 여부 판단이 불가능하므로, 
                 // 환불/마일리지 복구 핵심 로직을 직접 수행합니다.
 
-                if (payment.getImpUid() != null) {
-                    portOneService.cancelPayment(payment.getImpUid(), payment.getPgAmount(), req.getReason());
-                }
+                // --- 외부 PG사 결제 취소(환불) API 호출 우회 (가상계좌 환불 모의) ---
+                // if (payment.getImpUid() != null) {
+                //     portOneService.cancelPayment(payment.getImpUid(), payment.getPgAmount(), req.getReason());
+                // }
 
                 payment.setStatus(PaymentStatus.REFUNDED);
 
