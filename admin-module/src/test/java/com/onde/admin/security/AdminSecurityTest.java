@@ -45,7 +45,7 @@ public class AdminSecurityTest {
     void testAccessDeniedWithLowRole() throws Exception {
         mockMvc.perform(patch("/api/v1/admin/members/roles/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"role\": \"GENERAL_ADMIN\"}"))
+                        .content("{\"role\": \"USER_ADMIN\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("AUTH-002"));

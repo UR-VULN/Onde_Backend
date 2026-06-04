@@ -22,7 +22,7 @@ import java.nio.charset.StandardCharsets;
 @RestController
 @RequestMapping("/api/v1/admin/bookings") // 👈 v1 규격 및 도메인 베이스 패스 단일화
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('SALES_ADMIN', 'GENERAL_ADMIN', 'SUPER_ADMIN')") // 👈 본사 관리자 권한 이중 잠금
+@PreAuthorize("hasAnyRole('SELLER_ADMIN', 'USER_ADMIN', 'SUPER_ADMIN')") // 👈 본사 관리자 권한 이중 잠금
 public class AdminBookingController {
 
     private final AdminBookingService adminBookingService;
@@ -31,6 +31,7 @@ public class AdminBookingController {
      * 관리자 항공 예약 상태 수동 변경
      */
     @RequestMapping(value = "/{bookingId}/status", method = {RequestMethod.PATCH, RequestMethod.PUT})
+    @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<AdminBookingStatusUpdateResponse>> updateBookingStatus(
             @PathVariable("bookingId") Long bookingId,
             @RequestBody AdminBookingStatusUpdateRequest request) {
@@ -73,6 +74,7 @@ public class AdminBookingController {
      * [두 번째 코드 스펙] 관리자 직권 수동 예약 취소 및 비관적 락 좌석 복원 (+1) (항공 도메인)
      */
     @PostMapping("/{bookingId}/cancel") // 👈 베이스 패스 중복 정리 및 변수명 카멜케이스 전환
+    @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<AdminBookingCancelResponse>> cancelBooking(
             @PathVariable("bookingId") Long bookingId) {
 

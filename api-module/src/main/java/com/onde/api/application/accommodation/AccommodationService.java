@@ -14,6 +14,9 @@ import com.onde.core.repository.AccommodationRepository;
 import com.onde.core.repository.InventoryRepository;
 import com.onde.core.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
@@ -47,17 +50,21 @@ public class AccommodationService {
             // Placeholder
         }
 
-        List<Accommodation> accommodations = accommodationRepository.searchAccommodations(
+        int pageNum = request.getPage() != null ? request.getPage() : 0;
+        int pageSize = request.getSize() != null ? request.getSize() : 20;
+        Pageable pageable = PageRequest.of(pageNum, pageSize, sort);
+
+        Page<Accommodation> accommodationPage = accommodationRepository.searchAccommodations(
                 ApprovalStatus.APPROVED,
                 request.getRegion(),
                 request.getCategory(),
                 request.getCheckIn(),
                 request.getCheckOut() != null ? request.getCheckOut().minusDays(1) : null,
                 days,
-                sort);
+                pageable);
 
         Long stayDays = days;
-        List<AccommodationListDto> listDtos = accommodations.stream()
+        List<AccommodationListDto> listDtos = accommodationPage.getContent().stream()
                 .map(a -> AccommodationListDto.builder()
                         .accommodationId(a.getId())
                         .name(a.getName())
@@ -71,7 +78,7 @@ public class AccommodationService {
 
         return AccommodationSearchResponse.builder()
                 .accommodations(listDtos)
-                .totalCount(listDtos.size())
+                .totalCount((int) accommodationPage.getTotalElements())
                 .build();
     }
 

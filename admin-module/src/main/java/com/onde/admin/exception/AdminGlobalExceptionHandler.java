@@ -5,6 +5,7 @@ import com.onde.core.exception.ErrorCode;
 import com.onde.core.support.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -17,9 +18,10 @@ public class AdminGlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
         log.warn("Admin BusinessException: {}", e.getMessage(), e);
         ErrorCode errorCode = e.getErrorCode();
+        String userMessage = e.getMessage() != null ? e.getMessage() : errorCode.getMessage();
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
-                .body(ErrorResponse.of(errorCode));
+                .body(ErrorResponse.of(errorCode, userMessage, userMessage, null));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -29,6 +31,14 @@ public class AdminGlobalExceptionHandler {
         return ResponseEntity
                 .status(ErrorCode.INVALID_COORDINATE.getHttpStatus())
                 .body(ErrorResponse.of(ErrorCode.INVALID_COORDINATE, defaultMessage));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException e) {
+        log.warn("Admin AccessDeniedException: {}", e.getMessage());
+        return ResponseEntity
+                .status(ErrorCode.FORBIDDEN.getHttpStatus())
+                .body(ErrorResponse.of(ErrorCode.FORBIDDEN, e.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)

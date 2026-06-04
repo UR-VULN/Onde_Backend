@@ -18,7 +18,7 @@ public class AdminCommunityController {
     private final AdminCommunityService adminCommunityService;
 
     @PatchMapping("/{postId}/blind")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'GENERAL_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'USER_ADMIN')")
     public ResponseEntity<ApiResponse<AdminBlindResponse>> blindPost(
             @PathVariable("postId") Long postId,
             @Valid @RequestBody AdminBlindRequest req,

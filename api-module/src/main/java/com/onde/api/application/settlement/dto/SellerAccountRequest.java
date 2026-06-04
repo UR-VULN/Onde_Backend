@@ -9,6 +9,9 @@ import lombok.*;
 @Builder
 public class SellerAccountRequest {
     private String bankName;
+    private String businessName;
+    private String contactPhone;
+    private String businessAddress;
     private String accountNumber;
     private String accountHolder;
     private String businessNumber;
