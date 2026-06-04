@@ -10,10 +10,13 @@ import lombok.*;
 @Builder
 public class PropertyMarkerDto {
     private Long propertyId;
+    private Long accommodationId;
     private String addressName;
     private Double latitude;
     private Double longitude;
     private Long memberId;
+    private String thumbnailUrl;
+    private Integer minPrice;
 
     public static PropertyMarkerDto from(Property property) {
         return PropertyMarkerDto.builder()
@@ -25,4 +28,3 @@ public class PropertyMarkerDto {
                 .build();
     }
 }
-
