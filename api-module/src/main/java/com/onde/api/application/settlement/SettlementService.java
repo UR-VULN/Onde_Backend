@@ -71,6 +71,12 @@ public class SettlementService {
             BigDecimal commission = grossAmount.multiply(new BigDecimal("0.03")).setScale(0, RoundingMode.FLOOR);
             BigDecimal netAmount = grossAmount.subtract(commission);
 
+            // 이미 정산 레코드가 존재하는지 방어적 체크
+            Optional<Settlement> existingOpt = settlementRepository.findBySellerIdAndSettlementDate(sellerId, targetDate);
+            if (existingOpt.isPresent()) {
+                continue;
+            }
+
             // 5. 정산 대기(PENDING) 상태로 엔티티 빌드 및 저장
             Settlement settlement = Settlement.builder()
                     .sellerId(sellerId)
@@ -124,6 +130,70 @@ public class SettlementService {
         settlement.setStatus(SettlementStatus.REQUESTED);
         settlement.setRequestedAt(LocalDateTime.now());
         return settlement;
+    }
+
+    /**
+     * 판매자가 실시간으로 현재까지의 결제금액을 취합하여 정산 신청을 직접 생성 및 신청합니다.
+     */
+    @Transactional
+    public Settlement requestSettlementRealTime(Long sellerId) {
+        // 1. 계좌 정보 검증
+        SellerAccount account = sellerAccountRepository.findByMemberId(sellerId)
+                 .orElseThrow(() -> new IllegalArgumentException("정산 계좌가 등록되지 않았습니다."));
+
+        if (account.getBusinessNumber() == null || account.getBusinessNumber().isEmpty()
+                || account.getRepresentativeName() == null || account.getRepresentativeName().isEmpty()
+                || account.getOpenedAt() == null || account.getOpenedAt().isEmpty()) {
+            throw new IllegalArgumentException("정산 계좌의 사업자 정보(사업자등록번호, 대표자명, 개업일자)가 미등록 상태입니다.");
+        }
+
+        LocalDate today = LocalDate.now();
+        // 이미 오늘 날짜의 정산 신청 건이 존재하는지 체크
+        Optional<Settlement> existingOpt = settlementRepository.findBySellerIdAndSettlementDate(sellerId, today);
+        if (existingOpt.isPresent()) {
+            Settlement existing = existingOpt.get();
+            if (existing.getStatus() != SettlementStatus.PENDING) {
+                throw new IllegalStateException("이미 정산 신청(또는 완료)된 내역이 오늘 날짜로 존재합니다.");
+            }
+            existing.setStatus(SettlementStatus.REQUESTED);
+            existing.setRequestedAt(LocalDateTime.now());
+            return settlementRepository.save(existing);
+        }
+
+        // 오늘 00:00:00부터 내일 00:00:00까지의 PAID 결제건을 대상으로 해당 판매자의 데이터만 집계
+        LocalDateTime start = today.atStartOfDay();
+        LocalDateTime end = today.plusDays(1).atStartOfDay();
+
+        List<PaymentRepository.SettlementProjection> projections = paymentRepository.calculateSettlementAmounts(
+                PaymentStatus.PAID.name(), start, end);
+
+        BigDecimal grossAmount = BigDecimal.ZERO;
+        for (PaymentRepository.SettlementProjection proj : projections) {
+            if (sellerId.equals(proj.getSellerId())) {
+                grossAmount = proj.getGrossAmount();
+                break;
+            }
+        }
+
+        if (grossAmount == null || grossAmount.compareTo(BigDecimal.ZERO) == 0) {
+            throw new IllegalArgumentException("정산할 매출 대상(PAID 결제 완료 건)이 존재하지 않습니다.");
+        }
+
+        BigDecimal commission = grossAmount.multiply(new BigDecimal("0.03")).setScale(0, RoundingMode.FLOOR);
+        BigDecimal netAmount = grossAmount.subtract(commission);
+
+        Settlement settlement = Settlement.builder()
+                .sellerId(sellerId)
+                .settlementDate(today)
+                .grossAmount(grossAmount)
+                .commission(commission)
+                .netAmount(netAmount)
+                .status(SettlementStatus.REQUESTED)
+                .createdAt(LocalDateTime.now())
+                .requestedAt(LocalDateTime.now())
+                .build();
+
+        return settlementRepository.save(settlement);
     }
  
     /**
