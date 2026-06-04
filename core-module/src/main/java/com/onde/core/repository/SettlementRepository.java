@@ -25,6 +25,8 @@ public interface SettlementRepository extends JpaRepository<Settlement, Long> {
      * @return 페이징된 정산 내역 목록
      */
     Page<Settlement> findBySellerId(Long sellerId, Pageable pageable);
+    
+    java.util.Optional<Settlement> findBySellerIdAndSettlementDate(Long sellerId, java.time.LocalDate settlementDate);
 
     /**
      * 특정 정산 진행 상태를 가진 정산 내역을 페이징하여 조회합니다.
