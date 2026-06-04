@@ -25,4 +25,10 @@ public class Room extends BaseEntity {
 
     @Column(name = "capacity", nullable = false)
     private Integer capacity;
+
+    @Column(name = "base_capacity", nullable = false)
+    private Integer baseCapacity = 2;
+
+    @Column(name = "surcharge_per_person", nullable = false)
+    private BigDecimal surchargePerPerson = BigDecimal.valueOf(20000);
 }

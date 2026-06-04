@@ -1,0 +1,3 @@
+ALTER TABLE rooms
+    ADD COLUMN base_capacity INT NOT NULL DEFAULT 2,
+    ADD COLUMN surcharge_per_person DECIMAL(10,2) NOT NULL DEFAULT 20000;

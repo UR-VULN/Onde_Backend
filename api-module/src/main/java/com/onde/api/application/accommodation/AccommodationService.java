@@ -89,6 +89,7 @@ public class AccommodationService {
         }
         LocalDate endDate = request.getCheckOut().minusDays(1);
         return (int) rooms.stream()
+                .filter(room -> request.getGuests() == null || room.getCapacity() >= request.getGuests())
                 .filter(room -> inventoryRepository.countAvailableDays(
                         ReservationTarget.ROOM, room.getId(), request.getCheckIn(), endDate) >= days)
                 .count();
@@ -100,11 +101,20 @@ public class AccommodationService {
         }
 
         LocalDate endDate = request.getCheckOut().minusDays(1);
+        int guests = request.getGuests() != null ? request.getGuests() : 2;
+
         return roomRepository.findByAccommodationId(accommodation.getId()).stream()
-                .flatMap(room -> inventoryRepository.findByTargetTypeAndTargetIdAndDateBetween(
-                        ReservationTarget.ROOM, room.getId(), request.getCheckIn(), endDate).stream())
-                .filter(inventory -> inventory.getStock() != null && inventory.getStock() > 0)
-                .map(Inventory::getBasePrice)
+                .filter(room -> request.getGuests() == null || room.getCapacity() >= guests)
+                .flatMap(room -> {
+                    BigDecimal dailySurcharge = guests > room.getBaseCapacity()
+                            ? room.getSurchargePerPerson().multiply(BigDecimal.valueOf(guests - room.getBaseCapacity()))
+                            : BigDecimal.ZERO;
+                    
+                    return inventoryRepository.findByTargetTypeAndTargetIdAndDateBetween(
+                            ReservationTarget.ROOM, room.getId(), request.getCheckIn(), endDate).stream()
+                            .filter(inventory -> inventory.getStock() != null && inventory.getStock() > 0)
+                            .map(inventory -> inventory.getBasePrice().add(dailySurcharge));
+                })
                 .min(BigDecimal::compareTo)
                 .map(BigDecimal::intValue)
                 .orElse(null);
