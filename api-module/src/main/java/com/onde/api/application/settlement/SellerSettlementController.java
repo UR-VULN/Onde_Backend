@@ -67,6 +67,23 @@ public class SellerSettlementController {
     }
 
     /**
+     * 판매자가 실시간으로 현재 정산 대상들을 조회하여 직접 즉시 정산을 신청합니다. (정산 ID가 없을 경우 수동 실시간 정산 처리)
+     */
+    @PostMapping("/request-realtime")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> requestSettlementRealTime(
+            @LoginMember Long sellerId) {
+
+        Settlement updated = settlementService.requestSettlementRealTime(sellerId);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("settlementId", updated.getId());
+        data.put("status", updated.getStatus());
+        data.put("requestedAt", updated.getRequestedAt());
+
+        return ResponseEntity.ok(ApiResponse.success(data, "실시간 정산 신청이 정상적으로 완료되었습니다."));
+    }
+
+    /**
      * 판매자 정산 계좌 및 사업자 정보 등록/수정 API (Void 구조로 깔끔하게 최적화)
      */
     @PutMapping("/accounts")
