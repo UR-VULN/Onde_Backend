@@ -57,7 +57,7 @@ public class SettlementService {
 
         // 2. 해당 기간 동안의 PAID 상태 결제 내역을 판매자별로 그룹핑하여 집계 조회
         List<PaymentRepository.SettlementProjection> projections = paymentRepository.calculateSettlementAmounts(
-                PaymentStatus.PAID, start, end);
+                PaymentStatus.PAID.name(), start, end);
 
         // 3. 집계된 판매자별 매출을 순회하며 정산 데이터(Settlement) 생성
         for (PaymentRepository.SettlementProjection proj : projections) {

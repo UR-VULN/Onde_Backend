@@ -50,29 +50,29 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      * @param end    집계 대상 종료 일시 (미포함)
      * @return 판매자 식별자 및 총 매출액을 담은 프로젝션 목록
      */
-    @Query("SELECT " +
+    @Query(value = "SELECT " +
             "CASE " +
-            "  WHEN r.targetType = 'ROOM' THEN a.sellerId " +
-            "  WHEN r.targetType = 'CAR' THEN c.sellerId " +
+            "  WHEN r.target_type = 'ROOM' THEN a.seller_id " +
+            "  WHEN r.target_type = 'CAR' THEN c.seller_id " +
             "  ELSE null " +
             "END AS sellerId, " +
-            "SUM(p.totalAmount) AS grossAmount " +
-            "FROM Payment p " +
-            "JOIN Reservation r ON p.reservationId = r.id " +
-            "LEFT JOIN Room rm ON r.targetType = 'ROOM' AND r.targetId = rm.id " +
-            "LEFT JOIN Accommodation a ON rm.accommodation.id = a.id " +
-            "LEFT JOIN Car c ON r.targetType = 'CAR' AND r.targetId = c.id " +
+            "SUM(p.total_amount) AS grossAmount " +
+            "FROM payments p " +
+            "JOIN reservations r ON p.reservation_id = r.id " +
+            "LEFT JOIN rooms rm ON r.target_type = 'ROOM' AND r.target_id = rm.id " +
+            "LEFT JOIN accommodations a ON rm.accommodation_id = a.id " +
+            "LEFT JOIN rental_cars c ON r.target_type = 'CAR' AND r.target_id = c.id " +
             "WHERE p.status = :status " +
-            "AND p.createdAt >= :start " +
-            "AND p.createdAt < :end " +
+            "AND p.created_at >= :start " +
+            "AND p.created_at < :end " +
             "GROUP BY " +
             "CASE " +
-            "  WHEN r.targetType = 'ROOM' THEN a.sellerId " +
-            "  WHEN r.targetType = 'CAR' THEN c.sellerId " +
+            "  WHEN r.target_type = 'ROOM' THEN a.seller_id " +
+            "  WHEN r.target_type = 'CAR' THEN c.seller_id " +
             "  ELSE null " +
-            "END")
+            "END", nativeQuery = true)
     List<SettlementProjection> calculateSettlementAmounts(
-            @Param("status") PaymentStatus status,
+            @Param("status") String status,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end);
 
