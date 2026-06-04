@@ -49,7 +49,7 @@ public class PortOneService {
      */
     public String getAccessToken() {
         // 로컬 테스트 환경 분기 처리 (모의 토큰 즉시 반환)
-        if ("test_key".equals(impKey)) {
+        if ("test_key".equals(impKey.trim())) {
             log.info("포트원 API 키가 테스트용('test_key')이므로 모의 토큰을 반환합니다.");
             return "mock_access_token";
         }
@@ -58,8 +58,8 @@ public class PortOneService {
 
         // 요청 바디 생성 (API Key & Secret 주입)
         Map<String, String> body = new HashMap<>();
-        body.put("imp_key", impKey);
-        body.put("imp_secret", impSecret);
+        body.put("imp_key", impKey.trim());
+        body.put("imp_secret", impSecret.trim());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -67,7 +67,6 @@ public class PortOneService {
         HttpEntity<Map<String, String>> request = new HttpEntity<>(body, headers);
 
         try {
-            // 외부 토큰 요청 API 호출
             ResponseEntity<TokenResponse> response = restTemplate.postForEntity(url, request, TokenResponse.class);
             if (response.getBody() != null && response.getBody().getCode() == 0) {
                 return response.getBody().getResponse().getAccess_token();
@@ -92,7 +91,7 @@ public class PortOneService {
      */
     public PaymentAnnotation getPaymentInfo(String impUid, BigDecimal expectedAmount) {
         // 로컬 개발/통합 테스트 환경 및 임시 테스트 impUid 접두사 진입 시 모의 데이터 반환 분기
-        if ("test_key".equals(impKey) || (impUid != null && impUid.startsWith("imp_1234567890"))) {
+        if ("test_key".equals(impKey.trim()) || (impUid != null && impUid.startsWith("imp_1234567890"))) {
             log.info("모의 결제 정보 처리를 적용합니다. impUid: {}", impUid);
             PaymentAnnotation mockInfo = new PaymentAnnotation();
             mockInfo.setImp_uid(impUid);
@@ -142,7 +141,7 @@ public class PortOneService {
      */
     public void cancelPayment(String impUid, BigDecimal amount, String reason) {
         // 로컬 테스트 환경 분기 처리
-        if ("test_key".equals(impKey) || (impUid != null && impUid.startsWith("imp_1234567890"))) {
+        if ("test_key".equals(impKey.trim()) || (impUid != null && impUid.startsWith("imp_1234567890"))) {
             log.info("모의 결제 취소를 수행합니다. impUid: {}, 금액: {}, 사유: {}", impUid, amount, reason);
             return;
         }
