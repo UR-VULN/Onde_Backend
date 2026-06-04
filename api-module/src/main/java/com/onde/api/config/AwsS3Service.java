@@ -29,6 +29,9 @@ public class AwsS3Service {
     @Value("${aws.s3.region}")
     private String regionStr;
 
+    @Value("${aws.s3.endpoint}")
+    private String s3Endpoint;
+
     private S3Client s3Client;
     private S3Presigner s3Presigner;
     private boolean useMock = false;
@@ -53,8 +56,29 @@ public class AwsS3Service {
 
             log.info("AWS S3Client and S3Presigner initialized successfully in PRODUCTION mode.");
         } catch (Exception e) {
-            this.useMock = true;
-            log.warn("AWS Credentials not resolved: {}. AWS S3 will run in MOCK Fallback mode.", e.getMessage());
+            log.warn("AWS Credentials not resolved: {}. Initializing S3Client for Local MinIO at {}...", e.getMessage(), s3Endpoint);
+            try {
+                this.s3Client = S3Client.builder()
+                        .region(Region.of(regionStr))
+                        .credentialsProvider(software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
+                                software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create("onde-s3-user", "onde-s3-password")))
+                        .endpointOverride(java.net.URI.create(s3Endpoint))
+                        .forcePathStyle(true) // MinIO 사용 시 필수 설정
+                        .build();
+
+                this.s3Presigner = S3Presigner.builder()
+                        .region(Region.of(regionStr))
+                        .credentialsProvider(software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
+                                software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create("onde-s3-user", "onde-s3-password")))
+                        .endpointOverride(java.net.URI.create(s3Endpoint))
+                        .build();
+
+                this.useMock = false; // Mock 대신 실제 Local MinIO로 쓰기 로직 활성화
+                log.info("S3Client and S3Presigner initialized successfully for Local MinIO.");
+            } catch (Exception ex) {
+                this.useMock = true;
+                log.error("Failed to initialize Local MinIO S3Client. AWS S3 will run in MOCK Fallback mode.", ex);
+            }
         }
     }
 

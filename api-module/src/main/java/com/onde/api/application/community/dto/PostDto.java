@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 public class PostDto {
     private Long postId;
     private String title;
+    private String content; // 본문 내용 추가
     private PostType type;
     private String authorName;
     private int likeCount;
@@ -24,6 +25,7 @@ public class PostDto {
         return PostDto.builder()
                 .postId(post.getId())
                 .title(post.getTitle())
+                .content(post.getContent()) // 빌더 매핑 추가
                 .type(post.getType())
                 .authorName("User-" + post.getMemberId()) // Member 정보를 가져오지 않으므로 ID로 대체
                 .likeCount(post.getLikeCount() != null ? post.getLikeCount() : 0)
