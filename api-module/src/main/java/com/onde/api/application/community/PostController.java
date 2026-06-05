@@ -31,6 +31,7 @@ public class PostController {
             @RequestParam("title") String title,
             @RequestParam("content") String content,
             @RequestParam("type") PostType type,
+            @RequestParam(value = "rating", required = false, defaultValue = "5") Integer rating,
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
             @LoginMember Long memberId) {
 
@@ -38,6 +39,7 @@ public class PostController {
                 .title(title)
                 .content(content)
                 .type(type)
+                .rating(rating)
                 .build();
 
         PostCreateResponse response = postService.createPost(req, images, memberId);
@@ -53,7 +55,7 @@ public class PostController {
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
 
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
         PostSearchResponse response = postService.getPosts(type, status, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }

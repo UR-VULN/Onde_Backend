@@ -1,0 +1,1 @@
+ALTER TABLE posts ADD COLUMN rating INT DEFAULT 5 COMMENT '게시글 만족 평점 (1~5)';

@@ -61,8 +61,13 @@ public class PostService {
         }
 
         // 2. 작성자 회원 검증 (논리 FK)
-        if (!memberRepository.existsById(memberId)) {
-            throw new NotFoundException(ErrorCode.MEMBER_NOT_FOUND);
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
+
+        String email = member.getEmail();
+        String authorName = (email != null && email.contains("@")) ? email.split("@")[0] : member.getName();
+        if (authorName == null || authorName.isEmpty()) {
+            authorName = "User-" + memberId;
         }
 
         // 3. 게시글 저장
@@ -74,6 +79,7 @@ public class PostService {
                 .status(PostStatus.ACTIVE)
                 .likeCount(0)
                 .commentCount(0)
+                .rating(req.getRating() != null ? req.getRating() : 5)
                 .build();
 
         Post savedPost = postRepository.save(post);
@@ -95,7 +101,7 @@ public class PostService {
             postImageRepository.saveAll(postImages);
         }
 
-        return PostCreateResponse.of(savedPost, imageUrls);
+        return PostCreateResponse.of(savedPost, imageUrls, authorName);
     }
 
     public PostSearchResponse getPosts(PostType type, PostStatus status, Pageable pageable) {
@@ -113,7 +119,16 @@ public class PostService {
             // 대표 썸네일 (sortOrder = 0) 이미지 가져오기
             List<PostImage> postImages = postImageRepository.findByPostIdOrderBySortOrderAsc(post.getId());
             String thumbnailUrl = postImages.isEmpty() ? null : postImages.get(0).getImageUrl();
-            return PostDto.of(post, thumbnailUrl);
+
+            String authorName = memberRepository.findById(post.getMemberId())
+                    .map(m -> {
+                        String e = m.getEmail();
+                        String name = (e != null && e.contains("@")) ? e.split("@")[0] : m.getName();
+                        return (name != null && !name.isEmpty()) ? name : "User-" + post.getMemberId();
+                    })
+                    .orElse("탈퇴한 회원");
+
+            return PostDto.of(post, thumbnailUrl, authorName);
         }).toList();
 
         return PostSearchResponse.builder()

@@ -20,4 +20,6 @@ public class PostCreateRequest {
 
     @NotNull(message = "게시글 타입은 필수입니다.")
     private PostType type;
+
+    private Integer rating;
 }
