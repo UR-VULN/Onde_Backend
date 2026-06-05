@@ -15,8 +15,7 @@ public class MyPageResponseDtos {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class MyPageListResponse<T> {
-        private List<T> bookings;
-        private List<T> reservations; // 추가: 숙소 및 렌터카를 위한 필드
+        private List<T> content;
         private long totalCount;
         private int page;
         private int size;

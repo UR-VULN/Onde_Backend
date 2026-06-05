@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class AccommodationController {
 
     private final AccommodationService accommodationService;
+    private final ReservationService reservationService;
 
     /**
      * [첫 번째 코드 스펙] 숙소 검색 및 조회 (비로그인 개방 경로)
@@ -38,8 +39,19 @@ public class AccommodationController {
             @LoginMember Long userId,
             @RequestBody RoomReservationRequest req) {
 
-        com.onde.core.entity.reservation.Reservation reservation = accommodationService.reserveRoom(userId, req);
-        ReservationResponse response = new ReservationResponse(reservation.getId(), null, null, null, null, null, null);
+        if (req.getMemberId() == null) {
+            req.setMemberId(userId);
+        }
+        com.onde.core.entity.reservation.Reservation reservation = reservationService.reserveRoom(req);
+        ReservationResponse response = new ReservationResponse(
+                reservation.getId(),
+                reservation.getTargetType(),
+                reservation.getTargetId(),
+                reservation.getCheckIn(),
+                reservation.getCheckOut(),
+                reservation.getTotalPrice(),
+                reservation.getStatus()
+        );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -54,8 +66,19 @@ public class AccommodationController {
             @LoginMember Long userId,
             @RequestBody CarReservationRequest req) {
 
-        com.onde.core.entity.reservation.Reservation reservation = accommodationService.reserveCar(userId, req);
-        ReservationResponse response = new ReservationResponse(reservation.getId(), null, null, null, null, null, null);
+        if (req.getMemberId() == null) {
+            req.setMemberId(userId);
+        }
+        com.onde.core.entity.reservation.Reservation reservation = reservationService.reserveCar(req);
+        ReservationResponse response = new ReservationResponse(
+                reservation.getId(),
+                reservation.getTargetType(),
+                reservation.getTargetId(),
+                reservation.getCheckIn(),
+                reservation.getCheckOut(),
+                reservation.getTotalPrice(),
+                reservation.getStatus()
+        );
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
