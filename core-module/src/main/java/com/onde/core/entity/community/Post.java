@@ -73,6 +73,13 @@ public class Post extends BaseEntity {
     private Integer commentCount = 0;
 
     /**
+     * 게시글 만족 평점 (1~5)
+     */
+    @Column(name = "rating", nullable = false, columnDefinition = "INT DEFAULT 5")
+    @Builder.Default
+    private Integer rating = 5;
+
+    /**
      * 게시글 상태를 변경합니다. (Soft Delete 등)
      */
     public void updateStatus(PostStatus status) {

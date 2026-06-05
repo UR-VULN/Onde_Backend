@@ -20,18 +20,20 @@ public class PostDto {
     private int commentCount;
     private String thumbnailUrl;
     private LocalDateTime createdAt;
+    private Integer rating;
 
-    public static PostDto of(Post post, String thumbnailUrl) {
+    public static PostDto of(Post post, String thumbnailUrl, String authorName) {
         return PostDto.builder()
                 .postId(post.getId())
                 .title(post.getTitle())
                 .content(post.getContent()) // 빌더 매핑 추가
                 .type(post.getType())
-                .authorName("User-" + post.getMemberId()) // Member 정보를 가져오지 않으므로 ID로 대체
+                .authorName(authorName)
                 .likeCount(post.getLikeCount() != null ? post.getLikeCount() : 0)
                 .commentCount(post.getCommentCount() != null ? post.getCommentCount() : 0)
                 .thumbnailUrl(thumbnailUrl)
                 .createdAt(post.getCreatedAt())
+                .rating(post.getRating())
                 .build();
     }
 }

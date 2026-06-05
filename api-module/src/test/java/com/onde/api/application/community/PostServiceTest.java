@@ -100,9 +100,17 @@ class PostServiceTest {
                 .status(PostStatus.ACTIVE)
                 .likeCount(0)
                 .commentCount(0)
+                .rating(5)
                 .build();
 
-        Mockito.when(memberRepository.existsById(memberId)).thenReturn(true);
+        Member mockMember = Member.builder()
+                .id(memberId)
+                .email("test@example.com")
+                .name("testUser")
+                .role(MemberRole.USER)
+                .build();
+
+        Mockito.when(memberRepository.findById(memberId)).thenReturn(Optional.of(mockMember));
         Mockito.when(postRepository.save(Mockito.any(Post.class))).thenReturn(mockPost);
         Mockito.when(s3Uploader.upload(Mockito.any(MultipartFile.class), Mockito.eq("posts")))
                 .thenReturn("https://cdn.example.com/posts/dummy-url.jpg");
@@ -112,6 +120,7 @@ class PostServiceTest {
 
         // then
         assertThat(response.getPostId()).isEqualTo(100L);
+        assertThat(response.getAuthorName()).isEqualTo("test");
         assertThat(response.getImageUrls()).hasSize(2);
         assertThat(response.getImageUrls().get(0)).startsWith("https://cdn.example.com/posts/");
     }
