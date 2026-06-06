@@ -17,6 +17,41 @@ public class AdminCommunityController {
 
     private final AdminCommunityService adminCommunityService;
 
+    @GetMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'USER_ADMIN')")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<com.onde.admin.application.community.dto.AdminPostDetailResponse>>> getPosts(
+            @RequestParam(value = "status", required = false) com.onde.core.entity.community.PostStatus status,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size,
+            @LoginAdmin String adminId) {
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
+                page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
+        org.springframework.data.domain.Page<com.onde.admin.application.community.dto.AdminPostDetailResponse> response =
+                adminCommunityService.getAdminPosts(status, pageable);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{postId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'USER_ADMIN')")
+    public ResponseEntity<ApiResponse<com.onde.admin.application.community.dto.AdminPostDetailResponse>> getPostDetail(
+            @PathVariable("postId") Long postId,
+            @LoginAdmin String adminId) {
+
+        com.onde.admin.application.community.dto.AdminPostDetailResponse response = adminCommunityService.getAdminPostDetail(postId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @DeleteMapping("/{postId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'USER_ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deletePost(
+            @PathVariable("postId") Long postId,
+            @LoginAdmin String adminId) {
+
+        adminCommunityService.forceDeletePost(postId);
+        return ResponseEntity.ok(ApiResponse.success(null, "관리자 권한으로 게시글이 삭제되었습니다."));
+    }
+
     @PatchMapping("/{postId}/blind")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'USER_ADMIN')")
     public ResponseEntity<ApiResponse<AdminBlindResponse>> blindPost(
@@ -29,7 +64,7 @@ public class AdminCommunityController {
     }
 
     @RequestMapping(value = "/{postId}/restore", method = {RequestMethod.POST, RequestMethod.PATCH})
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'USER_ADMIN')")
     public ResponseEntity<ApiResponse<AdminBlindResponse>> restorePost(
             @PathVariable("postId") Long postId,
             @LoginAdmin String adminId) {

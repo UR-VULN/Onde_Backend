@@ -3,6 +3,10 @@ spring:
     include: api 
   main:
     allow-bean-definition-overriding: true 
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 30MB
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -48,3 +52,4 @@ aws:
     bucket: ${AWS_S3_BUCKET}
     cloudfront-domain: ${AWS_CLOUDFRONT_DOMAIN}
     region: ${AWS_REGION}
+    endpoint: ${AWS_S3_ENDPOINT:http://localhost:9000}

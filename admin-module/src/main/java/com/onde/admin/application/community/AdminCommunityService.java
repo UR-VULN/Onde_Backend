@@ -21,13 +21,73 @@ import java.util.List;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AdminCommunityService {
 
     private final PostRepository postRepository;
     private final FcmTokenRepository fcmTokenRepository;
     private final FirebaseMessaging firebaseMessaging;
+    private final com.onde.core.repository.PostImageRepository postImageRepository;
+    private final com.onde.core.repository.MemberRepository memberRepository;
+
+    public AdminCommunityService(
+            PostRepository postRepository,
+            FcmTokenRepository fcmTokenRepository,
+            FirebaseMessaging firebaseMessaging,
+            com.onde.core.repository.PostImageRepository postImageRepository,
+            com.onde.core.repository.MemberRepository memberRepository) {
+        this.postRepository = postRepository;
+        this.fcmTokenRepository = fcmTokenRepository;
+        this.firebaseMessaging = firebaseMessaging;
+        this.postImageRepository = postImageRepository;
+        this.memberRepository = memberRepository;
+    }
+
+    public org.springframework.data.domain.Page<com.onde.admin.application.community.dto.AdminPostDetailResponse> getAdminPosts(
+            PostStatus status, org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<Post> posts = (status != null)
+                ? postRepository.findByStatus(status, pageable)
+                : postRepository.findAll(pageable);
+
+        return posts.map(post -> {
+            List<String> imageUrls = postImageRepository.findByPostIdOrderBySortOrderAsc(post.getId())
+                    .stream().map(com.onde.core.entity.community.PostImage::getImageUrl).toList();
+            String authorName = memberRepository.findById(post.getMemberId())
+                    .map(m -> {
+                        String e = m.getEmail();
+                        String name = (e != null && e.contains("@")) ? e.split("@")[0] : m.getName();
+                        return (name != null && !name.isEmpty()) ? name : "User-" + post.getMemberId();
+                    })
+                    .orElse("탈퇴한 회원");
+            return com.onde.admin.application.community.dto.AdminPostDetailResponse.of(post, imageUrls, authorName);
+        });
+    }
+
+    public com.onde.admin.application.community.dto.AdminPostDetailResponse getAdminPostDetail(Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.POST_NOT_FOUND));
+
+        List<String> imageUrls = postImageRepository.findByPostIdOrderBySortOrderAsc(post.getId())
+                .stream().map(com.onde.core.entity.community.PostImage::getImageUrl).toList();
+
+        String authorName = memberRepository.findById(post.getMemberId())
+                .map(m -> {
+                    String e = m.getEmail();
+                    String name = (e != null && e.contains("@")) ? e.split("@")[0] : m.getName();
+                    return (name != null && !name.isEmpty()) ? name : "User-" + post.getMemberId();
+                })
+                .orElse("탈퇴한 회원");
+
+        return com.onde.admin.application.community.dto.AdminPostDetailResponse.of(post, imageUrls, authorName);
+    }
+
+    @Transactional
+    public void forceDeletePost(Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.POST_NOT_FOUND));
+
+        post.updateStatus(PostStatus.DELETED);
+    }
 
     @Transactional
     public AdminBlindResponse blindPost(Long postId, AdminBlindRequest req) {
