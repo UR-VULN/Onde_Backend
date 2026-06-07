@@ -15,7 +15,8 @@ import java.util.List;
 public interface CarRepository extends JpaRepository<Car, Long> {
     @Query("SELECT c FROM Car c " +
            "WHERE c.approvalStatus = :status " +
-           "AND (:carType IS NULL OR c.carType = :carType) " +
+           "AND (:location IS NULL OR c.location LIKE %:location%) " +
+           "AND (:carType IS NULL OR c.carType LIKE %:carType%) " +
            "AND (:startDate IS NULL OR :endDate IS NULL OR EXISTS (" +
            "    SELECT i FROM Inventory i " +
            "    WHERE i.targetType = 'CAR' AND i.targetId = c.id " +
@@ -25,6 +26,7 @@ public interface CarRepository extends JpaRepository<Car, Long> {
            "    HAVING COUNT(i) = :days))")
     List<Car> searchCars(
             @Param("status") ApprovalStatus status,
+            @Param("location") String location,
             @Param("carType") String carType,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,

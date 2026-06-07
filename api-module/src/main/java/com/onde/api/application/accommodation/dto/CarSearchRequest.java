@@ -10,7 +10,11 @@ public class CarSearchRequest {
     private String location;
     private LocalDate pickupDate;
     private LocalDate returnDate;
+    
+    @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME)
     private LocalDateTime pickup;
+    
+    @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME)
     private LocalDateTime returnTime;
     private String carType;
     private String sort;
