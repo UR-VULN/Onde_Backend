@@ -47,9 +47,20 @@ public class CarService {
             // Placeholder
         }
 
+        String location = request.getLocation();
+        if (location != null && (location.isBlank() || "전체".equals(location))) {
+            location = null;
+        }
+
+        String carType = request.getCarType();
+        if (carType != null && (carType.isBlank() || "전체 차량".equals(carType) || "ALL".equals(carType))) {
+            carType = null;
+        }
+
         List<Car> cars = carRepository.searchCars(
                 ApprovalStatus.APPROVED, 
-                request.getCarType(),
+                location,
+                carType,
                 startDate,
                 endDate != null ? endDate.minusDays(1) : null,
                 days,
@@ -64,6 +75,7 @@ public class CarService {
                         .carType(c.getCarType())
                         .licensePlate(c.getLicensePlate())
                         .dailyPrice(resolveDailyPrice(c, searchStartDate, searchEndDate))
+                        .location(c.getLocation())
                         .available(true)
                         .build())
                 .collect(Collectors.toList());

@@ -18,4 +18,5 @@ public class CarListDto {
     private Integer dailyPrice;
     private Integer price;
     private Boolean available;
+    private String location;
 }

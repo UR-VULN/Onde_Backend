@@ -29,4 +29,7 @@ public class Car extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "approval_status", nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING'")
     private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
+
+    @Column(name = "location", length = 500)
+    private String location;
 }
