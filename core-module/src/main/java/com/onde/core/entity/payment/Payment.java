@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 
 /**
  * 결제 내역을 저장하는 엔티티입니다.
- * 일반 PG사 결제와 마일리지를 함께 사용하는 복합 결제를 지원하도록 설계되었습니다.
+ * 일반 지갑(가상 계좌) 결제와 마일리지를 함께 사용하는 복합 결제를 지원하도록 설계되었습니다.
  */
 @Entity
 @Table(name = "payments")
@@ -49,7 +49,7 @@ public class Payment {
     private BigDecimal totalAmount;
 
     /**
-     * 실제 PG사(신용카드, 간편결제 등)를 통해 청구 및 승인된 금액
+     * 실제 가상 지갑을 통해 청구 및 승인된 금액
      * 계산 공식: pgAmount = totalAmount - usedMileage
      */
     @Column(name = "pg_amount", nullable = false, precision = 12, scale = 2)
@@ -70,7 +70,7 @@ public class Payment {
     private Integer accumulatedMileage = 0;
 
     /**
-     * 포트원(PortOne, 구 아임포트)에서 발급하는 고유 거래 식별자 (환불 시 사용)
+     * 결제 고유 거래 식별자 (환불 시 사용)
      */
     @Column(name = "imp_uid", length = 100, unique = true)
     private String impUid;

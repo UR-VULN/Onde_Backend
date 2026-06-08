@@ -217,9 +217,6 @@ X-Admin-Role: GENERAL_ADMIN
   "targetAll": true
 }
 
-### 0. 포트원 외부 API 연동 연결성 단독 테스트
-GET http://localhost:8080/api/test/settlement/test-connection
-Content-Type: application/json
 
 ### 1. 테스트용 정산/결제 더미 데이터 생성 (TestSettlementController)
 POST http://localhost:8080/api/test/settlement/dummy
