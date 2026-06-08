@@ -93,13 +93,9 @@ public class AdminDashboardService {
         LocalDateTime end = start.plusMonths(1);
 
         // 2. 각 도메인별 해당 월 매출액 데이터베이스 집계 (Repository Custom Query 활용)
-        // - 항공권 매출액 집계
         BigDecimal flightRevenue = flightBookingRepository.sumTotalPriceByStatusAndCreatedAtBetween(start, end);
-        // - 숙소 매출액 집계 (Reservation Target이 ROOM인 건)
         BigDecimal hotelRevenue = reservationRepository.sumTotalPriceByTargetTypeAndStatusNotAndCreatedAtBetween(ReservationTarget.ROOM, start, end);
-        // - 렌터카 매출액 집계 (Reservation Target이 CAR인 건)
         BigDecimal carRevenue = reservationRepository.sumTotalPriceByTargetTypeAndStatusNotAndCreatedAtBetween(ReservationTarget.CAR, start, end);
-        // - 여행자 보험 최종 납입 보험료 집계
         BigDecimal insuranceRevenue = insurancePolicyRepository.sumTotalPremiumByStatusNotAndCreatedAtBetween(start, end);
 
         // 네 가지 도메인의 매출 합계를 계산하고 Long 타입으로 치환
@@ -179,20 +175,31 @@ public class AdminDashboardService {
         return data;
     }
 
-    /**
-     * [차트 구성용 개별 세그먼트 데이터 포맷팅 헬퍼 메서드]
-     * 도메인 이름, 해당 도메인의 매출액 및 총매출 대비 비율(소수점 3자리 반올림)을 계산하여 반환합니다.
-     */
     private Map<String, Object> createSegment(String domainName, long amount, double total) {
         Map<String, Object> segment = new HashMap<>();
         segment.put("domain", domainName);
         segment.put("amount", amount);
         
-        // 비율 계산 (총합이 0보다 클 때만 나눗셈 수행)
         double ratio = total > 0 ? (double) amount / total : 0.0;
         
+        segment.put("ratio", Math.round(ratio * 1000.0) / 1000.0); 
+        
+        return segment;
+    }
+}
+th.round(ratio * 1000.0) / 1000.0); 
+        
+        return segment;
+    }
+}
+     
         // 소수점 3자리 반올림 처리 (예: 0.1234 -> 0.123)
         segment.put("ratio", Math.round(ratio * 1000.0) / 1000.0); 
+        
+        return segment;
+    }
+}
+th.round(ratio * 1000.0) / 1000.0); 
         
         return segment;
     }

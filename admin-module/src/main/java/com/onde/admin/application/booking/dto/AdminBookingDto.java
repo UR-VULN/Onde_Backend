@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 public record AdminBookingDto(
     Long reservationId,
     String memberName,
-    String targetName, // 숙소명 또는 렌터카 모델명
+    String targetName,
     LocalDateTime checkInDate,
     LocalDateTime checkOutDate,
     ReservationStatus status
