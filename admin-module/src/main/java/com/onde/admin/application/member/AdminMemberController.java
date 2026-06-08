@@ -48,7 +48,7 @@ public class AdminMemberController {
     }
 
     @PostMapping("/members/{id}/blacklist")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'USER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> blacklistMember(
             @PathVariable Long id,
             @RequestBody(required = false) BlacklistRequest request) {
@@ -83,7 +83,7 @@ public class AdminMemberController {
     }
 
     @PatchMapping("/members/{id}/status")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'USER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> updateStatus(
             @PathVariable Long id,
             @RequestBody MemberStatusUpdateRequest request) {
