@@ -17,8 +17,8 @@ import java.util.Optional;
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     /**
-     * PG사 결제 완료 후, 가맹점 주문번호(merchantUid)로 결제 건을 조회합니다.
-     * 포트원 웹훅 수신 및 결제 사후 검증 시 결제 내역 확인을 위해 사용됩니다.
+     * 결제 완료 후, 가맹점 주문번호(merchantUid)로 결제 건을 조회합니다.
+     * 결제 사후 검증 시 결제 내역 확인을 위해 사용됩니다.
      *
      * @param merchantUid 가맹점에서 발급한 고유 주문번호
      * @return 조회된 결제 정보 (존재할 경우)
