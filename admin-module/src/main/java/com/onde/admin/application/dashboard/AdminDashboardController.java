@@ -30,7 +30,7 @@ public class AdminDashboardController {
      * 전사 총매출 대시보드 요약
      */
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SELLER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SELLER_ADMIN', 'USER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getSummary(
             @RequestParam(name = "month") String month) {
         
@@ -42,7 +42,7 @@ public class AdminDashboardController {
      * 도메인별 매출 비중 차트
      */
     @GetMapping("/charts")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SELLER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SELLER_ADMIN', 'USER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCharts(
             @RequestParam(name = "month") String month) {
         
