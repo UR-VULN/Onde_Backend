@@ -10,9 +10,9 @@ import com.onde.core.entity.reservation.ReservationStatus;
 import java.time.LocalDate;
 
 public record AdminBookingSearchRequest(
-    String targetType, // ACCOMMODATION (숙소) 또는 CAR (렌터카)
-    ReservationStatus status, // 예약 상태 필터
-    String memberName, // 예약자명 검색
+    String targetType,
+    ReservationStatus status,
+    String memberName,
     LocalDate startDate,
     LocalDate endDate
 ) {}

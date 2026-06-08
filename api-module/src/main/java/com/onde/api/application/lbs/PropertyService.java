@@ -55,7 +55,6 @@ public class PropertyService {
     }
 
     public PropertySearchResponse getPropertiesByBoundingBox(Double swLat, Double swLng, Double neLat, Double neLng) {
-        // 1. 남서(sw) ~ 북동(ne) 범위 내 isVerified = true 인 매물 리스트 조회
         List<Property> properties = propertyRepository.findVerifiedByBoundingBox(swLat, swLng, neLat, neLng);
 
         if (properties.isEmpty()) {
@@ -65,13 +64,11 @@ public class PropertyService {
                     .build();
         }
 
-        // 2. 매물의 addressName 목록 추출
         List<String> addressNames = properties.stream()
                 .map(Property::getAddressName)
                 .distinct()
                 .toList();
 
-        // 3. 주소(이름) 기준 숙소 목록을 한 번에 Bulk 조회 (N+1 방지)
         List<com.onde.core.entity.accommodation.Accommodation> accommodations = 
                 accommodationRepository.findByNameIn(addressNames);
 
@@ -83,7 +80,6 @@ public class PropertyService {
                         (existing, replacement) -> existing
                 ));
 
-        // 5. 숙소 ID 목록 추출 → 최저가 Bulk 조회 (N+1 방지, 쿼리 1회)
         List<Long> accommodationIds = accommodations.stream()
                 .map(com.onde.core.entity.accommodation.Accommodation::getId)
                 .toList();
@@ -130,4 +126,12 @@ public class PropertyService {
             throw new ValidationException(ErrorCode.INVALID_COORDINATE);
         }
     }
+}
+
+}
+        throw new ValidationException(ErrorCode.INVALID_COORDINATE);
+        }
+    }
+}
+
 }

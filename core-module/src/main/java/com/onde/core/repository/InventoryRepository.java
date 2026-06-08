@@ -30,10 +30,6 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
                      @Param("startDate") LocalDate startDate,
                      @Param("endDate") LocalDate endDate);
 
-       /**
-        * 숙소 ID 목록에 해당하는 객실의 오늘 이후 최저가를 한 번에 Bulk 조회 (N+1 방지).
-        * 반환: [accommodation_id, min_price] 형태의 Object[]
-        */
        @Query(value = "SELECT r.accommodation_id, MIN(i.base_price) " +
                      "FROM inventory i " +
                      "JOIN rooms r ON r.id = i.target_id AND i.target_type = 'ROOM' " +
