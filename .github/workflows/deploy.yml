@@ -93,6 +93,7 @@ jobs:
           docker build \
             -f docker/Dockerfile \
             --build-arg MODULE=admin-module \
+            --build-arg PORT=8081 \
             -t $IMAGE_URI .
           docker push $IMAGE_URI
           docker tag $IMAGE_URI $ECR_REGISTRY/$ECR_REPOSITORY_ADMIN:latest
