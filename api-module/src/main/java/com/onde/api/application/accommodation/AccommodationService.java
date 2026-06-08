@@ -46,10 +46,7 @@ public class AccommodationService {
 
         Sort sort = Sort.by(Sort.Direction.DESC, "id");
         if ("price_asc".equals(request.getSort())) {
-            // Note: Sorting by min price across rooms/inventories is complex in JPA Sort.
-            // For now, we will sort by id as a placeholder.
         } else if ("price_desc".equals(request.getSort())) {
-            // Placeholder
         }
 
         int pageNum = request.getPage() != null ? request.getPage() : 0;

@@ -23,10 +23,6 @@ public class InventoryController {
     private final ReservationService reservationService;
     private final InventoryRepository inventoryRepository;
 
-    /**
-     * 비동기 재고 상태 조회 API
-     * 특정 기간 내에 해당 상품이 품절(재고 부족)인지 실시간으로 확인합니다.
-     */
     @GetMapping("/check")
     public ResponseEntity<Map<String, Object>> checkAvailability(
             @RequestParam ReservationTarget targetType,
@@ -43,9 +39,7 @@ public class InventoryController {
         ));
     }
 
-    /**
-     * 비로그인/일반사용자용 특정 상품의 월별 재고 및 가격 달력 데이터를 조회합니다.
-     */
+    //비로그인 및 일반사용자용 특정 상품의 월별 재고 및 가격 달력 데이터를 조회합니다.
     @GetMapping("/calendar")
     public ResponseEntity<Map<String, Object>> getCalendar(
             @RequestParam ReservationTarget targetType,

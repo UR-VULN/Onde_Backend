@@ -22,9 +22,7 @@ public class ReservationController {
     private final ReservationService reservationService;
     private final CarRepository carRepository;
 
-    /**
-     * 숙소 예약 생성
-     */
+    //숙소 예약 생성
     @PostMapping("/rooms")
     public ResponseEntity<ApiResponse<ReservationResponse>> reserveRoom(
             @LoginMember Long memberId,
@@ -48,9 +46,7 @@ public class ReservationController {
                 .body(ApiResponse.success(response, "예약이 완료되었습니다."));
     }
 
-    /**
-     * 렌터카 예약 생성
-     */
+    //렌터카 예약 생성
     @PostMapping("/cars")
     public ResponseEntity<ApiResponse<CarReservationResponse>> reserveCar(
             @LoginMember Long memberId,
@@ -78,9 +74,7 @@ public class ReservationController {
                 .body(ApiResponse.success(response, "렌터카 예약이 성공적으로 완료되었습니다."));
     }
 
-    /**
-     * 예약 취소
-     */
+    // 예약 취소
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<ReservationCancelResponse>> cancelReservation(
             @LoginMember Long memberId,

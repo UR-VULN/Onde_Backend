@@ -42,9 +42,9 @@ public class CarService {
 
         Sort sort = Sort.by(Sort.Direction.DESC, "id");
         if ("price_asc".equals(request.getSort())) {
-            // Placeholder
+            
         } else if ("price_desc".equals(request.getSort())) {
-            // Placeholder
+            
         }
 
         String location = request.getLocation();

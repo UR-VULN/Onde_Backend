@@ -51,9 +51,7 @@ public class SellerCarController {
         return ResponseEntity.ok(ApiResponse.success(data, "판매자 등록 렌터카 목록 조회가 성공적으로 완료되었습니다."));
     }
 
-    /**
-     * 렌터카 신규 등록
-     */
+    //렌터카 신규 등록
     @PostMapping("/cars")
     public ResponseEntity<ApiResponse<Long>> registerCar(
             @RequestBody Map<String, Object> request,
@@ -88,9 +86,7 @@ public class SellerCarController {
         return ResponseEntity.ok(ApiResponse.success(saved.getId(), "렌터카 등록 신청이 완료되었습니다."));
     }
 
-    /**
-     * 렌터카 재고/가격 수정
-     */
+    // 렌터카 재고 및 가격 수정
     @PutMapping("/inventories/cars")
     public ResponseEntity<ApiResponse<Void>> updateCarInventory(
             @RequestBody Map<String, Object> request,

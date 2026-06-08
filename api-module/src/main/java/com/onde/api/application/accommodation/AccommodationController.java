@@ -13,16 +13,13 @@ import com.onde.api.security.LoginMember;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/accommodations") // 👈 프로젝트 공통 표준 v1 및 도메인 네임 스페이스로 통합
+@RequestMapping("/api/v1/accommodations") 
 @RequiredArgsConstructor
 public class AccommodationController {
 
     private final AccommodationService accommodationService;
     private final ReservationService reservationService;
 
-    /**
-     * [첫 번째 코드 스펙] 숙소 검색 및 조회 (비로그인 개방 경로)
-     */
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<AccommodationSearchResponse>> search(
             AccommodationSearchRequest request) {
@@ -31,9 +28,6 @@ public class AccommodationController {
         return ResponseEntity.ok(ApiResponse.success(response, "숙소 조회가 완료되었습니다."));
     }
 
-    /**
-     * [두 번째 코드 스펙] 객실 예약 (시큐리티 세션 연동)
-     */
     @PostMapping("/reservations/rooms")
     public ResponseEntity<ApiResponse<ReservationResponse>> reserveRoom(
             @LoginMember Long userId,
@@ -58,9 +52,6 @@ public class AccommodationController {
                 .body(ApiResponse.success(response, "객실 예약이 성공적으로 완료되었습니다."));
     }
 
-    /**
-     * [두 번째 코드 스펙] 렌터카 예약 (시큐리티 세션 연동)
-     */
     @PostMapping("/reservations/cars")
     public ResponseEntity<ApiResponse<ReservationResponse>> reserveCar(
             @LoginMember Long userId,
