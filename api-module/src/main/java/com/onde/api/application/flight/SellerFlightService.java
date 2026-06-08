@@ -169,15 +169,24 @@ public class SellerFlightService {
     /**
      * [Day 6] 백오피스 달력 UI용 스케줄 및 실시간 잔여 좌석 조회
      */
-    public List<SellerCalendarResponse> getCalendarSchedules(Integer year, Integer month, Long sellerId) {
-        log.info("📅 Loading calendar schedules for sellerId={}, year={}, month={}", sellerId, year, month);
+    public List<SellerCalendarResponse> getCalendarSchedules(Long routeId, Integer year, Integer month, Long sellerId) {
+        log.info("📅 Loading calendar schedules for sellerId={}, routeId={}, year={}, month={}", sellerId, routeId, year, month);
 
         LocalDate start = LocalDate.of(year, month, 1);
         LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
+        LocalDateTime startDateTime = start.atStartOfDay();
+        LocalDateTime endDateTime = end.atTime(LocalTime.MAX);
 
-        // 1. 해당 월 전체 항공 스케줄 조회
-        List<FlightSchedule> schedules = flightScheduleRepository.findByDepartureTimeBetween(
-                start.atStartOfDay(), end.atTime(LocalTime.MAX));
+        // 1. 해당 월 전체 또는 특정 노선의 항공 스케줄 조회 (판매자 권한 체크 포함)
+        List<FlightSchedule> schedules;
+        if (routeId != null) {
+            schedules = flightScheduleRepository.findByRouteIdAndSellerIdAndDepartureTimeBetween(routeId, sellerId, startDateTime, endDateTime);
+        } else {
+            List<FlightSchedule> allSchedules = flightScheduleRepository.findByDepartureTimeBetween(startDateTime, endDateTime);
+            schedules = allSchedules.stream()
+                    .filter(fs -> fs.getRoute() != null && sellerId.equals(fs.getRoute().getSellerId()))
+                    .collect(Collectors.toList());
+        }
 
         if (schedules.isEmpty()) {
             return Collections.emptyList();
@@ -266,5 +275,9 @@ public class SellerFlightService {
 
     public List<FlightSchedule> getAllSchedules() {
         return flightScheduleRepository.findAll();
+    }
+
+    public List<FlightRoute> getRoutesBySellerId(Long sellerId) {
+        return flightRouteRepository.findBySellerId(sellerId);
     }
 }

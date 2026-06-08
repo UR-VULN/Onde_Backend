@@ -24,4 +24,14 @@ public interface FlightScheduleRepository extends JpaRepository<FlightSchedule, 
     );
     List<FlightSchedule> findByDepartureTimeBetween(LocalDateTime start, LocalDateTime end);
     List<FlightSchedule> findByStatus(com.onde.core.entity.flight.ApprovalStatus status);
+
+    @org.springframework.data.jpa.repository.Query("SELECT fs FROM FlightSchedule fs JOIN FETCH fs.route r " +
+           "WHERE r.id = :routeId AND r.sellerId = :sellerId " +
+           "AND fs.departureTime >= :start AND fs.departureTime <= :end")
+    List<FlightSchedule> findByRouteIdAndSellerIdAndDepartureTimeBetween(
+        @org.springframework.data.repository.query.Param("routeId") Long routeId,
+        @org.springframework.data.repository.query.Param("sellerId") Long sellerId,
+        @org.springframework.data.repository.query.Param("start") LocalDateTime start,
+        @org.springframework.data.repository.query.Param("end") LocalDateTime end
+    );
 }
