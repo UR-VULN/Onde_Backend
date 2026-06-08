@@ -45,3 +45,20 @@ aws:
     cloudfront-domain: ${AWS_CLOUDFRONT_DOMAIN}
     region: ${AWS_REGION}
     endpoint: ${AWS_S3_ENDPOINT:http://localhost:9000}
+
+management:
+  endpoints:
+    web:
+      base-path: /api/v1/admin   
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always 
+      probes:
+        enabled: true       
+      group:
+        readiness:
+          include: readinessState, mariadb 
+  health:
+    allowed-ip: ${HEALTH_CHECK_ALLOWED_IP}
