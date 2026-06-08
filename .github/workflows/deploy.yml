@@ -1,0 +1,148 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches:
+      - main
+#      - feat/infra_cicd
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY_BACKEND: onde/backend        # api-module → Linux EC2 x2
+  ECR_REPOSITORY_ADMIN: onde/backend-admin    # admin-module → Windows EC2
+
+jobs:
+  # ──────────────────────────────────────────────
+  # api-module 빌드 → onde/backend
+  # ──────────────────────────────────────────────
+  build-and-push-backend:
+    name: Build & Push api-module to ECR
+    runs-on: ubuntu-latest
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: meta
+        run: echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Build and push api-module
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG
+          docker build \
+            -f docker/Dockerfile \
+            --build-arg MODULE=api-module \
+            -t $IMAGE_URI .
+          docker push $IMAGE_URI
+          docker tag $IMAGE_URI $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:latest
+
+  # ──────────────────────────────────────────────
+  # admin-module 빌드 → onde/backend-admin
+  # ──────────────────────────────────────────────
+  build-and-push-admin:
+    name: Build & Push admin-module to ECR
+    runs-on: ubuntu-latest
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: meta
+        run: echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Build and push admin-module
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY_ADMIN:$IMAGE_TAG
+          docker build \
+            -f docker/Dockerfile \
+            --build-arg MODULE=admin-module \
+            -t $IMAGE_URI .
+          docker push $IMAGE_URI
+          docker tag $IMAGE_URI $ECR_REGISTRY/$ECR_REPOSITORY_ADMIN:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_ADMIN:latest
+
+  # ──────────────────────────────────────────────
+  # Infra 레포에 배포 이벤트 dispatch
+  # ──────────────────────────────────────────────
+  trigger-deploy-backend:
+    name: Trigger Backend Deployment
+    needs: build-and-push-backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Dispatch deploy-backend to Infra repo
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.INFRA_REPO_TOKEN }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: context.repo.owner,
+              repo: 'Onde_Infra',
+              event_type: 'deploy-backend',
+              client_payload: {
+                image_tag: '${{ needs.build-and-push-backend.outputs.image_tag }}',
+                sha: context.sha,
+                ref: context.ref
+              }
+            });
+            console.log('✅ deploy-backend dispatched to Onde_Infra');
+
+  trigger-deploy-admin:
+    name: Trigger Admin Deployment
+    needs: build-and-push-admin
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Dispatch deploy-admin to Infra repo
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.INFRA_REPO_TOKEN }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: context.repo.owner,
+              repo: 'Onde_Infra',
+              event_type: 'deploy-admin',
+              client_payload: {
+                image_tag: '${{ needs.build-and-push-admin.outputs.image_tag }}',
+                sha: context.sha,
+                ref: context.ref
+              }
+            });
+            console.log('✅ deploy-admin dispatched to Onde_Infra');
