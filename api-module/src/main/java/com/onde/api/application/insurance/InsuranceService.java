@@ -162,7 +162,7 @@ public class InsuranceService {
                 .endDate(req.getEndDate())
                 .coverageLevel(req.getCoverageLevel().trim().toUpperCase())
                 .totalPremium(calculated.getTotalPremium())
-                .status(InsurancePolicyStatus.ACTIVE)
+                .status(InsurancePolicyStatus.PENDING_PAYMENT)
                 .build();
 
         InsurancePolicy savedPolicy = insurancePolicyRepository.save(policy);
