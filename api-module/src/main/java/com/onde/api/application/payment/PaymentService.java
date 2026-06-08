@@ -17,7 +17,6 @@ import com.onde.core.repository.FlightBookingRepository;
 import com.onde.core.repository.InsurancePolicyRepository;
 import com.onde.core.repository.PaymentRepository;
 import com.onde.core.repository.ReservationRepository;
-import com.onde.api.infrastructure.portone.PortOneService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,7 +47,6 @@ public class PaymentService {
     private final InsurancePolicyRepository insurancePolicyRepository;
     private final com.onde.core.repository.AccommodationRepository accommodationRepository;
     private final com.onde.core.repository.CarRepository carRepository;
-    private final PortOneService portOneService;
     private final WalletService walletService;
 
     /**

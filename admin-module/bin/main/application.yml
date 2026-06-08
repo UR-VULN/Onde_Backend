@@ -39,12 +39,9 @@ jwt:
   access-token-expiration: 1800000    # 30분
   refresh-token-expiration: 1209600000 # 14일
 
-portone:
-  imp-key: ${PORTONE_IMP_KEY}
-  imp-secret: ${PORTONE_IMP_SECRET}
-
 aws:
   s3:
     bucket: ${AWS_S3_BUCKET}
     cloudfront-domain: ${AWS_CLOUDFRONT_DOMAIN}
     region: ${AWS_REGION}
+    endpoint: ${AWS_S3_ENDPOINT:http://localhost:9000}
