@@ -122,7 +122,6 @@ public class SellerAccommodationController {
         return ResponseEntity.ok(ApiResponse.success(null, "객실 재고 정보가 성공적으로 수정되었습니다."));
     }
 
-    // 객실 재고/가격 수정 (벌크)
     @PutMapping("/inventories/rooms")
     public ResponseEntity<ApiResponse<RoomInventoryBulkUpdateResponse>> updateInventories(
             @Valid @RequestBody RoomInventoryBulkUpdateRequest request) {

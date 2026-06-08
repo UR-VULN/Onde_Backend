@@ -43,9 +43,6 @@ public class AdminAccommodationController {
         return ResponseEntity.ok(ApiResponse.success(response, "예약 내역 조회가 완료되었습니다."));
     }
 
-    /**
-     * 대기 매물 조회
-     */
     @GetMapping("/pending")
     public ResponseEntity<ApiResponse<AdminPendingPropertiesResponse>> getPendingAccommodations(
             @RequestParam(value = "type", required = false) String type) {
