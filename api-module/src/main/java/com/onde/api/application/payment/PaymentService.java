@@ -50,13 +50,13 @@ public class PaymentService {
     private final WalletService walletService;
 
     /**
-     * PG 결제창 진입 전 사전 등록 및 검증을 수행합니다.
+     * 결제창 진입 전 사전 등록 및 검증을 수행합니다.
      * 사용자가 보유한 마일리지 범위 내에서 차감액을 지정했는지 검증하고,
      * 고유 주문 번호(merchantUid)를 생성한 후 PENDING(대기) 상태의 Payment 레코드를 생성합니다.
      *
      * @param userId 결제를 진행하는 회원의 식별자
      * @param req    총 결제 대상 금액과 마일리지 사용액이 포함된 요청 DTO
-     * @return 생성된 주문번호(merchantUid)와 실제 PG사에 청구할 금액이 담긴 응답 DTO
+     * @return 생성된 주문번호(merchantUid)와 실제 청구할 금액이 담긴 응답 DTO
      */
     @Transactional
     public PaymentPrepareResponse preparePayment(Long userId, PaymentPrepareRequest req) {
@@ -106,12 +106,12 @@ public class PaymentService {
     }
 
     /**
-     * 포트원 등 PG사를 통한 결제 완료 후 백엔드 서버 측 사후 검증 및 승인 처리를 수행합니다.
-     * 위변조 여부(실제 결제 금액 일치 여부)를 검증하고, 회원 등급에 맞는 적립율을 계산하여
+     * 결제 완료 후 백엔드 서버 측 사후 검증 및 승인 처리를 수행합니다.
+     * 위변조 여부(실제 결제 금액 일치 여부)를 검증하고, 회원 등급에 맞는 적립률을 계산하여
      * 사용 마일리지 차감 및 신규 마일리지 적립을 하나의 트랜잭션 내에서 처리합니다.
      *
      * @param userId 결제한 회원의 식별자
-     * @param req    포트원에서 반환된 거래 고유 ID(impUid) 및 주문번호(merchantUid)와 금액 정보를 담은 DTO
+     * @param req    거래 고유 ID(impUid) 및 주문번호(merchantUid)와 금액 정보를 담은 DTO
      * @return 결제 완료 상세 정보가 포함된 응답 DTO
      */
     @Transactional
@@ -120,7 +120,7 @@ public class PaymentService {
         Payment payment = paymentRepository.findByMerchantUid(req.getMerchantUid())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 주문번호입니다."));
 
-        // 2. 금액 위변조 여부 검증 (사전에 약속된 PG 청구금액과 실제 결제 금액 비교)
+        // 2. 금액 위변조 여부 검증 (사전에 약속된 청구금액과 실제 결제 금액 비교)
         if (payment.getPgAmount().compareTo(req.getPgAmount()) != 0) {
             throw new IllegalArgumentException("결제 요청 금액이 일치하지 않습니다.");
         }
@@ -150,7 +150,7 @@ public class PaymentService {
             mileageService.addLog(userId, -payment.getUsedMileage(), MileageLogType.USE,
                     "결제 시 마일리지 사용 (" + req.getMerchantUid() + ")");
         }
-        // 7. 실 결제액(PG 결제 금액)에 등급 적립률을 적용한 마일리지 적립 처리 (마일리지 로그 양수(+) 기록)
+        // 7. 실 결제액에 등급 적립률을 적용한 마일리지 적립 처리 (마일리지 로그 양수(+) 기록)
         if (accumulatedMileage > 0) {
             mileageService.addLog(userId, accumulatedMileage, MileageLogType.EARN,
                     "결제 적립 (" + req.getMerchantUid() + ")");
