@@ -58,16 +58,21 @@ jobs:
   # ──────────────────────────────────────────────
   # admin-module 빌드 → onde/backend-admin
   # ──────────────────────────────────────────────
-  build-and-push-admin:
-    name: Build & Push admin-module to ECR
+  build-and-upload-admin:
+    name: Build & Upload admin-module JAR to S3
     runs-on: ubuntu-latest
 
     outputs:
       image_tag: ${{ steps.meta.outputs.tag }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -76,28 +81,17 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
       - name: Set image tag
         id: meta
         run: echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
 
-      - name: Build and push admin-module
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ steps.meta.outputs.tag }}
+      - name: Build admin-module JAR
+        run: ./gradlew :admin-module:bootJar
+
+      - name: Upload JAR to S3
         run: |
-          IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY_ADMIN:$IMAGE_TAG
-          docker build \
-            -f Dockerfile \
-            --build-arg MODULE=admin-module \
-            --build-arg PORT=8081 \
-            -t $IMAGE_URI .
-          docker push $IMAGE_URI
-          docker tag $IMAGE_URI $ECR_REGISTRY/$ECR_REPOSITORY_ADMIN:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_ADMIN:latest
+          aws s3 cp admin-module/build/libs/admin-module.jar \
+            s3://${{ secrets.DEPLOY_BUCKET }}/admin/admin-module-${{ github.sha }}.jar
 
   # ──────────────────────────────────────────────
   # Infra 레포에 배포 이벤트 dispatch
@@ -127,7 +121,7 @@ jobs:
 
   trigger-deploy-admin:
     name: Trigger Admin Deployment
-    needs: build-and-push-admin
+    needs: build-and-upload-admin  # build-and-push-admin → build-and-upload-admin
     runs-on: ubuntu-latest
 
     steps:
