@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-#      - feat/infra_cicd
+      - feat/infra_cicd
 
 env:
   AWS_REGION: ap-northeast-2
