@@ -48,7 +48,7 @@ jobs:
         run: |
           IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG
           docker build \
-            -f docker/Dockerfile \
+            -f Dockerfile \
             --build-arg MODULE=api-module \
             -t $IMAGE_URI .
           docker push $IMAGE_URI
@@ -91,7 +91,7 @@ jobs:
         run: |
           IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY_ADMIN:$IMAGE_TAG
           docker build \
-            -f docker/Dockerfile \
+            -f Dockerfile \
             --build-arg MODULE=admin-module \
             --build-arg PORT=8081 \
             -t $IMAGE_URI .
