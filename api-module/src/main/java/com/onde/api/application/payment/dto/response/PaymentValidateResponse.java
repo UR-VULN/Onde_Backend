@@ -7,44 +7,30 @@ import com.onde.core.entity.payment.PaymentStatus;
 import java.math.BigDecimal;
 
 /**
- * 결제 사후 검증 및 최종 승인 완료 결과 정보를 반환하는 DTO 클래스입니다.
+ * 결제 사후 검증 응답 DTO
  */
 @Getter
 @Builder
 public class PaymentValidateResponse {
 
-    /**
-     * 최종 생성 및 승인된 결제 식별자 (PK)
-     */
+    /** 결제 식별자 */
     private Long paymentId;
 
-    /**
-     * 포트원 고유 거래 ID
-     */
+    /** 결제 고유 거래 ID */
     private String impUid;
 
-    /**
-     * 사용자의 총 주문 금액 (PG 결제액 + 마일리지 사용액)
-     */
+    /** 총 주문 금액 */
     private BigDecimal totalAmount;
 
-    /**
-     * PG사를 통해 실제로 승인 처리된 현금성 결제 금액
-     */
+    /** 실제로 승인 처리된 지갑 결제 금액 */
     private BigDecimal pgAmount;
 
-    /**
-     * 이번 결제에서 사용한 마일리지 금액
-     */
+    /** 사용 마일리지 금액 */
     private Integer usedMileage;
 
-    /**
-     * 이번 결제 완료(PG 결제 금액 기준)로 사용자에게 새로이 적립된 마일리지 금액
-     */
+    /** 적립 마일리지 금액 */
     private Integer accumulatedMileage;
 
-    /**
-     * 최종 변경된 결제 상태 (PAID)
-     */
+    /** 결제 상태 */
     private PaymentStatus status;
 }

@@ -35,11 +35,12 @@ public class SellerFlightController {
 
     @GetMapping({"/api/v1/seller/schedules/calendar", "/api/v1/seller/flights/calendar"})
     public ResponseEntity<ApiResponse<List<SellerCalendarResponse>>> getCalendarSchedules(
+            @RequestParam(value = "routeId", required = false) Long routeId,
             @RequestParam("year") Integer year,
             @RequestParam("month") Integer month,
             @LoginMember Long actualSellerId) {
 
-        List<SellerCalendarResponse> response = sellerFlightService.getCalendarSchedules(year, month, actualSellerId);
+        List<SellerCalendarResponse> response = sellerFlightService.getCalendarSchedules(routeId, year, month, actualSellerId);
         return ResponseEntity.ok(ApiResponse.success(response, "월별 스케줄 및 실시간 잔여석 목록을 성공적으로 조회했습니다."));
     }
 
@@ -54,16 +55,21 @@ public class SellerFlightController {
     }
 
     @GetMapping("/api/v1/seller/flights")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getFlights() {
-        List<com.onde.core.entity.flight.FlightSchedule> list = sellerFlightService.getAllSchedules();
-        List<Map<String, Object>> mapped = list.stream().map(fs -> {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getFlights(
+            @LoginMember Long actualSellerId) {
+        List<com.onde.core.entity.flight.FlightRoute> list = sellerFlightService.getRoutesBySellerId(actualSellerId);
+        List<Map<String, Object>> mapped = list.stream().map(route -> {
             Map<String, Object> item = new java.util.HashMap<>();
-            item.put("propertyId", fs.getId());
-            item.put("name", fs.getFlightNumber());
+            item.put("propertyId", route.getId());
+            item.put("name", String.format("%s ➡️ %s (%d분)", 
+                    route.getDepartureAirport(), 
+                    route.getArrivalAirport(), 
+                    route.getDurationMinutes()));
+            
             String status = "ACTIVE";
-            if (fs.getStatus() == com.onde.core.entity.flight.ApprovalStatus.PENDING_APPROVAL) {
+            if (route.getStatus() == com.onde.core.entity.flight.ApprovalStatus.PENDING_APPROVAL) {
                 status = "PENDING";
-            } else if (fs.getStatus() == com.onde.core.entity.flight.ApprovalStatus.REJECTED) {
+            } else if (route.getStatus() == com.onde.core.entity.flight.ApprovalStatus.REJECTED) {
                 status = "REJECTED";
             }
             item.put("status", status);
@@ -75,6 +81,6 @@ public class SellerFlightController {
         data.put("flights", mapped);
         data.put("totalCount", mapped.size());
 
-        return ResponseEntity.ok(ApiResponse.success(data, "판매자 등록 항공 스케줄 목록 조회가 성공적으로 완료되었습니다."));
+        return ResponseEntity.ok(ApiResponse.success(data, "판매자 등록 항공 노선 목록 조회가 성공적으로 완료되었습니다."));
     }
 }

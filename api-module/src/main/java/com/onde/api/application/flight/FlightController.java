@@ -23,7 +23,6 @@ public class FlightController {
 
     private final FlightService flightService;
     private final DistributedLockExecutor distributedLockExecutor;
-    private final com.onde.api.infrastructure.portone.PortOneService portOneService;
 
     @GetMapping("/flights/search")
     public ResponseEntity<ApiResponse<FlightSearchResponse>> searchFlights(@ModelAttribute FlightSearchRequest req) {
@@ -32,7 +31,7 @@ public class FlightController {
     }
 
     /**
-     * [Day 9] Redisson 분산 락 실행기(DistributedLockExecutor)를 활용한 동시성 방어 예약 진입
+     * Redisson 분산 락 실행기(DistributedLockExecutor)를 활용한 동시성 방어 예약 진입
      */
     @PostMapping("/reservations/flights")
     public ResponseEntity<ApiResponse<FlightBookingResponse>> bookSeat(
@@ -51,7 +50,7 @@ public class FlightController {
     }
 
     /**
-     * [Day 9] SAGA 패턴 기반 보상 트랜잭션 (외부 PG 결제 성공 후 로컬 DB 갱신 실패 시 자동 승인 취소 결합)
+     * SAGA 패턴 기반 보상 트랜잭션 (외부 결제 성공 후 로컬 DB 갱신 실패 시 자동 승인 취소 결합)
      */
     @PostMapping("/reservations/flights/{booking_code}/confirm")
     public ResponseEntity<ApiResponse<Map<String, Object>>> confirmPayment(
@@ -61,8 +60,8 @@ public class FlightController {
         String pgTransactionId = (String) paymentPayload.getOrDefault("pgTransactionId", "PG-TX-DEFAULT-12345");
         BigDecimal amount = new BigDecimal(paymentPayload.getOrDefault("paymentAmount", "0").toString());
 
-        // 1. 외부 PG사 승인 가상 성공 (Log 기록)
-        log.info("💰 [PG SUCCESS] PG Payment approved. pgTransactionId={}, amount={}", pgTransactionId, amount);
+        // 1. 외부 결제 승인 가상 성공 (Log 기록)
+        log.info("💰 [PAYMENT SUCCESS] Payment approved. pgTransactionId={}, amount={}", pgTransactionId, amount);
 
         // 2. 로컬 DB 데이터 갱신 시도 (시뮬레이션 예외 처리)
         try {
@@ -82,11 +81,11 @@ public class FlightController {
             log.error("❌ [DB ERROR] Local database update failed due to: {}", e.getMessage());
 
             // 3. [보상 트랜잭션 집행 (SAGA Pattern Compensation)]
-            // 로컬 DB 장애 감지 시, 승인되었던 외부 PG 결제 승인을 비동기/동기로 즉각 전액 강제 취소 요청
-            log.warn("🔄 [SAGA COMPENSATING] 로컬 DB 갱신 장애 감지! 승인된 외부 결제건에 대해 즉시 자동 취소를 청구합니다. targetPgTxId={}",
+            // 로컬 DB 장애 감지 시, 승인되었던 외부 결제 승인을 비동기/동기로 즉각 전액 강제 취소 요청
+            log.warn("🔄 [SAGA COMPENSATING] 로컬 DB 갱신 장애 감지! 승인된 결제건에 대해 즉시 자동 취소를 청구합니다. targetPgTxId={}",
                     pgTransactionId);
 
-            // 외부 PG 취소 API 실제 호출 (D팀 환불 FeignClient 연동 시뮬레이션 및 포트원 서비스 취소 기능 연동)
+            // 환불 FeignClient 연동 시뮬레이션 및 가상 결제 취소 연동
             triggerCompensatingRefund(pgTransactionId, amount);
 
             // 최종 비즈니스 예외 전파
@@ -96,11 +95,6 @@ public class FlightController {
     }
 
     private void triggerCompensatingRefund(String pgTransactionId, BigDecimal amount) {
-        try {
-            // portOneService.cancelPayment(pgTransactionId, amount, "로컬 DB 갱신 장애로 인한 SAGA 보상 트랜잭션 자동 취소");
-            log.info("💰 [SAGA COMPENSATION MOCK SUCCESS] Auto-refund mock completed via PortOne for pgTransactionId={} with amount={}", pgTransactionId, amount);
-        } catch (Exception e) {
-            log.error("❌ [SAGA COMPENSATION FAIL] Failed to refund via PortOne for pgTransactionId={}: {}", pgTransactionId, e.getMessage());
-        }
+        log.info("💰 [SAGA COMPENSATION MOCK SUCCESS] Auto-refund mock completed for pgTransactionId={} with amount={}", pgTransactionId, amount);
     }
 }

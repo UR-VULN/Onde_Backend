@@ -4,6 +4,7 @@ import com.onde.api.application.member.dto.MyPageResponseDtos.*;
 import com.onde.core.entity.flight.BookingStatus;
 import com.onde.core.entity.flight.FlightBooking;
 import com.onde.core.entity.insurance.InsurancePolicy;
+import com.onde.core.entity.insurance.InsurancePolicyStatus;
 import com.onde.core.repository.FlightBookingRepository;
 import com.onde.core.repository.InsurancePolicyRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +36,7 @@ public class MemberMyPageService {
         Page<FlightBooking> pageResult;
 
         if (status == null || status.isBlank()) {
-            pageResult = flightBookingRepository.findByUserId(userId, pageable);
+            pageResult = flightBookingRepository.findByUserIdAndStatus(userId, BookingStatus.CONFIRMED, pageable);
         } else {
             BookingStatus bookingStatus;
             try {
@@ -82,7 +83,7 @@ public class MemberMyPageService {
         Page<InsurancePolicy> pageResult;
 
         if (status == null || status.isBlank()) {
-            pageResult = insurancePolicyRepository.findByUserId(userId, pageable);
+            pageResult = insurancePolicyRepository.findByUserIdAndStatusIn(userId, List.of(InsurancePolicyStatus.ACTIVE, InsurancePolicyStatus.EXPIRED), pageable);
         } else {
             pageResult = insurancePolicyRepository.findByUserIdAndStatus(userId, status.trim().toUpperCase(), pageable);
         }
@@ -116,7 +117,7 @@ public class MemberMyPageService {
 
         com.onde.core.entity.reservation.ReservationTarget targetType = com.onde.core.entity.reservation.ReservationTarget.ROOM;
         if (status == null || status.isBlank()) {
-            pageResult = reservationRepository.findByUserIdAndTargetType(userId, targetType, pageable);
+            pageResult = reservationRepository.findByUserIdAndTargetTypeAndStatusIn(userId, targetType, List.of(com.onde.core.entity.reservation.ReservationStatus.CONFIRMED, com.onde.core.entity.reservation.ReservationStatus.COMPLETED), pageable);
         } else {
             com.onde.core.entity.reservation.ReservationStatus resStatus;
             try {
@@ -170,7 +171,7 @@ public class MemberMyPageService {
 
         com.onde.core.entity.reservation.ReservationTarget targetType = com.onde.core.entity.reservation.ReservationTarget.CAR;
         if (status == null || status.isBlank()) {
-            pageResult = reservationRepository.findByUserIdAndTargetType(userId, targetType, pageable);
+            pageResult = reservationRepository.findByUserIdAndTargetTypeAndStatusIn(userId, targetType, List.of(com.onde.core.entity.reservation.ReservationStatus.CONFIRMED, com.onde.core.entity.reservation.ReservationStatus.COMPLETED), pageable);
         } else {
             com.onde.core.entity.reservation.ReservationStatus resStatus;
             try {

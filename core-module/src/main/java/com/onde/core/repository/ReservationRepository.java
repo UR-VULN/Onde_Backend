@@ -22,6 +22,20 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             org.springframework.data.domain.Pageable pageable
     );
 
+    org.springframework.data.domain.Page<Reservation> findByUserIdAndTargetTypeAndStatusNot(
+            Long userId, 
+            com.onde.core.entity.reservation.ReservationTarget targetType, 
+            com.onde.core.entity.reservation.ReservationStatus status, 
+            org.springframework.data.domain.Pageable pageable
+    );
+
+    org.springframework.data.domain.Page<Reservation> findByUserIdAndTargetTypeAndStatusIn(
+            Long userId, 
+            com.onde.core.entity.reservation.ReservationTarget targetType, 
+            java.util.Collection<com.onde.core.entity.reservation.ReservationStatus> statuses, 
+            org.springframework.data.domain.Pageable pageable
+    );
+
     @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(r.totalPrice), 0) FROM Reservation r WHERE r.targetType = :targetType AND r.status != com.onde.core.entity.reservation.ReservationStatus.CANCELLED AND r.createdAt >= :start AND r.createdAt < :end")
     java.math.BigDecimal sumTotalPriceByTargetTypeAndStatusNotAndCreatedAtBetween(
             @org.springframework.data.repository.query.Param("targetType") com.onde.core.entity.reservation.ReservationTarget targetType, 

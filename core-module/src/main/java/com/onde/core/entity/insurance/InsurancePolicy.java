@@ -48,7 +48,7 @@ public class InsurancePolicy extends BaseEntity {
     private BigDecimal totalPremium;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'ACTIVE'")
+    @Column(name = "status", nullable = false, length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'PENDING_PAYMENT'")
     @Builder.Default
-    private InsurancePolicyStatus status = InsurancePolicyStatus.ACTIVE;
+    private InsurancePolicyStatus status = InsurancePolicyStatus.PENDING_PAYMENT;
 }
