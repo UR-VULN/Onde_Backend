@@ -50,3 +50,20 @@ aws:
     cloudfront-domain: ${AWS_CLOUDFRONT_DOMAIN}
     region: ${AWS_REGION}
     endpoint: ${AWS_S3_ENDPOINT:http://localhost:9000}
+
+management:
+  endpoints:
+    web:
+      base-path: /api/v1  
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true  
+      group:
+        liveness:
+          include: livenessState 
+  health:
+    defaults:
+      enabled: false    

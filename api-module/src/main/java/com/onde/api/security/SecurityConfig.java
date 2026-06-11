@@ -25,12 +25,12 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    // [팀원 순정 의존성] 빈으로 관리되는 컴포넌트들을 주입받습니다.
+    // 빈으로 관리되는 컴포넌트들을 주입받음
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
-    // [팀원 순정 의존성] 소셜 로그인 관련 컴포넌트
+    // 소셜 로그인 관련 컴포넌트
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
@@ -54,7 +54,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // ALL (누구나 접근 가능한 공개 경로)
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/api/v1/health").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/flights/search").permitAll()
                         .requestMatchers("/api/v1/insurance/calculate", "/api/v1/insurances/calculate").permitAll()
