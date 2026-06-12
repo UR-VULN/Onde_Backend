@@ -70,8 +70,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     // 소셜 유저는 더미 패스워드를 인코딩하여 테이블 제약 조건 우회
                     String dummyPassword = passwordEncoder.encode(UUID.randomUUID().toString());
                     
-                    // 이메일이 없으면 GUEST, 있으면 USER로 가입
-                    MemberRole role = (finalEmail != null && !finalEmail.isEmpty()) ? MemberRole.USER : MemberRole.GUEST;
+                    // 소셜 가입자는 즉시 USER로 가입
+                    MemberRole role = MemberRole.USER;
                     
                     Member newMember = Member.builder()
                             .email(finalEmail)
