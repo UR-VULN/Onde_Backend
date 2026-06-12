@@ -77,6 +77,7 @@ public class CarService {
                         .dailyPrice(resolveDailyPrice(c, searchStartDate, searchEndDate))
                         .location(c.getLocation())
                         .available(true)
+                        .thumbnailUrl(c.getThumbnailUrl())
                         .build())
                 .collect(Collectors.toList());
 

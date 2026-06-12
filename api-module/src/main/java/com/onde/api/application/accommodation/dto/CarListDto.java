@@ -19,4 +19,5 @@ public class CarListDto {
     private Integer price;
     private Boolean available;
     private String location;
+    private String thumbnailUrl;
 }

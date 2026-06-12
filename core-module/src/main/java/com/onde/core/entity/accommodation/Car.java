@@ -32,4 +32,8 @@ public class Car extends BaseEntity {
 
     @Column(name = "location", length = 500)
     private String location;
+
+    @Column(name = "thumbnail_url", length = 500)
+    private String thumbnailUrl;
 }
+
