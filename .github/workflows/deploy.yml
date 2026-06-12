@@ -135,7 +135,7 @@ jobs:
               repo: 'Onde_Infra',
               event_type: 'deploy-admin',
               client_payload: {
-                image_tag: '${{ needs.build-and-push-admin.outputs.image_tag }}',
+                image_tag: '${{ needs.build-and-upload-admin.outputs.image_tag }}',
                 sha: context.sha,
                 ref: context.ref
               }
