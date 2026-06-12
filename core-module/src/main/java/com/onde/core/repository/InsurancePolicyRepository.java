@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 public interface InsurancePolicyRepository extends JpaRepository<InsurancePolicy, Long> {
     org.springframework.data.domain.Page<InsurancePolicy> findByUserId(Long userId, org.springframework.data.domain.Pageable pageable);
 
-    org.springframework.data.domain.Page<InsurancePolicy> findByUserIdAndStatus(Long userId, String status, org.springframework.data.domain.Pageable pageable);
+    org.springframework.data.domain.Page<InsurancePolicy> findByUserIdAndStatus(Long userId, com.onde.core.entity.insurance.InsurancePolicyStatus status, org.springframework.data.domain.Pageable pageable);
 
     org.springframework.data.domain.Page<InsurancePolicy> findByUserIdAndStatusIn(Long userId, java.util.Collection<com.onde.core.entity.insurance.InsurancePolicyStatus> statuses, org.springframework.data.domain.Pageable pageable);
 

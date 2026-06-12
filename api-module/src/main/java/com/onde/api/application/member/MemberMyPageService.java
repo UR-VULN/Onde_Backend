@@ -85,7 +85,19 @@ public class MemberMyPageService {
         if (status == null || status.isBlank()) {
             pageResult = insurancePolicyRepository.findByUserIdAndStatusIn(userId, List.of(InsurancePolicyStatus.ACTIVE, InsurancePolicyStatus.EXPIRED), pageable);
         } else {
-            pageResult = insurancePolicyRepository.findByUserIdAndStatus(userId, status.trim().toUpperCase(), pageable);
+            InsurancePolicyStatus policyStatus;
+            try {
+                policyStatus = InsurancePolicyStatus.valueOf(status.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid insurance status filter: {}", status);
+                return MyPageListResponse.<MyPageInsurancePolicyResponse>builder()
+                        .content(List.of())
+                        .totalCount(0)
+                        .page(pageable.getPageNumber())
+                        .size(pageable.getPageSize())
+                        .build();
+            }
+            pageResult = insurancePolicyRepository.findByUserIdAndStatus(userId, policyStatus, pageable);
         }
 
         List<MyPageInsurancePolicyResponse> dtoList = pageResult.getContent().stream()
