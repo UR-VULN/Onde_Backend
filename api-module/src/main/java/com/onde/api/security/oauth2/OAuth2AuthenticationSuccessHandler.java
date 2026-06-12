@@ -8,7 +8,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
@@ -23,9 +22,6 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
-
-    @Value("${app.frontend-url:http://localhost:3000}")
-    private String frontendUrl;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
@@ -54,7 +50,18 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
         
+<<<<<<< HEAD
         // 4. 정상 메인 페이지로 리다이렉트
         getRedirectStrategy().sendRedirect(request, response, frontendUrl + "/oauth2/redirect");
+=======
+        // 4. 권한에 따른 리다이렉트
+        if ("ROLE_GUEST".equals(authority)) {
+            // 이메일 추가 수집 페이지로 리다이렉트
+            getRedirectStrategy().sendRedirect(request, response, "http://localhost:3000/signup/email");
+        } else {
+            // 정상 메인 페이지로 리다이렉트
+            getRedirectStrategy().sendRedirect(request, response, "http://localhost:3000/oauth2/redirect");
+        }
+>>>>>>> parent of 9412407 (Use configurable frontend URL for OAuth2 redirect paths to prevent hardcoded localhost redirects)
     }
 }
