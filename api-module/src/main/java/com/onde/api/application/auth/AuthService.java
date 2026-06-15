@@ -38,6 +38,11 @@ public class AuthService {
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
         }
 
+        // 닉네임 중복 검증
+        if (request.getNickname() != null && memberRepository.existsByNickname(request.getNickname())) {
+            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
+        }
+
         // 비밀번호 암호화 및 Member 엔티티 생성
         MemberRole role = request.getRole() != null ? request.getRole() : MemberRole.USER;
         MemberStatus initialStatus = role == MemberRole.SELLER ? MemberStatus.PENDING : MemberStatus.ACTIVE;
@@ -46,6 +51,8 @@ public class AuthService {
                 .name(request.getName())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phoneNumber(request.getPhoneNumber())
+                .nickname(request.getNickname())
+                .age(request.getAge())
                 .role(role)
                 .status(initialStatus)
                 .build();
@@ -58,9 +65,22 @@ public class AuthService {
                 .name(savedMember.getName())
                 .role(savedMember.getRole())
                 .status(savedMember.getStatus())
+                .nickname(savedMember.getNickname())
+                .age(savedMember.getAge())
                 .createdAt(savedMember.getCreatedAt())
                 .build();
     }
+
+    @Transactional(readOnly = true)
+    public boolean checkNicknameDuplicate(String nickname) {
+        return memberRepository.existsByNickname(nickname);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean checkEmailDuplicate(String email) {
+        return memberRepository.existsByEmail(email);
+    }
+
 
     @Transactional
     public LoginResponse login(LoginRequest request) {

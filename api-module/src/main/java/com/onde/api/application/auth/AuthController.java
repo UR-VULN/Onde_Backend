@@ -32,12 +32,31 @@ public class AuthController {
     public ResponseEntity<ApiResponse<SignupResponse>> signup(@Valid @RequestBody SignupRequest request) {
         SignupResponse result = authService.signup(request);
         String message = result.getRole() == MemberRole.SELLER && result.getStatus() == MemberStatus.PENDING
-                ? "판매자 회원가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다."
-                : "회원가입이 완료되었습니다.";
+                 ? "판매자 회원가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다."
+                 : "회원가입이 완료되었습니다.";
         return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(result, message));
+                 .status(HttpStatus.CREATED)
+                 .body(ApiResponse.success(result, message));
     }
+
+    @org.springframework.web.bind.annotation.GetMapping("/check-nickname")
+    public ResponseEntity<ApiResponse<Boolean>> checkNickname(@org.springframework.web.bind.annotation.RequestParam("nickname") String nickname) {
+        boolean duplicate = authService.checkNicknameDuplicate(nickname);
+        if (duplicate) {
+            return ResponseEntity.ok(ApiResponse.success(true, "이미 사용 중인 닉네임입니다."));
+        }
+        return ResponseEntity.ok(ApiResponse.success(false, "사용 가능한 닉네임입니다."));
+    }
+
+    @org.springframework.web.bind.annotation.GetMapping("/check-email")
+    public ResponseEntity<ApiResponse<Boolean>> checkEmail(@org.springframework.web.bind.annotation.RequestParam("email") String email) {
+        boolean duplicate = authService.checkEmailDuplicate(email);
+        if (duplicate) {
+            return ResponseEntity.ok(ApiResponse.success(true, "이미 사용 중인 이메일입니다."));
+        }
+        return ResponseEntity.ok(ApiResponse.success(false, "사용 가능한 이메일입니다."));
+    }
+
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {

@@ -14,6 +14,10 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
     // 이메일 중복 가입 방지용 확인
     boolean existsByEmail(String email);
 
+    // 닉네임 중복 방지용 확인
+    boolean existsByNickname(String nickname);
+
+
     // 소셜 로그인 (provider, providerId 기준) 회원 조회
     Optional<Member> findByProviderAndProviderId(com.onde.core.entity.member.AuthProvider provider, String providerId);
 

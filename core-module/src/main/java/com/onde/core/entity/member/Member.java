@@ -36,10 +36,17 @@ public class Member extends BaseEntity {
     @Column(length = 20)
     private String phoneNumber;
 
+    @Column(unique = true, length = 100)
+    private String nickname;
+
+    @Column
+    private Integer age;
+
     // EnumType.STRING을 줘야 DB에 숫자가 아닌 문자로 예쁘게 들어갑니다.
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20)")
     private MemberRole role;
+
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'ACTIVE'")

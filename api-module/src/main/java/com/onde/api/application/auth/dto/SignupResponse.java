@@ -15,5 +15,7 @@ public class SignupResponse {
     private String name;
     private MemberRole role;
     private MemberStatus status;
+    private String nickname;
+    private Integer age;
     private LocalDateTime createdAt;
 }
