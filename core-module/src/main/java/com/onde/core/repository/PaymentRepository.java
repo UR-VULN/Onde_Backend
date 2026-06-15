@@ -54,22 +54,27 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      */
     @Query(value = "SELECT " +
             "CASE " +
-            "  WHEN r.target_type = 'ROOM' THEN a.seller_id " +
-            "  WHEN r.target_type = 'CAR' THEN c.seller_id " +
+            "  WHEN p.reservation_type = 'ROOM' THEN a.seller_id " +
+            "  WHEN p.reservation_type = 'CAR' THEN c.seller_id " +
+            "  WHEN p.reservation_type = 'FLIGHT' THEN fr.seller_id " +
             "  ELSE null " +
             "END AS sellerId, " +
             "SUM(p.total_amount) AS grossAmount " +
             "FROM payments p " +
-            "JOIN reservations r ON p.reservation_id = r.id " +
+            "LEFT JOIN reservations r ON (p.reservation_type = 'ROOM' OR p.reservation_type = 'CAR') AND p.reservation_id = r.id " +
             "LEFT JOIN rooms rm ON r.target_type = 'ROOM' AND r.target_id = rm.id " +
             "LEFT JOIN accommodations a ON rm.accommodation_id = a.id " +
             "LEFT JOIN rental_cars c ON r.target_type = 'CAR' AND r.target_id = c.id " +
+            "LEFT JOIN flight_bookings fb ON p.reservation_type = 'FLIGHT' AND p.reservation_id = fb.id " +
+            "LEFT JOIN flight_schedules fs ON fb.flight_schedule_id = fs.id " +
+            "LEFT JOIN flight_routes fr ON fs.route_id = fr.id " +
             "WHERE p.status = :status " +
             "AND p.settlement_id IS NULL " +
             "GROUP BY " +
             "CASE " +
-            "  WHEN r.target_type = 'ROOM' THEN a.seller_id " +
-            "  WHEN r.target_type = 'CAR' THEN c.seller_id " +
+            "  WHEN p.reservation_type = 'ROOM' THEN a.seller_id " +
+            "  WHEN p.reservation_type = 'CAR' THEN c.seller_id " +
+            "  WHEN p.reservation_type = 'FLIGHT' THEN fr.seller_id " +
             "  ELSE null " +
             "END", nativeQuery = true)
     List<SettlementProjection> calculateSettlementAmounts(
@@ -95,34 +100,42 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      */
     @Query(value = "SELECT " +
             "p.id AS paymentId, " +
-            "r.id AS reservationId, " +
-            "r.target_type AS targetType, " +
+            "p.reservation_id AS reservationId, " +
+            "p.reservation_type AS targetType, " +
             "CASE " +
-            "  WHEN r.target_type = 'ROOM' THEN a.name " +
-            "  WHEN r.target_type = 'CAR' THEN c.model_name " +
+            "  WHEN p.reservation_type = 'ROOM' THEN a.name " +
+            "  WHEN p.reservation_type = 'CAR' THEN c.model_name " +
+            "  WHEN p.reservation_type = 'FLIGHT' THEN CONCAT(fr.departure_airport, ' -> ', fr.arrival_airport) " +
             "  ELSE '알 수 없음' " +
             "END AS productName, " +
             "p.total_amount AS amount, " +
             "p.created_at AS paymentDate " +
             "FROM payments p " +
-            "JOIN reservations r ON p.reservation_id = r.id " +
+            "LEFT JOIN reservations r ON (p.reservation_type = 'ROOM' OR p.reservation_type = 'CAR') AND p.reservation_id = r.id " +
             "LEFT JOIN rooms rm ON r.target_type = 'ROOM' AND r.target_id = rm.id " +
             "LEFT JOIN accommodations a ON rm.accommodation_id = a.id " +
             "LEFT JOIN rental_cars c ON r.target_type = 'CAR' AND r.target_id = c.id " +
+            "LEFT JOIN flight_bookings fb ON p.reservation_type = 'FLIGHT' AND p.reservation_id = fb.id " +
+            "LEFT JOIN flight_schedules fs ON fb.flight_schedule_id = fs.id " +
+            "LEFT JOIN flight_routes fr ON fs.route_id = fr.id " +
             "WHERE p.settlement_id = :settlementId", nativeQuery = true)
     List<SettlementDetailProjection> findSettlementDetails(
             @Param("settlementId") Long settlementId);
 
     @Query(value = "SELECT p.* FROM payments p " +
-            "JOIN reservations r ON p.reservation_id = r.id " +
+            "LEFT JOIN reservations r ON (p.reservation_type = 'ROOM' OR p.reservation_type = 'CAR') AND p.reservation_id = r.id " +
             "LEFT JOIN rooms rm ON r.target_type = 'ROOM' AND r.target_id = rm.id " +
             "LEFT JOIN accommodations a ON rm.accommodation_id = a.id " +
             "LEFT JOIN rental_cars c ON r.target_type = 'CAR' AND r.target_id = c.id " +
+            "LEFT JOIN flight_bookings fb ON p.reservation_type = 'FLIGHT' AND p.reservation_id = fb.id " +
+            "LEFT JOIN flight_schedules fs ON fb.flight_schedule_id = fs.id " +
+            "LEFT JOIN flight_routes fr ON fs.route_id = fr.id " +
             "WHERE p.status = :status " +
             "AND p.settlement_id IS NULL " +
             "AND (" +
-            "  (r.target_type = 'ROOM' AND a.seller_id = :sellerId) OR " +
-            "  (r.target_type = 'CAR' AND c.seller_id = :sellerId)" +
+            "  (p.reservation_type = 'ROOM' AND a.seller_id = :sellerId) OR " +
+            "  (p.reservation_type = 'CAR' AND c.seller_id = :sellerId) OR " +
+            "  (p.reservation_type = 'FLIGHT' AND fr.seller_id = :sellerId)" +
             ")", nativeQuery = true)
     List<Payment> findUnsettledPayments(
             @Param("sellerId") Long sellerId,

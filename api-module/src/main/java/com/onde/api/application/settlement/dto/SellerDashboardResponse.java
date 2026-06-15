@@ -14,6 +14,7 @@ public class SellerDashboardResponse {
     private String period;
     private BigDecimal totalRevenue;
     private List<RevenueBreakdown> breakdown;
+    private List<BigDecimal> dailyRevenue;
 
     @Getter
     @Setter

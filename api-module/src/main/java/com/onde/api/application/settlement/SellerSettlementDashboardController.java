@@ -36,12 +36,24 @@ public class SellerSettlementDashboardController {
                     .build());
         }
 
+        java.util.List<BigDecimal> dailyRevenue = new java.util.ArrayList<>();
+        for (com.onde.api.application.payment.dto.response.SellerStatisticsResponse.RevenueTrend trend : stats.getDailyTrends()) {
+            dailyRevenue.add(trend.getGrossAmount());
+        }
+        while (dailyRevenue.size() < 7) {
+            dailyRevenue.add(BigDecimal.ZERO);
+        }
+        if (dailyRevenue.size() > 7) {
+            dailyRevenue = dailyRevenue.subList(dailyRevenue.size() - 7, dailyRevenue.size());
+        }
+
         com.onde.api.application.settlement.dto.SellerDashboardResponse response = com.onde.api.application.settlement.dto.SellerDashboardResponse.builder()
                 .period(period)
                 .totalRevenue(stats.getMonthlyTrends().stream()
                         .map(com.onde.api.application.payment.dto.response.SellerStatisticsResponse.RevenueTrend::getGrossAmount)
                         .reduce(BigDecimal.ZERO, BigDecimal::add))
                 .breakdown(breakdown)
+                .dailyRevenue(dailyRevenue)
                 .build();
 
         return ResponseEntity.ok(ApiResponse.success(response));
