@@ -48,6 +48,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             @org.springframework.data.repository.query.Param("start") java.time.LocalDateTime start, 
             @org.springframework.data.repository.query.Param("end") java.time.LocalDateTime end
     );
+
+    java.util.List<Reservation> findByTargetTypeAndTargetIdInOrderByCreatedAtDesc(
+            com.onde.core.entity.reservation.ReservationTarget targetType, 
+            java.util.Collection<Long> targetIds
+    );
 }
 
 

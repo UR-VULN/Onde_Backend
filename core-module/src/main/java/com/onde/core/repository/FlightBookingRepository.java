@@ -38,6 +38,9 @@ public interface FlightBookingRepository extends JpaRepository<FlightBooking, Lo
             @Param("end") LocalDateTime end
     );
 
+    @Query("SELECT fb FROM FlightBooking fb JOIN FETCH fb.flightSchedule fs JOIN FETCH fs.route r WHERE r.sellerId = :sellerId ORDER BY fb.createdAt DESC")
+    List<FlightBooking> findBySellerIdOrderByCreatedAtDesc(@Param("sellerId") Long sellerId);
+
     @Query("SELECT COUNT(fb) FROM FlightBooking fb WHERE fb.status = com.onde.core.entity.flight.BookingStatus.CONFIRMED AND fb.createdAt >= :start AND fb.createdAt < :end")
     long countByStatusAndCreatedAtBetween(
             @Param("start") LocalDateTime start, 
