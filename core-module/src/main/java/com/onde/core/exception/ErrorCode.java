@@ -3,13 +3,14 @@ package com.onde.core.exception;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
-@Getter // 👈 롬복 애노테이션으로 하단의 게터 메서드들을 깔끔하게 대체합니다.
+@Getter 
 public enum ErrorCode {
 
     // =========================================================================
     // M: Member 관련 오류
     // =========================================================================
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "M-001", "회원 정보를 찾을 수 없습니다."),
+    NICKNAME_DUPLICATION(HttpStatus.BAD_REQUEST, "M-002", "이미 사용 중인 닉네임입니다."),
 
     // =========================================================================
     // F: Flight (항공) 관련 오류

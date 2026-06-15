@@ -1,6 +1,8 @@
 package com.onde.api.application.member;
 
+import com.onde.api.application.member.dto.MemberProfileResponse;
 import com.onde.api.application.member.dto.MyPageResponseDtos.*;
+import com.onde.api.application.member.dto.ProfileUpdateRequestDto;
 import com.onde.core.entity.flight.BookingStatus;
 import com.onde.core.entity.flight.FlightBooking;
 import com.onde.core.entity.insurance.InsurancePolicy;
@@ -11,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +34,7 @@ public class MemberMyPageService {
     private final com.onde.core.repository.MemberRepository memberRepository;
     private final com.onde.core.repository.PaymentRepository paymentRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private final PasswordEncoder passwordEncoder;
 
     public MyPageListResponse<MyPageFlightBookingResponse> getMyFlightBookings(Long userId, String status, Pageable pageable) {
         Page<FlightBooking> pageResult;
@@ -268,5 +272,38 @@ public class MemberMyPageService {
         }
         policy.setStatus(com.onde.core.entity.insurance.InsurancePolicyStatus.CANCELLED);
         eventPublisher.publishEvent(new com.onde.core.event.AdminBookingCancelEvent(this, policyId, userId, "INSURANCE"));
+    }
+
+    public MemberProfileResponse getProfile(Long userId) {
+        com.onde.core.entity.member.Member member = memberRepository.findById(userId)
+                .orElseThrow(() -> new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.MEMBER_NOT_FOUND));
+
+        return MemberProfileResponse.builder()
+                .email(member.getEmail())
+                .name(member.getName())
+                .phoneNumber(member.getPhoneNumber())
+                .nickname(member.getNickname())
+                .build();
+    }
+
+    @Transactional
+    public void updateProfile(Long userId, ProfileUpdateRequestDto requestDto) {
+        com.onde.core.entity.member.Member member = memberRepository.findById(userId)
+                .orElseThrow(() -> new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.MEMBER_NOT_FOUND));
+
+        // 닉네임 중복 체크 (자신의 닉네임이 아닌 경우에만)
+        if (requestDto.getNickname() != null && !requestDto.getNickname().equals(member.getNickname())) {
+            if (memberRepository.existsByNickname(requestDto.getNickname())) {
+                throw new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.NICKNAME_DUPLICATION);
+            }
+        }
+
+        // 기본 정보 업데이트
+        member.updateProfile(requestDto.getName(), requestDto.getPhoneNumber(), requestDto.getNickname());
+
+        // 비밀번호 변경 요청이 있는 경우에만 처리
+        if (requestDto.getNewPassword() != null && !requestDto.getNewPassword().isBlank()) {
+            member.updatePassword(passwordEncoder.encode(requestDto.getNewPassword()));
+        }
     }
 }

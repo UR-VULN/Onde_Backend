@@ -1,8 +1,11 @@
 package com.onde.api.application.member;
 
+import com.onde.api.application.member.dto.MemberProfileResponse;
 import com.onde.api.application.member.dto.MyPageResponseDtos.*;
+import com.onde.api.application.member.dto.ProfileUpdateRequestDto;
 import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +19,21 @@ public class MemberMyPageController {
 
     private final MemberMyPageService memberMyPageService;
 
+    @GetMapping("/profile")
+    public ResponseEntity<ApiResponse<MemberProfileResponse>> getMyProfile(
+            @LoginMember(required = true) Long userId) {
+        MemberProfileResponse response = memberMyPageService.getProfile(userId);
+        return ResponseEntity.ok(ApiResponse.success(response, "프로필 정보 조회 성공"));
+    }
+
+    @PatchMapping("/profile")
+    public ResponseEntity<ApiResponse<Void>> updateMyProfile(
+            @LoginMember(required = true) Long userId,
+            @Valid @RequestBody ProfileUpdateRequestDto requestDto) {
+        memberMyPageService.updateProfile(userId, requestDto);
+        return ResponseEntity.ok(ApiResponse.success(null, "프로필 정보가 수정되었습니다."));
+    }
+
     @GetMapping("/reservations/flights")
     public ResponseEntity<ApiResponse<MyPageListResponse<MyPageFlightBookingResponse>>> getMyFlightBookings(
             @LoginMember(required = true) Long userId,
@@ -27,6 +45,7 @@ public class MemberMyPageController {
         MyPageListResponse<MyPageFlightBookingResponse> response = memberMyPageService.getMyFlightBookings(userId, status, pageable);
         return ResponseEntity.ok(ApiResponse.success(response, "항공 예약 목록 조회 성공"));
     }
+
 
     @GetMapping("/insurances")
     public ResponseEntity<ApiResponse<MyPageListResponse<MyPageInsurancePolicyResponse>>> getMyInsurancePolicies(

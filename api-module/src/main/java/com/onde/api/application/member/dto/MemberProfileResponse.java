@@ -1,3 +1,13 @@
 package com.onde.api.application.member.dto;
 
-public class MemberProfileResponse {}
+import lombok.Builder;
+import lombok.Getter;
+
+@Getter
+@Builder
+public class MemberProfileResponse {
+    private String email;
+    private String name;
+    private String phoneNumber;
+    private String nickname;
+}
