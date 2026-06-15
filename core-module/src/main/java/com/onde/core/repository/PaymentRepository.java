@@ -30,6 +30,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
      */
     Optional<Payment> findByReservationId(Long reservationId);
 
+    List<Payment> findBySettlementId(Long settlementId);
+
     /**
      * 예약 식별자(reservationId)로 가장 최근의 결제 내역 1건을 조회합니다.
      */
@@ -63,8 +65,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             "LEFT JOIN accommodations a ON rm.accommodation_id = a.id " +
             "LEFT JOIN rental_cars c ON r.target_type = 'CAR' AND r.target_id = c.id " +
             "WHERE p.status = :status " +
-            "AND p.created_at >= :start " +
-            "AND p.created_at < :end " +
+            "AND p.settlement_id IS NULL " +
             "GROUP BY " +
             "CASE " +
             "  WHEN r.target_type = 'ROOM' THEN a.seller_id " +
@@ -72,9 +73,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             "  ELSE null " +
             "END", nativeQuery = true)
     List<SettlementProjection> calculateSettlementAmounts(
-            @Param("status") String status,
-            @Param("start") LocalDateTime start,
-            @Param("end") LocalDateTime end);
+            @Param("status") String status);
 
     /**
      * 정산 금액 집계를 위한 Spring Data JPA 프로젝션 인터페이스입니다.
@@ -89,6 +88,56 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
          * @return 판매자의 총 매출액 (수수료 차감 전)
          */
         BigDecimal getGrossAmount();
+    }
+
+    /**
+     * 특정 판매자의 정산 상세 내역(결제 및 예약 정보)을 조회합니다.
+     */
+    @Query(value = "SELECT " +
+            "p.id AS paymentId, " +
+            "r.id AS reservationId, " +
+            "r.target_type AS targetType, " +
+            "CASE " +
+            "  WHEN r.target_type = 'ROOM' THEN a.name " +
+            "  WHEN r.target_type = 'CAR' THEN c.model_name " +
+            "  ELSE '알 수 없음' " +
+            "END AS productName, " +
+            "p.total_amount AS amount, " +
+            "p.created_at AS paymentDate " +
+            "FROM payments p " +
+            "JOIN reservations r ON p.reservation_id = r.id " +
+            "LEFT JOIN rooms rm ON r.target_type = 'ROOM' AND r.target_id = rm.id " +
+            "LEFT JOIN accommodations a ON rm.accommodation_id = a.id " +
+            "LEFT JOIN rental_cars c ON r.target_type = 'CAR' AND r.target_id = c.id " +
+            "WHERE p.settlement_id = :settlementId", nativeQuery = true)
+    List<SettlementDetailProjection> findSettlementDetails(
+            @Param("settlementId") Long settlementId);
+
+    @Query(value = "SELECT p.* FROM payments p " +
+            "JOIN reservations r ON p.reservation_id = r.id " +
+            "LEFT JOIN rooms rm ON r.target_type = 'ROOM' AND r.target_id = rm.id " +
+            "LEFT JOIN accommodations a ON rm.accommodation_id = a.id " +
+            "LEFT JOIN rental_cars c ON r.target_type = 'CAR' AND r.target_id = c.id " +
+            "WHERE p.status = :status " +
+            "AND p.settlement_id IS NULL " +
+            "AND (" +
+            "  (r.target_type = 'ROOM' AND a.seller_id = :sellerId) OR " +
+            "  (r.target_type = 'CAR' AND c.seller_id = :sellerId)" +
+            ")", nativeQuery = true)
+    List<Payment> findUnsettledPayments(
+            @Param("sellerId") Long sellerId,
+            @Param("status") String status);
+
+    /**
+     * 정산 상세 조회를 위한 Spring Data JPA 프로젝션 인터페이스입니다.
+     */
+    interface SettlementDetailProjection {
+        Long getPaymentId();
+        Long getReservationId();
+        String getTargetType();
+        String getProductName();
+        BigDecimal getAmount();
+        LocalDateTime getPaymentDate();
     }
 
     /**

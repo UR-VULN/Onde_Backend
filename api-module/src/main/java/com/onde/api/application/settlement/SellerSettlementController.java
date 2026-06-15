@@ -2,9 +2,11 @@ package com.onde.api.application.settlement;
 
 import com.onde.api.application.settlement.dto.SellerAccountRequest;
 import com.onde.api.application.settlement.dto.SellerAccountResponse;
+import com.onde.api.application.settlement.dto.SettlementDetailResponse;
 import com.onde.api.security.LoginMember;
 import com.onde.core.entity.settlement.SellerAccount;
 import com.onde.core.entity.settlement.Settlement;
+import com.onde.core.repository.PaymentRepository;
 import com.onde.core.repository.SettlementRepository;
 import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -14,8 +16,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * 판매자(Seller) 관점에서의 정산 및 정산 계좌 관련 API를 처리하는 통합 컨트롤러 클래스입니다.
@@ -135,5 +139,43 @@ public class SellerSettlementController {
                 .openedAt(account.getOpenedAt())
                 .createdAt(account.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * [Day 10 추가] 특정 정산 건의 상세 예약 결제 내역들을 조회합니다.
+     */
+    @GetMapping("/{settlementId}/details")
+    public ResponseEntity<ApiResponse<SettlementDetailResponse>> getSettlementDetails(
+            @PathVariable("settlementId") Long settlementId,
+            @LoginMember Long sellerId) {
+
+        Settlement settlement = settlementRepository.findById(settlementId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 정산 건이 존재하지 않습니다."));
+
+        if (!settlement.getSellerId().equals(sellerId)) {
+            throw new IllegalArgumentException("본인의 정산 내역만 조회할 수 있습니다.");
+        }
+
+        List<PaymentRepository.SettlementDetailProjection> projections =
+                settlementService.getSettlementDetails(settlementId, sellerId);
+
+        List<SettlementDetailResponse.DetailItem> items = projections.stream()
+                .map(p -> SettlementDetailResponse.DetailItem.builder()
+                        .paymentId(p.getPaymentId())
+                        .reservationId(p.getReservationId())
+                        .targetType(p.getTargetType())
+                        .productName(p.getProductName())
+                        .amount(p.getAmount())
+                        .paymentDate(p.getPaymentDate())
+                        .build())
+                .collect(Collectors.toList());
+
+        SettlementDetailResponse response = SettlementDetailResponse.builder()
+                .settlementId(settlement.getId())
+                .settlementDate(settlement.getSettlementDate())
+                .details(items)
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.success(response, "정산 상세 내역 조회가 완료되었습니다."));
     }
 }

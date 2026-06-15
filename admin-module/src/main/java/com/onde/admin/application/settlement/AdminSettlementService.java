@@ -3,13 +3,17 @@ package com.onde.admin.application.settlement;
 import com.onde.core.entity.settlement.SellerAccount;
 import com.onde.core.entity.settlement.Settlement;
 import com.onde.core.entity.settlement.SettlementStatus;
+import com.onde.core.entity.payment.Payment;
+import com.onde.core.repository.PaymentRepository;
 import com.onde.core.repository.SellerAccountRepository;
 import com.onde.core.repository.SettlementRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -18,6 +22,7 @@ public class AdminSettlementService {
 
     private final SettlementRepository settlementRepository;
     private final SellerAccountRepository sellerAccountRepository;
+    private final PaymentRepository paymentRepository;
 
     /**
      * 특정 판매자의 정산 계좌 조회
@@ -101,6 +106,14 @@ public class AdminSettlementService {
         }
 
         settlement.setStatus(SettlementStatus.REJECTED);
+
+        // 반려된 정산 건에 속해있던 결제 건들의 settlementId를 null로 돌려주어 재신청 가능하게 함
+        List<Payment> payments = paymentRepository.findBySettlementId(settlementId);
+        for (Payment p : payments) {
+            p.setSettlementId(null);
+        }
+        paymentRepository.saveAll(payments);
+
         return settlement;
     }
 
@@ -119,5 +132,16 @@ public class AdminSettlementService {
         settlement.setStatus(SettlementStatus.COMPLETED);
         settlement.setFinalizedAt(LocalDateTime.now());
         return settlement;
+    }
+
+    /**
+     * 특정 정산 건의 상세 내역을 조회합니다. (본사 관리자용)
+     */
+    @Transactional(readOnly = true)
+    public List<PaymentRepository.SettlementDetailProjection> getSettlementDetails(Long settlementId) {
+        Settlement settlement = settlementRepository.findById(settlementId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 정산 건이 존재하지 않습니다."));
+
+        return paymentRepository.findSettlementDetails(settlementId);
     }
 }

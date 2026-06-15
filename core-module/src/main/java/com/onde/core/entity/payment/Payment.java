@@ -95,6 +95,9 @@ public class Payment {
     @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20)")
     private PaymentStatus status;
 
+    @Column(name = "settlement_id")
+    private Long settlementId;
+
     /**
      * 결제 내역이 생성된 일시 (자동 등록)
      */

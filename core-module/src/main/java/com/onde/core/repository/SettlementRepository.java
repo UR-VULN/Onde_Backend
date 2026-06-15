@@ -27,6 +27,10 @@ public interface SettlementRepository extends JpaRepository<Settlement, Long> {
     Page<Settlement> findBySellerId(Long sellerId, Pageable pageable);
     
     java.util.Optional<Settlement> findBySellerIdAndSettlementDate(Long sellerId, java.time.LocalDate settlementDate);
+    
+    boolean existsBySellerIdAndStatusIn(Long sellerId, List<SettlementStatus> statuses);
+
+    List<Settlement> findBySellerIdAndStatus(Long sellerId, SettlementStatus status);
 
     /**
      * 특정 정산 진행 상태를 가진 정산 내역을 페이징하여 조회합니다.

@@ -1,6 +1,7 @@
 package com.onde.api.application.settlement;
 
 import com.onde.core.entity.member.Member;
+import com.onde.core.entity.payment.Payment;
 import com.onde.core.entity.payment.PaymentStatus;
 import com.onde.core.entity.settlement.SellerAccount;
 import com.onde.core.entity.settlement.Settlement;
@@ -51,13 +52,9 @@ public class SettlementService {
      */
     @Transactional
     public void executeDailySettlement(LocalDate targetDate) {
-        // 1. 대상 일자의 시작 일시(00:00:00)와 종료 일시(다음날 00:00:00 미만) 계산
-        LocalDateTime start = targetDate.atStartOfDay();
-        LocalDateTime end = targetDate.plusDays(1).atStartOfDay();
-
-        // 2. 해당 기간 동안의 PAID 상태 결제 내역을 판매자별로 그룹핑하여 집계 조회
+        // 1. PAID 상태 결제 내역을 판매자별로 그룹핑하여 집계 조회
         List<PaymentRepository.SettlementProjection> projections = paymentRepository.calculateSettlementAmounts(
-                PaymentStatus.PAID.name(), start, end);
+                PaymentStatus.PAID.name());
 
         // 3. 집계된 판매자별 매출을 순회하며 정산 데이터(Settlement) 생성
         for (PaymentRepository.SettlementProjection proj : projections) {
@@ -148,24 +145,9 @@ public class SettlementService {
         }
 
         LocalDate today = LocalDate.now();
-        // 이미 오늘 날짜의 정산 신청 건이 존재하는지 체크
-        Optional<Settlement> existingOpt = settlementRepository.findBySellerIdAndSettlementDate(sellerId, today);
-        if (existingOpt.isPresent()) {
-            Settlement existing = existingOpt.get();
-            if (existing.getStatus() != SettlementStatus.PENDING) {
-                throw new IllegalStateException("이미 정산 신청(또는 완료)된 내역이 오늘 날짜로 존재합니다.");
-            }
-            existing.setStatus(SettlementStatus.REQUESTED);
-            existing.setRequestedAt(LocalDateTime.now());
-            return settlementRepository.save(existing);
-        }
-
-        // 오늘 00:00:00부터 내일 00:00:00까지의 PAID 결제건을 대상으로 해당 판매자의 데이터만 집계
-        LocalDateTime start = today.atStartOfDay();
-        LocalDateTime end = today.plusDays(1).atStartOfDay();
 
         List<PaymentRepository.SettlementProjection> projections = paymentRepository.calculateSettlementAmounts(
-                PaymentStatus.PAID.name(), start, end);
+                PaymentStatus.PAID.name());
 
         BigDecimal grossAmount = BigDecimal.ZERO;
         for (PaymentRepository.SettlementProjection proj : projections) {
@@ -176,11 +158,27 @@ public class SettlementService {
         }
 
         if (grossAmount == null || grossAmount.compareTo(BigDecimal.ZERO) == 0) {
-            throw new IllegalArgumentException("정산할 매출 대상(PAID 결제 완료 건)이 존재하지 않습니다.");
+            throw new com.onde.core.exception.BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "정산할 매출 대상(PAID 결제 완료 건)이 존재하지 않습니다."
+            );
         }
 
         BigDecimal commission = grossAmount.multiply(new BigDecimal("0.03")).setScale(0, RoundingMode.FLOOR);
         BigDecimal netAmount = grossAmount.subtract(commission);
+
+        boolean hasPendingRequest = settlementRepository.existsBySellerIdAndStatusIn(
+                sellerId,
+                java.util.List.of(SettlementStatus.REQUESTED, SettlementStatus.APPROVED_1ST)
+        );
+        if (hasPendingRequest) {
+            throw new com.onde.core.exception.BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "이미 처리 대기 중이거나 1차 승인된 정산 요청이 존재합니다. 승인 또는 반려 완료 후에 다시 신청해주세요."
+            );
+        }
+
+
 
         Settlement settlement = Settlement.builder()
                 .sellerId(sellerId)
@@ -193,7 +191,17 @@ public class SettlementService {
                 .requestedAt(LocalDateTime.now())
                 .build();
 
-        return settlementRepository.save(settlement);
+        Settlement saved = settlementRepository.save(settlement);
+
+        List<Payment> unsettledPayments = paymentRepository.findUnsettledPayments(
+                sellerId, PaymentStatus.PAID.name()
+        );
+        for (Payment payment : unsettledPayments) {
+            payment.setSettlementId(saved.getId());
+        }
+        paymentRepository.saveAll(unsettledPayments);
+
+        return saved;
     }
  
     /**
@@ -439,5 +447,20 @@ public class SettlementService {
                 .totalCommission(totalCommission)
                 .serviceShares(serviceShares)
                 .build();
+    }
+
+    /**
+     * 특정 정산 건의 상세 예약 결제 내역을 조회합니다.
+     */
+    @Transactional(readOnly = true)
+    public List<PaymentRepository.SettlementDetailProjection> getSettlementDetails(Long settlementId, Long sellerId) {
+        Settlement settlement = settlementRepository.findById(settlementId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 정산 건이 존재하지 않습니다."));
+
+        if (!settlement.getSellerId().equals(sellerId)) {
+            throw new IllegalArgumentException("본인의 정산 내역만 조회할 수 있습니다.");
+        }
+
+        return paymentRepository.findSettlementDetails(settlementId);
     }
 }

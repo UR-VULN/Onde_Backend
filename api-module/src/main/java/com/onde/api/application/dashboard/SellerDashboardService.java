@@ -9,6 +9,11 @@ import com.onde.core.entity.flight.FlightBooking;
 import com.onde.core.entity.member.Member;
 import com.onde.core.entity.reservation.Reservation;
 import com.onde.core.entity.reservation.ReservationTarget;
+import com.onde.core.entity.reservation.ReservationStatus;
+import com.onde.core.entity.flight.BookingStatus;
+import com.onde.core.entity.payment.Payment;
+import com.onde.core.entity.settlement.Settlement;
+import com.onde.core.entity.settlement.SettlementStatus;
 import com.onde.core.entity.settlement.SellerAccount;
 import com.onde.core.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +39,8 @@ public class SellerDashboardService {
     private final ReservationRepository reservationRepository;
     private final FlightBookingRepository flightBookingRepository;
     private final MemberRepository memberRepository;
+    private final SettlementRepository settlementRepository;
+    private final PaymentRepository paymentRepository;
 
     public DashboardResponse getDashboardInfo(Member member) {
         Long sellerId = member.getId();
@@ -58,6 +65,23 @@ public class SellerDashboardService {
         long carRevenue = 0;
         long flightRevenue = 0;
 
+        List<Settlement> completedSettlements = settlementRepository.findBySellerIdAndStatus(sellerId, SettlementStatus.COMPLETED);
+        for (Settlement s : completedSettlements) {
+            List<Payment> payments = paymentRepository.findBySettlementId(s.getId());
+            for (Payment p : payments) {
+                if (p.getReservationType() != null) {
+                    long pNetAmount = p.getTotalAmount().longValue() - (long) Math.floor(p.getTotalAmount().doubleValue() * 0.03);
+                    if (p.getReservationType().equals("ROOM")) {
+                        stayRevenue += pNetAmount;
+                    } else if (p.getReservationType().equals("CAR")) {
+                        carRevenue += pNetAmount;
+                    } else if (p.getReservationType().equals("FLIGHT")) {
+                        flightRevenue += pNetAmount;
+                    }
+                }
+            }
+        }
+
         // (1) 숙소 예약 추출 및 매출 계산
         List<Long> roomIds = accommodations.stream()
                 .flatMap(acc -> roomRepository.findByAccommodationId(acc.getId()).stream())
@@ -69,9 +93,9 @@ public class SellerDashboardService {
                     ReservationTarget.ROOM, roomIds);
             
             for (Reservation res : hotelReservations) {
-                // CANCELLED 상태가 아닐 때만 매출에 합산
-                if (res.getStatus() != com.onde.core.entity.reservation.ReservationStatus.CANCELLED) {
-                    stayRevenue += res.getTotalPrice().longValue();
+                // RESERVED, CANCELLED 상태 제외하고 CONFIRMED, COMPLETED 상태만 표시
+                if (res.getStatus() != ReservationStatus.CONFIRMED && res.getStatus() != ReservationStatus.COMPLETED) {
+                    continue;
                 }
 
                 String roomName = roomRepository.findById(res.getTargetId())
@@ -101,9 +125,9 @@ public class SellerDashboardService {
                     ReservationTarget.CAR, carIds);
             
             for (Reservation res : carReservations) {
-                // CANCELLED 상태가 아닐 때만 매출에 합산
-                if (res.getStatus() != com.onde.core.entity.reservation.ReservationStatus.CANCELLED) {
-                    carRevenue += res.getTotalPrice().longValue();
+                // RESERVED, CANCELLED 상태 제외하고 CONFIRMED, COMPLETED 상태만 표시
+                if (res.getStatus() != ReservationStatus.CONFIRMED && res.getStatus() != ReservationStatus.COMPLETED) {
+                    continue;
                 }
 
                 String modelName = carRepository.findById(res.getTargetId())
@@ -129,9 +153,9 @@ public class SellerDashboardService {
         // (3) 항공 노선 예약 추출 및 매출 계산
         List<FlightBooking> flightBookings = flightBookingRepository.findBySellerIdOrderByCreatedAtDesc(sellerId);
         for (FlightBooking fb : flightBookings) {
-            // CONFIRMED인 결제 완료 상태일 때만 매출에 합산
-            if (fb.getStatus() == com.onde.core.entity.flight.BookingStatus.CONFIRMED) {
-                flightRevenue += fb.getTotalPrice().longValue();
+            // CONFIRMED인 결제 완료 상태일 때만 표시
+            if (fb.getStatus() != BookingStatus.CONFIRMED) {
+                continue;
             }
 
             String routeName = fb.getFlightSchedule().getRoute().getDepartureAirport() + " -> " + 
