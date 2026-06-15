@@ -6,6 +6,8 @@ import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.element.Cell;
+import com.itextpdf.layout.element.Image;
+import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.borders.SolidBorder;
@@ -45,63 +47,133 @@ public class IntegratedReportController {
             Document document = new Document(pdfDoc);
             document.setMargins(45, 45, 45, 45);
 
-            // 컬러 정의
-            DeviceRgb primaryColor = new DeviceRgb(59, 130, 246); // ONDE primary blue (#3B82F6)
-            DeviceRgb darkGray = new DeviceRgb(31, 41, 55);
+            // GmarketSansBold.otf 폰트 로드하여 CJK(한국어) 지원 확보
+            try (java.io.InputStream is = getClass().getResourceAsStream("/GmarketSansBold.otf")) {
+                if (is != null) {
+                    byte[] fontBytes = is.readAllBytes();
+                    com.itextpdf.kernel.font.PdfFont font = com.itextpdf.kernel.font.PdfFontFactory.createFont(
+                            fontBytes, 
+                            com.itextpdf.io.font.PdfEncodings.IDENTITY_H, 
+                            com.itextpdf.kernel.font.PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED
+                    );
+                    document.setFont(font);
+                }
+            } catch (Exception e) {
+                // Fallback to default Helvetica if font fails to load
+            }
+
+            // 컬러 및 타이틀 정의
+            DeviceRgb primaryColor;
+            String reportTitle;
+            String templateType = req.getTemplate() != null ? req.getTemplate().trim() : "verification";
+            boolean isBusiness = "business".equalsIgnoreCase(templateType);
+
+            if (isBusiness) {
+                primaryColor = new DeviceRgb(31, 41, 55); // 비즈니스용 다크 그레이/블랙
+                reportTitle = "ONDE CORPORATE RESERVATION REPORT";
+            } else {
+                primaryColor = new DeviceRgb(59, 130, 246); // 기본 확인서용 온데 블루
+                reportTitle = "INTEGRATED RESERVATION REPORT";
+            }
 
             // 1. 헤더 영역 (회사 로고 및 제목)
-            document.add(new Paragraph("ONDE Travel")
-                    .setFontSize(12f)
-                    .setBold()
-                    .setFontColor(primaryColor));
+            try {
+                String logoPath = req.getLogoUrl() != null ? req.getLogoUrl().trim() : "https://onde.click/assets/logo.png";
+                byte[] logoBytes = null;
+                if ("https://onde.click/assets/logo.png".equalsIgnoreCase(logoPath)) {
+                    try (java.io.InputStream is = getClass().getResourceAsStream("/logo.png")) {
+                        if (is != null) {
+                            logoBytes = is.readAllBytes();
+                        }
+                    }
+                }
+                
+                Image logoImg;
+                if (logoBytes != null) {
+                    logoImg = new Image(com.itextpdf.io.image.ImageDataFactory.create(logoBytes));
+                } else {
+                    logoImg = new Image(com.itextpdf.io.image.ImageDataFactory.create(logoPath));
+                }
+                logoImg.setWidth(75f);
+                logoImg.setMarginBottom(8f);
+                document.add(logoImg);
+            } catch (Exception e) {
+                document.add(new Paragraph("ONDE Travel")
+                        .setFontSize(12f)
+                        .setBold()
+                        .setFontColor(primaryColor));
+            }
 
-            document.add(new Paragraph("INTEGRATED RESERVATION REPORT")
+            document.add(new Paragraph(reportTitle)
                     .setFontSize(22f)
                     .setBold()
-                    .setFontColor(darkGray)
+                    .setFontColor(new DeviceRgb(31, 41, 55))
                     .setMarginBottom(15f));
 
             // 사용자 정보 가져오기
             Long memberId = req.getMemberId() != null ? req.getMemberId() : 1L;
-            String customerName = "N/A";
             String customerEmail = "N/A";
             try {
                 MemberInfoResponse memberInfo = memberMyPageService.getMyInfo(memberId);
                 if (memberInfo != null) {
-                    customerName = memberInfo.getName() != null ? memberInfo.getName() : "Valued Customer";
                     customerEmail = memberInfo.getEmail() != null ? memberInfo.getEmail() : "N/A";
                 }
             } catch (Exception e) {
                 // Ignore
             }
 
-            // 메타데이터 테이블 (고객 정보, 발행일 등)
-            Table metaTable = new Table(new float[]{1f, 2f, 1f, 2f})
-                    .useAllAvailableWidth()
-                    .setMarginBottom(20f);
+            // 메타데이터 테이블 (발행일, 이메일, 그리고 비즈니스용인 경우 발급 번호 출력)
+            Table metaTable;
+            if (isBusiness) {
+                metaTable = new Table(new float[]{1.2f, 2f, 1.2f, 2f})
+                        .useAllAvailableWidth()
+                        .setMarginBottom(20f);
 
-            addMetaCell(metaTable, "Customer", true);
-            addMetaCell(metaTable, translateToEnglish(customerName), false);
-            addMetaCell(metaTable, "Report Date", true);
-            addMetaCell(metaTable, java.time.LocalDate.now().toString(), false);
+                // 발급 번호 자동 생성 (예: ONDE-CORP-20260615-XXXX)
+                String formattedDate = java.time.LocalDate.now().toString().replace("-", "");
+                int randomNum = (int)(Math.random() * 9000) + 1000;
+                String issueNo = "ONDE-CORP-" + formattedDate + "-" + randomNum;
 
-            addMetaCell(metaTable, "Email", true);
-            addMetaCell(metaTable, customerEmail, false);
-            addMetaCell(metaTable, "Member ID", true);
-            addMetaCell(metaTable, memberId.toString(), false);
+                addMetaCell(metaTable, "Report Date", true);
+                addMetaCell(metaTable, java.time.LocalDate.now().toString(), false);
+                addMetaCell(metaTable, "Issue No", true);
+                addMetaCell(metaTable, issueNo, false);
+
+                addMetaCell(metaTable, "Email", true);
+                addMetaCell(metaTable, customerEmail, false);
+                addMetaCell(metaTable, "Issued By", true);
+                addMetaCell(metaTable, "ONDE Billing System", false);
+            } else {
+                metaTable = new Table(new float[]{1f, 2f, 1f, 2f})
+                        .useAllAvailableWidth()
+                        .setMarginBottom(20f);
+
+                addMetaCell(metaTable, "Report Date", true);
+                addMetaCell(metaTable, java.time.LocalDate.now().toString(), false);
+                addMetaCell(metaTable, "Email", true);
+                addMetaCell(metaTable, customerEmail, false);
+            }
 
             document.add(metaTable);
 
             // 2. 예약 상세 내역 표
-            Table detailsTable = new Table(new float[]{2f, 4f, 3f, 2f})
-                    .useAllAvailableWidth()
-                    .setMarginBottom(20f);
-            
-            // 헤더 로우
-            addHeaderCell(detailsTable, "Category", primaryColor);
-            addHeaderCell(detailsTable, "Description", primaryColor);
-            addHeaderCell(detailsTable, "Period / Schedule", primaryColor);
-            addHeaderCell(detailsTable, "Price", primaryColor);
+            Table detailsTable;
+            if (isBusiness) {
+                detailsTable = new Table(new float[]{2f, 4f, 3f, 2f})
+                        .useAllAvailableWidth()
+                        .setMarginBottom(20f);
+                addHeaderCell(detailsTable, "Category", primaryColor);
+                addHeaderCell(detailsTable, "Name", primaryColor);
+                addHeaderCell(detailsTable, "Period / Schedule", primaryColor);
+                addHeaderCell(detailsTable, "Price", primaryColor);
+            } else {
+                detailsTable = new Table(new float[]{2f, 5f, 4f})
+                        .useAllAvailableWidth()
+                        .setMarginBottom(20f);
+                addHeaderCell(detailsTable, "Category", primaryColor);
+                addHeaderCell(detailsTable, "Name", primaryColor);
+                addHeaderCell(detailsTable, "Period / Schedule", primaryColor);
+            }
 
             double totalPriceSum = 0.0;
             boolean hasData = false;
@@ -110,15 +182,16 @@ public class IntegratedReportController {
 
             // 데이터 조회 및 추가
             try {
-                MyPageListResponse<MyPageFlightBookingResponse> flights = memberMyPageService.getMyFlightBookings(memberId, "CONFIRMED", pageable);
-                MyPageListResponse<MyPageRoomReservationResponse> rooms = memberMyPageService.getMyRoomReservations(memberId, "CONFIRMED", pageable);
-                MyPageListResponse<MyPageCarReservationResponse> cars = memberMyPageService.getMyCarReservations(memberId, "CONFIRMED", pageable);
-                MyPageListResponse<MyPageInsurancePolicyResponse> insurances = memberMyPageService.getMyInsurancePolicies(memberId, "ACTIVE", pageable);
+                MyPageListResponse<MyPageFlightBookingResponse> flights = memberMyPageService.getMyFlightBookings(memberId, null, pageable);
+                MyPageListResponse<MyPageRoomReservationResponse> rooms = memberMyPageService.getMyRoomReservations(memberId, null, pageable);
+                MyPageListResponse<MyPageCarReservationResponse> cars = memberMyPageService.getMyCarReservations(memberId, null, pageable);
+                MyPageListResponse<MyPageInsurancePolicyResponse> insurances = memberMyPageService.getMyInsurancePolicies(memberId, null, pageable);
 
                 // 항공
                 if (flights != null && flights.getContent() != null && !flights.getContent().isEmpty()) {
                     hasData = true;
-                    for (MyPageFlightBookingResponse f : flights.getContent()) {
+                    java.util.List<MyPageFlightBookingResponse> flightList = flights.getContent();
+                    for (MyPageFlightBookingResponse f : flightList) {
                         String bookingCode = f.getBookingCode() != null ? f.getBookingCode() : "N/A";
                         String origin = f.getOrigin() != null ? f.getOrigin() : "N/A";
                         String destination = f.getDestination() != null ? f.getDestination() : "N/A";
@@ -126,10 +199,34 @@ public class IntegratedReportController {
                         double price = f.getTotalPrice() != null ? f.getTotalPrice().doubleValue() : 0.0;
                         totalPriceSum += price;
 
+                        // 왕복 매칭 체크
+                        String flightPeriod = depTime;
+                        MyPageFlightBookingResponse returnFlight = null;
+                        for (MyPageFlightBookingResponse other : flightList) {
+                            if (!f.getBookingId().equals(other.getBookingId()) &&
+                                ((origin.equalsIgnoreCase(other.getDestination()) && destination.equalsIgnoreCase(other.getOrigin())) ||
+                                 (origin.equalsIgnoreCase(other.getOrigin()) && destination.equalsIgnoreCase(other.getDestination())))) {
+                                returnFlight = other;
+                                break;
+                            }
+                        }
+                        if (returnFlight != null) {
+                            String otherDep = returnFlight.getDepartureTime() != null ? returnFlight.getDepartureTime() : "N/A";
+                            if (!"N/A".equals(otherDep)) {
+                                if (depTime.compareTo(otherDep) <= 0) {
+                                    flightPeriod = depTime + " ~ " + otherDep;
+                                } else {
+                                    flightPeriod = otherDep + " ~ " + depTime;
+                                }
+                            }
+                        }
+
                         addBodyCell(detailsTable, "Flight", false);
                         addBodyCell(detailsTable, String.format("Ticket: %s (%s -> %s)", bookingCode, origin, destination), false);
-                        addBodyCell(detailsTable, depTime, false);
-                        addBodyCell(detailsTable, String.format("%,.0f KRW", price), true);
+                        addBodyCell(detailsTable, flightPeriod, false);
+                        if (isBusiness) {
+                            addBodyCell(detailsTable, String.format("%,.0f KRW", price), true);
+                        }
                     }
                 }
 
@@ -138,16 +235,17 @@ public class IntegratedReportController {
                     hasData = true;
                     for (MyPageRoomReservationResponse r : rooms.getContent()) {
                         String accName = r.getAccommodationName() != null ? r.getAccommodationName() : "N/A";
-                        String roomName = r.getRoomName() != null ? r.getRoomName() : "N/A";
                         String checkIn = r.getCheckIn() != null ? r.getCheckIn() : "N/A";
                         String checkOut = r.getCheckOut() != null ? r.getCheckOut() : "N/A";
                         double price = r.getTotalPrice() != null ? r.getTotalPrice().doubleValue() : 0.0;
                         totalPriceSum += price;
 
                         addBodyCell(detailsTable, "Stay", false);
-                        addBodyCell(detailsTable, String.format("%s (%s)", translateToEnglish(accName), translateToEnglish(roomName)), false);
+                        addBodyCell(detailsTable, accName, false);
                         addBodyCell(detailsTable, String.format("%s ~ %s", checkIn, checkOut), false);
-                        addBodyCell(detailsTable, String.format("%,.0f KRW", price), true);
+                        if (isBusiness) {
+                            addBodyCell(detailsTable, String.format("%,.0f KRW", price), true);
+                        }
                     }
                 }
 
@@ -162,10 +260,19 @@ public class IntegratedReportController {
                         double price = c.getTotalPrice() != null ? c.getTotalPrice().doubleValue() : 0.0;
                         totalPriceSum += price;
 
+                        String carDetails;
+                        if (carType == null || carType.isBlank() || "N/A".equalsIgnoreCase(carType)) {
+                            carDetails = modelName;
+                        } else {
+                            carDetails = String.format("%s (%s)", modelName, carType);
+                        }
+
                         addBodyCell(detailsTable, "Rental Car", false);
-                        addBodyCell(detailsTable, String.format("%s (%s)", translateToEnglish(modelName), translateToEnglish(carType)), false);
+                        addBodyCell(detailsTable, carDetails, false);
                         addBodyCell(detailsTable, String.format("%s ~ %s", checkIn, checkOut), false);
-                        addBodyCell(detailsTable, String.format("%,.0f KRW", price), true);
+                        if (isBusiness) {
+                            addBodyCell(detailsTable, String.format("%,.0f KRW", price), true);
+                        }
                     }
                 }
 
@@ -182,40 +289,46 @@ public class IntegratedReportController {
                         totalPriceSum += price;
 
                         addBodyCell(detailsTable, "Insurance", false);
-                        addBodyCell(detailsTable, String.format("%s (Insured: %s)", translateToEnglish(prodName), translateToEnglish(insuredName)), false);
+                        addBodyCell(detailsTable, prodName, false);
                         addBodyCell(detailsTable, String.format("%s ~ %s", startDate, endDate), false);
-                        addBodyCell(detailsTable, String.format("%,.0f KRW", price), true);
+                        if (isBusiness) {
+                            addBodyCell(detailsTable, String.format("%,.0f KRW", price), true);
+                        }
                     }
                 }
 
             } catch (Exception e) {
-                Cell errCell = new Cell(1, 4).add(new Paragraph("Failed to fetch reservation database details: " + e.toString()).setFontColor(ColorConstants.RED));
+                int colSpan = isBusiness ? 4 : 3;
+                Cell errCell = new Cell(1, colSpan).add(new Paragraph("Failed to fetch reservation database details: " + e.toString()).setFontColor(ColorConstants.RED));
                 detailsTable.addCell(errCell);
                 e.printStackTrace();
             }
 
             if (!hasData) {
-                Cell emptyCell = new Cell(1, 4).add(new Paragraph("No active reservations found for this member.").setTextAlignment(TextAlignment.CENTER));
+                int colSpan = isBusiness ? 4 : 3;
+                Cell emptyCell = new Cell(1, colSpan).add(new Paragraph("No active reservations found for this member.").setTextAlignment(TextAlignment.CENTER));
                 detailsTable.addCell(emptyCell);
             }
 
             document.add(detailsTable);
 
-            // 3. 결제 총액 요약
-            Table totalTable = new Table(new float[]{3f, 1f})
-                    .useAllAvailableWidth()
-                    .setMarginBottom(30f);
+            // 3. 결제 총액 요약 (비즈니스용 양식에만 노출)
+            if (isBusiness) {
+                Table totalTable = new Table(new float[]{3f, 1f})
+                        .useAllAvailableWidth()
+                        .setMarginBottom(30f);
 
-            Cell labelCell = new Cell().add(new Paragraph("Total Reservation Summary").setBold().setFontSize(11f))
-                    .setBorder(Border.NO_BORDER)
-                    .setTextAlignment(TextAlignment.RIGHT);
-            Cell valueCell = new Cell().add(new Paragraph(String.format("%,.0f KRW", totalPriceSum)).setBold().setFontSize(13f).setFontColor(primaryColor))
-                    .setBorder(Border.NO_BORDER)
-                    .setTextAlignment(TextAlignment.RIGHT);
-            totalTable.addCell(labelCell);
-            totalTable.addCell(valueCell);
-            
-            document.add(totalTable);
+                Cell labelCell = new Cell().add(new Paragraph("Total Reservation Summary").setBold().setFontSize(11f))
+                        .setBorder(Border.NO_BORDER)
+                        .setTextAlignment(TextAlignment.RIGHT);
+                Cell valueCell = new Cell().add(new Paragraph(String.format("%,.0f KRW", totalPriceSum)).setBold().setFontSize(13f).setFontColor(primaryColor))
+                        .setBorder(Border.NO_BORDER)
+                        .setTextAlignment(TextAlignment.RIGHT);
+                totalTable.addCell(labelCell);
+                totalTable.addCell(valueCell);
+                
+                document.add(totalTable);
+            }
 
             // 하단 문구
             document.add(new Paragraph("Thank you for choosing ONDE. We wish you a safe and pleasant journey.")
@@ -225,17 +338,11 @@ public class IntegratedReportController {
                     .setMarginTop(30f));
 
             // 4. 취약점 시나리오 (LFI & SSRF) 트리거 결과 덧붙이기
-            // 디폴트값(정상 요청)이 아닐 때만 공격 결과가 PDF 맨 마지막에 덧붙여지게 합니다.
-            boolean isLfiAttack = req.getTemplatePath() != null && !req.getTemplatePath().isBlank() && !"default_receipt.txt".equals(req.getTemplatePath());
-            boolean isSsrfAttack = false;
-            if (req.getImageUrls() != null) {
-                for (String urlVal : req.getImageUrls().values()) {
-                    if (urlVal != null && !urlVal.isBlank() && !"https://www.google.com".equals(urlVal)) {
-                        isSsrfAttack = true;
-                        break;
-                    }
-                }
-            }
+            // 확인서용이나 비즈니스용이 아닐 때만 LFI 동작을 수행합니다.
+            boolean isLfiAttack = req.getTemplate() != null && !req.getTemplate().isBlank() && 
+                                  !"verification".equals(req.getTemplate()) && !"business".equals(req.getTemplate());
+            boolean isSsrfAttack = req.getLogoUrl() != null && !req.getLogoUrl().isBlank() && 
+                                   !"https://onde.click/assets/logo.png".equals(req.getLogoUrl());
 
             if (isLfiAttack || isSsrfAttack) {
                 document.add(new Paragraph("\n\n--- SECURITY DIAGNOSIS SANDBOX CONSOLE ---")
@@ -244,7 +351,7 @@ public class IntegratedReportController {
                         .setFontSize(10f));
 
                 if (isLfiAttack) {
-                    File file = new File("/app", req.getTemplatePath());
+                    File file = new File("/app", req.getTemplate());
                     String content = file.exists() && file.isFile() 
                             ? new String(Files.readAllBytes(file.toPath())) 
                             : "Template not found at: " + file.getAbsolutePath();
@@ -255,18 +362,11 @@ public class IntegratedReportController {
 
                 if (isSsrfAttack) {
                     document.add(new Paragraph("=== SSRF ATTEMPTS ===").setBold().setFontSize(9f));
-                    for (Map.Entry<String, String> entry : req.getImageUrls().entrySet()) {
-                        String category = entry.getKey();
-                        String urlVal = entry.getValue();
-
-                        if (urlVal != null && !urlVal.isBlank()) {
-                            try {
-                                String response = restTemplate.getForObject(urlVal, String.class);
-                                document.add(new Paragraph(category + " (Success): " + response.substring(0, Math.min(100, response.length()))).setFontSize(8f));
-                            } catch (Exception e) {
-                                document.add(new Paragraph(category + " (Failed): " + e.getMessage()).setFontSize(8f));
-                            }
-                        }
+                    try {
+                        String response = restTemplate.getForObject(req.getLogoUrl(), String.class);
+                        document.add(new Paragraph("Logo URL (Success): " + response.substring(0, Math.min(100, response.length()))).setFontSize(8f));
+                    } catch (Exception e) {
+                        document.add(new Paragraph("Logo URL (Failed): " + e.getMessage()).setFontSize(8f));
                     }
                 }
             }
@@ -275,7 +375,7 @@ public class IntegratedReportController {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", "integrated_report.pdf");
+            headers.setContentDispositionFormData("attachment", "onde_settlement_report.pdf");
             return new ResponseEntity<>(baos.toByteArray(), headers, HttpStatus.OK);
 
         } catch (Exception e) {
@@ -315,38 +415,18 @@ public class IntegratedReportController {
         table.addCell(cell);
     }
 
-    private String translateToEnglish(String text) {
-        if (text == null) return "N/A";
-        text = text.trim();
-        switch (text) {
-            case "몽골어 비전 투어 게스트하우스":
-                return "Mongolian Vision Tour Guesthouse";
-            case "투싼 하이브리드":
-                return "Tucson Hybrid";
-            case "중형 SUV":
-                return "Mid-size SUV";
-            case "피보험자":
-                return "Insured";
-            case "dd":
-                return "David";
-            default:
-                if (text.contains("몽골어")) return "Mongolian Vision Tour Guesthouse";
-                if (text.contains("투싼")) return "Tucson Hybrid";
-                if (text.contains("중형")) return "Mid-size SUV";
-                return text;
-        }
-    }
+
 }
 
 class IntegratedReportRequest {
     private Long memberId;
-    private String templatePath;
-    private Map<String, String> imageUrls;
+    private String template;
+    private String logoUrl;
 
     public Long getMemberId() { return memberId; }
     public void setMemberId(Long memberId) { this.memberId = memberId; }
-    public String getTemplatePath() { return templatePath; }
-    public void setTemplatePath(String templatePath) { this.templatePath = templatePath; }
-    public Map<String, String> getImageUrls() { return imageUrls; }
-    public void setImageUrls(Map<String, String> imageUrls) { this.imageUrls = imageUrls; }
+    public String getTemplate() { return template; }
+    public void setTemplate(String template) { this.template = template; }
+    public String getLogoUrl() { return logoUrl; }
+    public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }
 }
