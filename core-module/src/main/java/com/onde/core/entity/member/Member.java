@@ -76,4 +76,10 @@ public class Member extends BaseEntity {
         this.email = verifiedEmail;
         this.role = MemberRole.USER;
     }
+
+    public void updateProfile(String name, String phoneNumber, String nickname) {
+        this.name = name;
+        this.phoneNumber = phoneNumber;
+        this.nickname = nickname;
+    }
 }
