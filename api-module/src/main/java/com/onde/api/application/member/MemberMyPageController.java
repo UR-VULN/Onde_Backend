@@ -3,6 +3,8 @@ package com.onde.api.application.member;
 import com.onde.api.application.member.dto.MemberProfileResponse;
 import com.onde.api.application.member.dto.MyPageResponseDtos.*;
 import com.onde.api.application.member.dto.ProfileUpdateRequestDto;
+import com.onde.api.application.member.dto.SellerProfileResponse;
+import com.onde.api.application.member.dto.SellerProfileUpdateRequest;
 import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
 import jakarta.validation.Valid;
@@ -13,20 +15,20 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/members/me")
+@RequestMapping
 @RequiredArgsConstructor
 public class MemberMyPageController {
 
     private final MemberMyPageService memberMyPageService;
 
-    @GetMapping("/profile")
+    @GetMapping({"/api/v1/members/me/profile", "/v1/user/profile"})
     public ResponseEntity<ApiResponse<MemberProfileResponse>> getMyProfile(
             @LoginMember(required = true) Long userId) {
         MemberProfileResponse response = memberMyPageService.getProfile(userId);
         return ResponseEntity.ok(ApiResponse.success(response, "프로필 정보 조회 성공"));
     }
 
-    @PatchMapping("/profile")
+    @PatchMapping({"/api/v1/members/me/profile", "/v1/user/profile"})
     public ResponseEntity<ApiResponse<Void>> updateMyProfile(
             @LoginMember(required = true) Long userId,
             @Valid @RequestBody ProfileUpdateRequestDto requestDto) {
@@ -34,7 +36,22 @@ public class MemberMyPageController {
         return ResponseEntity.ok(ApiResponse.success(null, "프로필 정보가 수정되었습니다."));
     }
 
-    @GetMapping("/reservations/flights")
+    @GetMapping("/api/v1/seller/profile")
+    public ResponseEntity<ApiResponse<SellerProfileResponse>> getSellerProfile(
+            @LoginMember(required = true) Long userId) {
+        SellerProfileResponse response = memberMyPageService.getSellerProfile(userId);
+        return ResponseEntity.ok(ApiResponse.success(response, "판매자 프로필 정보 조회 성공"));
+    }
+
+    @PatchMapping("/api/v1/seller/profile")
+    public ResponseEntity<ApiResponse<Void>> updateSellerProfile(
+            @LoginMember(required = true) Long userId,
+            @Valid @RequestBody SellerProfileUpdateRequest requestDto) {
+        memberMyPageService.updateSellerProfile(userId, requestDto);
+        return ResponseEntity.ok(ApiResponse.success(null, "판매자 프로필 정보가 수정되었습니다."));
+    }
+
+    @GetMapping("/api/v1/members/me/reservations/flights")
     public ResponseEntity<ApiResponse<MyPageListResponse<MyPageFlightBookingResponse>>> getMyFlightBookings(
             @LoginMember(required = true) Long userId,
             @RequestParam(name = "status", required = false) String status,
@@ -47,7 +64,7 @@ public class MemberMyPageController {
     }
 
 
-    @GetMapping("/insurances")
+    @GetMapping("/api/v1/members/me/insurances")
     public ResponseEntity<ApiResponse<MyPageListResponse<MyPageInsurancePolicyResponse>>> getMyInsurancePolicies(
             @LoginMember(required = true) Long userId,
             @RequestParam(name = "status", required = false) String status,
@@ -59,7 +76,7 @@ public class MemberMyPageController {
         return ResponseEntity.ok(ApiResponse.success(response, "보험 가입 목록 조회 성공"));
     }
 
-    @GetMapping("/reservations/rooms")
+    @GetMapping("/api/v1/members/me/reservations/rooms")
     public ResponseEntity<ApiResponse<MyPageListResponse<MyPageRoomReservationResponse>>> getMyRoomReservations(
             @LoginMember(required = true) Long userId,
             @RequestParam(name = "status", required = false) String status,
@@ -71,7 +88,7 @@ public class MemberMyPageController {
         return ResponseEntity.ok(ApiResponse.success(response, "숙소 예약 목록 조회 성공"));
     }
 
-    @GetMapping("/reservations/cars")
+    @GetMapping("/api/v1/members/me/reservations/cars")
     public ResponseEntity<ApiResponse<MyPageListResponse<MyPageCarReservationResponse>>> getMyCarReservations(
             @LoginMember(required = true) Long userId,
             @RequestParam(name = "status", required = false) String status,
@@ -83,7 +100,7 @@ public class MemberMyPageController {
         return ResponseEntity.ok(ApiResponse.success(response, "렌터카 예약 목록 조회 성공"));
     }
 
-    @DeleteMapping("/reservations/flights/{bookingId}")
+    @DeleteMapping("/api/v1/members/me/reservations/flights/{bookingId}")
     public ResponseEntity<ApiResponse<Void>> cancelMyFlightBooking(
             @LoginMember(required = true) Long userId,
             @PathVariable Long bookingId) {
@@ -91,7 +108,7 @@ public class MemberMyPageController {
         return ResponseEntity.ok(ApiResponse.success(null, "항공 예약이 취소되었습니다."));
     }
 
-    @DeleteMapping("/insurances/{policyId}")
+    @DeleteMapping("/api/v1/members/me/insurances/{policyId}")
     public ResponseEntity<ApiResponse<Void>> cancelMyInsurancePolicy(
             @LoginMember(required = true) Long userId,
             @PathVariable Long policyId) {

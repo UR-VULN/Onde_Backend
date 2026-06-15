@@ -3,6 +3,8 @@ package com.onde.api.application.member;
 import com.onde.api.application.member.dto.MemberProfileResponse;
 import com.onde.api.application.member.dto.MyPageResponseDtos.*;
 import com.onde.api.application.member.dto.ProfileUpdateRequestDto;
+import com.onde.api.application.member.dto.SellerProfileResponse;
+import com.onde.api.application.member.dto.SellerProfileUpdateRequest;
 import com.onde.core.entity.flight.BookingStatus;
 import com.onde.core.entity.flight.FlightBooking;
 import com.onde.core.entity.insurance.InsurancePolicy;
@@ -304,6 +306,39 @@ public class MemberMyPageService {
         // 비밀번호 변경 요청이 있는 경우에만 처리
         if (requestDto.getNewPassword() != null && !requestDto.getNewPassword().isBlank()) {
             member.updatePassword(passwordEncoder.encode(requestDto.getNewPassword()));
+        }
+    }
+
+    public SellerProfileResponse getSellerProfile(Long userId) {
+        com.onde.core.entity.member.Member member = memberRepository.findById(userId)
+                .orElseThrow(() -> new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.MEMBER_NOT_FOUND));
+
+        return SellerProfileResponse.builder()
+                .email(member.getEmail())
+                .name(member.getName())
+                .phoneNumber(member.getPhoneNumber())
+                .nickname(member.getNickname())
+                .build();
+    }
+
+    @Transactional
+    public void updateSellerProfile(Long userId, SellerProfileUpdateRequest request) {
+        com.onde.core.entity.member.Member member = memberRepository.findById(userId)
+                .orElseThrow(() -> new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.MEMBER_NOT_FOUND));
+
+        // 닉네임 중복 체크
+        if (request.getNickname() != null && !request.getNickname().equals(member.getNickname())) {
+            if (memberRepository.existsByNickname(request.getNickname())) {
+                throw new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.NICKNAME_DUPLICATION);
+            }
+        }
+
+        // 프로필 정보 업데이트
+        member.updateProfile(request.getName(), request.getPhoneNumber(), request.getNickname());
+
+        // 비밀번호 변경 처리
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            member.updatePassword(passwordEncoder.encode(request.getPassword()));
         }
     }
 }
