@@ -172,4 +172,52 @@ public class PostService {
                 .map(CompletableFuture::join)
                 .toList();
     }
+
+    @Transactional
+    public PostCreateResponse updatePost(Long postId, PostCreateRequest req, List<MultipartFile> images, Long memberId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.POST_NOT_FOUND));
+
+        if (!post.getMemberId().equals(memberId)) {
+            throw new ForbiddenException(ErrorCode.POST_NOT_OWNER);
+        }
+
+        post.setTitle(req.getTitle());
+        post.setContent(req.getContent());
+        if (req.getRating() != null) {
+            post.setRating(req.getRating());
+        }
+        if (req.getType() != null) {
+            post.setType(req.getType());
+        }
+
+        if (images != null && !images.isEmpty()) {
+            if (images.size() > 3) {
+                throw new ValidationException(ErrorCode.IMAGE_LIMIT_EXCEEDED);
+            }
+            postImageRepository.deleteByPostId(post.getId());
+
+            List<String> imageUrls = uploadImagesParallel(images);
+            List<PostImage> postImages = new ArrayList<>();
+            for (int i = 0; i < imageUrls.size(); i++) {
+                PostImage postImage = PostImage.builder()
+                        .postId(post.getId())
+                        .imageUrl(imageUrls.get(i))
+                        .sortOrder(i)
+                        .build();
+                postImages.add(postImage);
+            }
+            postImageRepository.saveAll(postImages);
+        }
+
+        List<PostImage> currentImages = postImageRepository.findByPostIdOrderBySortOrderAsc(post.getId());
+        List<String> imageUrls = currentImages.stream().map(PostImage::getImageUrl).toList();
+
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
+        String email = member.getEmail();
+        String authorName = (email != null && email.contains("@")) ? email.split("@")[0] : member.getName();
+
+        return PostCreateResponse.of(post, imageUrls, authorName);
+    }
 }

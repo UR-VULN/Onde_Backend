@@ -68,4 +68,25 @@ public class PostController {
         PostDeleteResponse response = postService.deletePost(postId, memberId);
         return ResponseEntity.ok(ApiResponse.success(response, "게시글이 삭제되었습니다."));
     }
+
+    @PutMapping(value = "/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<PostCreateResponse>> updatePost(
+            @PathVariable("postId") Long postId,
+            @RequestParam("title") String title,
+            @RequestParam("content") String content,
+            @RequestParam("type") PostType type,
+            @RequestParam(value = "rating", required = false, defaultValue = "5") Integer rating,
+            @RequestParam(value = "images", required = false) List<MultipartFile> images,
+            @LoginMember Long memberId) {
+
+        PostCreateRequest req = PostCreateRequest.builder()
+                .title(title)
+                .content(content)
+                .type(type)
+                .rating(rating)
+                .build();
+
+        PostCreateResponse response = postService.updatePost(postId, req, images, memberId);
+        return ResponseEntity.ok(ApiResponse.success(response, "게시글이 수정되었습니다."));
+    }
 }
