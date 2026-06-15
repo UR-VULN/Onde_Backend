@@ -68,6 +68,32 @@ public class AuthController {
                 .body(ApiResponse.success(loginResponse, "로그인에 성공하였습니다."));
     }
 
+    @PostMapping("/admin/login")
+    public ResponseEntity<ApiResponse<LoginResponse>> adminLogin(@Valid @RequestBody LoginRequest request) {
+        LoginResponse loginResponse = authService.adminLogin(request);
+
+        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", loginResponse.getAccessToken())
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .sameSite("None")
+                .maxAge(30 * 60)
+                .build();
+
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", loginResponse.getRefreshToken())
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .sameSite("None")
+                .maxAge(14 * 24 * 60 * 60)
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
+                .body(ApiResponse.success(loginResponse, "관리자 로그인에 성공하였습니다."));
+    }
+
     @PostMapping(value = "/refresh", headers = HttpHeaders.AUTHORIZATION)
     public ResponseEntity<ApiResponse<TokenRefreshResponse>> refreshWithAuthorizationHeader(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {

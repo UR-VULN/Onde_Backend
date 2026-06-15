@@ -71,6 +71,13 @@ public class AuthService {
             throw new UnauthorizedException(ErrorCode.UNAUTHORIZED);
         }
 
+        // 일반 로그인 시 관리자 권한 로그인 제한 (보안을 위해 동일하게 UNAUTHORIZED 예외 발생)
+        if (member.getRole() == MemberRole.USER_ADMIN || 
+            member.getRole() == MemberRole.SELLER_ADMIN || 
+            member.getRole() == MemberRole.SUPER_ADMIN) {
+            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED);
+        }
+
         if (member.getRole() == MemberRole.BLACKLIST || member.getStatus() == MemberStatus.BANNED) {
             throw new ForbiddenException(ErrorCode.FORBIDDEN);
         }
@@ -92,6 +99,48 @@ public class AuthService {
         refreshTokenRepository.save(refreshToken);
 
         // LoginResponse 객체 생성하여 반환
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshTokenString)
+                .tokenType("Bearer")
+                .expiresIn(1800L) // 30분
+                .memberId(member.getId())
+                .role(member.getRole().name())
+                .build();
+    }
+
+    @Transactional
+    public LoginResponse adminLogin(LoginRequest request) {
+        Member member = memberRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new UnauthorizedException(ErrorCode.UNAUTHORIZED));
+
+        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
+            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED);
+        }
+
+        // 관리자 권한이 아닌 사용자가 로그인 시도 시 실패 처리
+        if (member.getRole() != MemberRole.USER_ADMIN && 
+            member.getRole() != MemberRole.SELLER_ADMIN && 
+            member.getRole() != MemberRole.SUPER_ADMIN) {
+            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (member.getStatus() == MemberStatus.BANNED) {
+            throw new ForbiddenException(ErrorCode.FORBIDDEN);
+        }
+
+        // 토큰 발급
+        String accessToken = jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().getSecurityRole());
+        String refreshTokenString = jwtTokenProvider.createRefreshToken(member.getEmail());
+
+        // Refresh Token Redis 저장
+        RefreshToken refreshToken = new RefreshToken(
+                member.getEmail(),
+                refreshTokenString,
+                jwtTokenProvider.getRefreshTokenValidTimeInSeconds()
+        );
+        refreshTokenRepository.save(refreshToken);
+
         return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshTokenString)
