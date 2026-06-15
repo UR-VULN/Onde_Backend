@@ -4,7 +4,7 @@ plugins {
     id 'java'
 }
 
-// core-module은 단독 실행(bootJar)하지 않고, api-module에 포함되는 일반 jar로 빌드합니다..
+// core-module은 단독 실행(bootJar)하지 않고, api-module에 포함되는 일반 jar로 빌드합니다.
 bootJar { enabled = false }
 bootRun { enabled = false }
 jar     { enabled = true  }
