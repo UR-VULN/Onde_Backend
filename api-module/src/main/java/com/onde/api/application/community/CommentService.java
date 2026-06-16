@@ -62,8 +62,7 @@ public class CommentService {
             }
         }
 
-        String email = member.getEmail();
-        String authorName = (email != null && email.contains("@")) ? email.split("@")[0] : member.getName();
+        String authorName = member.getNickname();
         if (authorName == null || authorName.isEmpty()) {
             authorName = "User-" + memberId;
         }
@@ -80,9 +79,8 @@ public class CommentService {
         return comments.stream().map(comment -> {
             String authorName = memberRepository.findById(comment.getMemberId())
                     .map(m -> {
-                        String e = m.getEmail();
-                        String name = (e != null && e.contains("@")) ? e.split("@")[0] : m.getName();
-                        return (name != null && !name.isEmpty()) ? name : "User-" + comment.getMemberId();
+                        String nickname = m.getNickname();
+                        return (nickname != null && !nickname.isEmpty()) ? nickname : "User-" + comment.getMemberId();
                     })
                     .orElse("탈퇴한 회원");
 
@@ -115,8 +113,10 @@ public class CommentService {
 
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
-        String email = member.getEmail();
-        String authorName = (email != null && email.contains("@")) ? email.split("@")[0] : member.getName();
+        String authorName = member.getNickname();
+        if (authorName == null || authorName.isEmpty()) {
+            authorName = "User-" + memberId;
+        }
 
         return CommentDto.of(updatedComment, authorName, updatedComment.getContent());
     }

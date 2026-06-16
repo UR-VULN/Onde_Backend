@@ -64,8 +64,7 @@ public class PostService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
 
-        String email = member.getEmail();
-        String authorName = (email != null && email.contains("@")) ? email.split("@")[0] : member.getName();
+        String authorName = member.getNickname();
         if (authorName == null || authorName.isEmpty()) {
             authorName = "User-" + memberId;
         }
@@ -122,9 +121,8 @@ public class PostService {
 
             String authorName = memberRepository.findById(post.getMemberId())
                     .map(m -> {
-                        String e = m.getEmail();
-                        String name = (e != null && e.contains("@")) ? e.split("@")[0] : m.getName();
-                        return (name != null && !name.isEmpty()) ? name : "User-" + post.getMemberId();
+                        String nickname = m.getNickname();
+                        return (nickname != null && !nickname.isEmpty()) ? nickname : "User-" + post.getMemberId();
                     })
                     .orElse("탈퇴한 회원");
 
@@ -215,8 +213,10 @@ public class PostService {
 
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
-        String email = member.getEmail();
-        String authorName = (email != null && email.contains("@")) ? email.split("@")[0] : member.getName();
+        String authorName = member.getNickname();
+        if (authorName == null || authorName.isEmpty()) {
+            authorName = "User-" + memberId;
+        }
 
         return PostCreateResponse.of(post, imageUrls, authorName);
     }

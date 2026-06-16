@@ -54,9 +54,8 @@ public class AdminCommunityService {
                     .stream().map(com.onde.core.entity.community.PostImage::getImageUrl).toList();
             String authorName = memberRepository.findById(post.getMemberId())
                     .map(m -> {
-                        String e = m.getEmail();
-                        String name = (e != null && e.contains("@")) ? e.split("@")[0] : m.getName();
-                        return (name != null && !name.isEmpty()) ? name : "User-" + post.getMemberId();
+                        String nickname = m.getNickname();
+                        return (nickname != null && !nickname.isEmpty()) ? nickname : "User-" + post.getMemberId();
                     })
                     .orElse("탈퇴한 회원");
             return com.onde.admin.application.community.dto.AdminPostDetailResponse.of(post, imageUrls, authorName);
@@ -72,9 +71,8 @@ public class AdminCommunityService {
 
         String authorName = memberRepository.findById(post.getMemberId())
                 .map(m -> {
-                    String e = m.getEmail();
-                    String name = (e != null && e.contains("@")) ? e.split("@")[0] : m.getName();
-                    return (name != null && !name.isEmpty()) ? name : "User-" + post.getMemberId();
+                    String nickname = m.getNickname();
+                    return (nickname != null && !nickname.isEmpty()) ? nickname : "User-" + post.getMemberId();
                 })
                 .orElse("탈퇴한 회원");
 
