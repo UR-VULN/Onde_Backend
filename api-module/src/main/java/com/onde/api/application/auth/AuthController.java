@@ -22,13 +22,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/signup")
+    @PostMapping("/api/v1/auth/signup")
     public ResponseEntity<ApiResponse<SignupResponse>> signup(@Valid @RequestBody SignupRequest request) {
         SignupResponse result = authService.signup(request);
         String message = result.getRole() == MemberRole.SELLER && result.getStatus() == MemberStatus.PENDING
@@ -39,7 +38,7 @@ public class AuthController {
                  .body(ApiResponse.success(result, message));
     }
 
-    @org.springframework.web.bind.annotation.GetMapping("/check-nickname")
+    @org.springframework.web.bind.annotation.GetMapping({"/check-nickname", "/api/v1/auth/check-nickname"})
     public ResponseEntity<ApiResponse<Boolean>> checkNickname(@org.springframework.web.bind.annotation.RequestParam("nickname") String nickname) {
         boolean duplicate = authService.checkNicknameDuplicate(nickname);
         if (duplicate) {
@@ -48,7 +47,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(false, "사용 가능한 닉네임입니다."));
     }
 
-    @org.springframework.web.bind.annotation.GetMapping("/check-email")
+    @org.springframework.web.bind.annotation.GetMapping({"/check-email", "/api/v1/auth/check-email"})
     public ResponseEntity<ApiResponse<Boolean>> checkEmail(@org.springframework.web.bind.annotation.RequestParam("email") String email) {
         boolean duplicate = authService.checkEmailDuplicate(email);
         if (duplicate) {
@@ -58,7 +57,7 @@ public class AuthController {
     }
 
 
-    @PostMapping("/login")
+    @PostMapping("/api/v1/auth/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse loginResponse = authService.login(request);
 
@@ -87,7 +86,7 @@ public class AuthController {
                 .body(ApiResponse.success(loginResponse, "로그인에 성공하였습니다."));
     }
 
-    @PostMapping("/admin/login")
+    @PostMapping("/api/v1/auth/admin/login")
     public ResponseEntity<ApiResponse<LoginResponse>> adminLogin(@Valid @RequestBody LoginRequest request) {
         LoginResponse loginResponse = authService.adminLogin(request);
 
@@ -113,7 +112,7 @@ public class AuthController {
                 .body(ApiResponse.success(loginResponse, "관리자 로그인에 성공하였습니다."));
     }
 
-    @PostMapping(value = "/refresh", headers = HttpHeaders.AUTHORIZATION)
+    @PostMapping(value = "/api/v1/auth/refresh", headers = HttpHeaders.AUTHORIZATION)
     public ResponseEntity<ApiResponse<TokenRefreshResponse>> refreshWithAuthorizationHeader(
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
         String refreshToken = extractBearerToken(authorization);
@@ -125,7 +124,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(response, "Access Token이 재발급되었습니다."));
     }
 
-    @PostMapping("/refresh")
+    @PostMapping("/api/v1/auth/refresh")
     public ResponseEntity<ApiResponse<TokenRefreshResponse>> refresh(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
             @RequestBody(required = false) TokenRefreshRequest request) {
