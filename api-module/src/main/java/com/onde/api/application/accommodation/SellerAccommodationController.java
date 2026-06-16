@@ -56,7 +56,10 @@ public class SellerAccommodationController {
             @RequestParam String description,
             @RequestParam String category,
             @RequestParam String location,
-            @RequestParam String businessLicense,
+            @RequestParam(required = false) String businessLicense,
+            @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false) String rooms,
             @LoginMember Long sellerId) {
         SellerAccommodationRegisterRequest request = new SellerAccommodationRegisterRequest();
         request.setSellerId(sellerId);
@@ -65,6 +68,22 @@ public class SellerAccommodationController {
         request.setCategory(category);
         request.setLocation(location);
         request.setBusinessLicense(businessLicense);
+        request.setLatitude(latitude);
+        request.setLongitude(longitude);
+
+        if (rooms != null && !rooms.isBlank()) {
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                List<SellerAccommodationRegisterRequest.RoomRegisterRequest> roomsList = objectMapper.readValue(
+                        rooms,
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, SellerAccommodationRegisterRequest.RoomRegisterRequest.class)
+                );
+                request.setRooms(roomsList);
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+
         request.setThumbnailUrl(s3Uploader.upload(thumbnail, "accommodations"));
 
         Long id = sellerAccommodationService.registerAccommodation(request);

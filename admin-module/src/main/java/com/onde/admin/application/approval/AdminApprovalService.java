@@ -16,6 +16,7 @@ import com.onde.core.repository.AccommodationRepository;
 import com.onde.core.repository.CarRepository;
 import com.onde.core.repository.FlightScheduleRepository;
 import com.onde.core.repository.InsuranceProductRepository;
+import com.onde.core.repository.PropertyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -37,6 +38,7 @@ public class AdminApprovalService {
     private final CarRepository carRepository;
     private final FlightScheduleRepository flightScheduleRepository;
     private final InsuranceProductRepository insuranceProductRepository;
+    private final PropertyRepository propertyRepository;
     private final StringRedisTemplate redisTemplate;
 
     /**
@@ -130,6 +132,14 @@ public class AdminApprovalService {
                         .orElseThrow(() -> new NotFoundException(ErrorCode.INTERNAL_SERVER_ERROR));
                 accommodation.setApprovalStatus(ApprovalStatus.valueOf(status));
                 accommodationRepository.save(accommodation);
+                
+                if (ApprovalStatus.valueOf(status) == ApprovalStatus.APPROVED) {
+                    List<com.onde.core.entity.lbs.Property> properties = propertyRepository.findByAddressName(accommodation.getName());
+                    for (com.onde.core.entity.lbs.Property p : properties) {
+                        p.setIsVerified(true);
+                        propertyRepository.save(p);
+                    }
+                }
             }
             case "CAR" -> {
                 Car car = carRepository.findById(request.targetId())

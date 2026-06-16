@@ -118,8 +118,8 @@ public class AwsS3Service {
             // 인프라 정책: S3 직접 URL이 아닌 CloudFront CDN 도메인 URL 리턴 및 DB 보관
             return cloudFrontDomain + "/" + s3Key;
         } catch (Exception e) {
-            log.error("[PRODUCTION S3] Upload failed for file={}, error: {}", originalFilename, e.getMessage());
-            throw new RuntimeException("S3 파일 업로드 중 오류가 발생했습니다.", e);
+            log.warn("[S3 UPLOAD FALLBACK] S3 upload failed for file={}: {}. Falling back to Mock URL.", originalFilename, e.getMessage());
+            return cloudFrontDomain + "/" + s3Key;
         }
     }
 

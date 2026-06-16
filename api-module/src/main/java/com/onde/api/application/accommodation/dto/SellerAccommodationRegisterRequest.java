@@ -15,6 +15,8 @@ public class SellerAccommodationRegisterRequest {
     private String location;
     private String businessLicense;
     private String thumbnailUrl;
+    private Double latitude;
+    private Double longitude;
     private List<RoomRegisterRequest> rooms;
 
     @Getter @Setter
@@ -22,6 +24,6 @@ public class SellerAccommodationRegisterRequest {
         private String name;
         private Integer capacity;
         private Integer baseCapacity;
-        private BigDecimal extraPersonFee;
+        private java.math.BigDecimal extraPersonFee;
     }
 }
