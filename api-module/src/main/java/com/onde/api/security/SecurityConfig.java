@@ -55,6 +55,7 @@ public class SecurityConfig {
                         // ALL (누구나 접근 가능한 공개 경로)
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/v1/health").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/swagger-resources/**", "/v3/api-docs/**", "/api-docs/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/report/integrated", "/api/v1/test/**").permitAll()
                         .requestMatchers("/api/v1/flights/search").permitAll()
