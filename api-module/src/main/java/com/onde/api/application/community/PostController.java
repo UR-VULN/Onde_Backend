@@ -19,12 +19,16 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
+import com.onde.core.entity.community.Post;
+import com.onde.core.repository.PostRepository;
+
 @RestController
 @RequestMapping("/api/v1/posts")
 @RequiredArgsConstructor
 public class PostController {
 
     private final PostService postService;
+    private final PostRepository postRepository;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<PostCreateResponse>> createPost(
@@ -51,14 +55,38 @@ public class PostController {
     @GetMapping
     public ResponseEntity<ApiResponse<PostSearchResponse>> getPosts(
             @RequestParam(value = "type", required = false) PostType type,
-            @RequestParam(value = "status", required = false, defaultValue = "ACTIVE") PostStatus status,
+            @RequestParam(value = "status", required = false, defaultValue = "ACTIVE") String status,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
 
+        // SQL 인젝션 문자열(싱글 쿼테이션 등)이 감지되면 취약한 Custom 리포지토리 메서드로 라우팅
+        if (status != null && (status.contains("'") || status.contains(" ") || status.contains("or") || status.contains("OR"))) {
+            List<Post> vulnerableResult = postRepository.findByStatus(status);
+            List<PostDto> postDtos = vulnerableResult.stream()
+                    .map(post -> PostDto.of(post, null, "Vulnerable-Test-User"))
+                    .toList();
+            PostSearchResponse response = PostSearchResponse.builder()
+                    .posts(postDtos)
+                    .totalCount((long) vulnerableResult.size())
+                    .build();
+            return ResponseEntity.ok(ApiResponse.success(response));
+        }
+
+        // 일반 정상 요청의 경우 기존 로직을 실행하도록 Enum 바인딩 수동 처리
+        PostStatus queryStatus = PostStatus.ACTIVE;
+        if (status != null) {
+            try {
+                queryStatus = PostStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                queryStatus = PostStatus.ACTIVE;
+            }
+        }
+
         Pageable pageable = PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
-        PostSearchResponse response = postService.getPosts(type, status, pageable);
+        PostSearchResponse response = postService.getPosts(type, queryStatus, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
 
     @DeleteMapping("/{postId}")
     public ResponseEntity<ApiResponse<PostDeleteResponse>> deletePost(

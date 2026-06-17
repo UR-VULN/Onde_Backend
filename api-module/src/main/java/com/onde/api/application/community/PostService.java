@@ -135,6 +135,10 @@ public class PostService {
                 .build();
     }
 
+    public List<Post> getVulnerablePostsByStatus(String status) {
+        return postRepository.findByStatus(status);
+    }
+
     @Transactional
     public PostDeleteResponse deletePost(Long postId, Long memberId) {
         Post post = postRepository.findById(postId)
