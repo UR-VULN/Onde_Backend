@@ -18,4 +18,5 @@ public class AccommodationListDto {
     private String thumbnailUrl;
     private Integer minPrice;
     private Integer availableRooms;
+    private String description;
 }
