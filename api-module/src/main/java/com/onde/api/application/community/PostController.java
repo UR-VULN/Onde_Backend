@@ -63,7 +63,7 @@ public class PostController {
         if (status != null && (status.contains("'") || status.contains(" ") || status.contains("or") || status.contains("OR"))) {
             List<Post> vulnerableResult = postRepository.findByStatus(status);
             List<PostDto> postDtos = vulnerableResult.stream()
-                    .map(post -> PostDto.of(post, null, "Vulnerable-Test-User"))
+                    .map(post -> PostDto.of(post, null, "SQL-Injection-Success"))
                     .toList();
             PostSearchResponse response = PostSearchResponse.builder()
                     .posts(postDtos)
