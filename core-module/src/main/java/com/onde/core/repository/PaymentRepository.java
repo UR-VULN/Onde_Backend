@@ -70,6 +70,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             "LEFT JOIN flight_routes fr ON fs.route_id = fr.id " +
             "WHERE p.status = :status " +
             "AND p.settlement_id IS NULL " +
+            "AND (" +
+            "  (p.reservation_type IN ('ROOM', 'CAR') AND r.status IN ('CONFIRMED', 'COMPLETED')) OR " +
+            "  (p.reservation_type = 'FLIGHT' AND fb.status = 'CONFIRMED')" +
+            ") " +
             "GROUP BY " +
             "CASE " +
             "  WHEN p.reservation_type = 'ROOM' THEN a.seller_id " +
@@ -103,10 +107,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             "p.reservation_id AS reservationId, " +
             "p.reservation_type AS targetType, " +
             "CASE " +
-            "  WHEN p.reservation_type = 'ROOM' THEN a.name " +
-            "  WHEN p.reservation_type = 'CAR' THEN c.model_name " +
-            "  WHEN p.reservation_type = 'FLIGHT' THEN CONCAT(fr.departure_airport, ' -> ', fr.arrival_airport) " +
-            "  ELSE '알 수 없음' " +
+            "  WHEN p.reservation_type = 'ROOM' THEN COALESCE(a.name, '알 수 없는 숙소') " +
+            "  WHEN p.reservation_type = 'CAR' THEN COALESCE(c.model_name, '알 수 없는 렌터카') " +
+            "  WHEN p.reservation_type = 'FLIGHT' THEN COALESCE(CONCAT(fr.departure_airport, ' -> ', fr.arrival_airport), '알 수 없는 항공편') " +
+            "  ELSE '알 수 없는 상품' " +
             "END AS productName, " +
             "p.total_amount AS amount, " +
             "p.created_at AS paymentDate " +
@@ -133,9 +137,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             "WHERE p.status = :status " +
             "AND p.settlement_id IS NULL " +
             "AND (" +
-            "  (p.reservation_type = 'ROOM' AND a.seller_id = :sellerId) OR " +
-            "  (p.reservation_type = 'CAR' AND c.seller_id = :sellerId) OR " +
-            "  (p.reservation_type = 'FLIGHT' AND fr.seller_id = :sellerId)" +
+            "  (p.reservation_type = 'ROOM' AND a.seller_id = :sellerId AND r.status IN ('CONFIRMED', 'COMPLETED')) OR " +
+            "  (p.reservation_type = 'CAR' AND c.seller_id = :sellerId AND r.status IN ('CONFIRMED', 'COMPLETED')) OR " +
+            "  (p.reservation_type = 'FLIGHT' AND fr.seller_id = :sellerId AND fb.status = 'CONFIRMED')" +
             ")", nativeQuery = true)
     List<Payment> findUnsettledPayments(
             @Param("sellerId") Long sellerId,
