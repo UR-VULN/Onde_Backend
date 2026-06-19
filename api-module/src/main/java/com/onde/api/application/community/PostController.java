@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 import com.onde.core.entity.community.Post;
+import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.PostRepository;
 
 @RestController
@@ -29,6 +30,7 @@ public class PostController {
 
     private final PostService postService;
     private final PostRepository postRepository;
+    private final MemberRepository memberRepository;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<PostCreateResponse>> createPost(
