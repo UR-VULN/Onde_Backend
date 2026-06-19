@@ -59,31 +59,23 @@ public class PostController {
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
 
-        // SQL 인젝션 문자열(싱글 쿼테이션 등)이 감지되면 취약한 Custom 리포지토리 메서드로 라우팅
-        if (status != null && (status.contains("'") || status.contains(" ") || status.contains("or") || status.contains("OR"))) {
-            List<Post> vulnerableResult = postRepository.findByStatus(status);
-            List<PostDto> postDtos = vulnerableResult.stream()
-                    .map(post -> PostDto.of(post, null, "SQL-Injection-Success"))
-                    .toList();
-            PostSearchResponse response = PostSearchResponse.builder()
-                    .posts(postDtos)
-                    .totalCount((long) vulnerableResult.size())
-                    .build();
-            return ResponseEntity.ok(ApiResponse.success(response));
-        }
+        // SQL 인젝션 공격이 감지되는 특수문자 입력이나 일반 상태 조회를 분기하지 않고 단일 취약 쿼리로 처리
+        List<Post> posts = postRepository.findByStatus(status);
 
-        // 일반 정상 요청의 경우 기존 로직을 실행하도록 Enum 바인딩 수동 처리
-        PostStatus queryStatus = PostStatus.ACTIVE;
-        if (status != null) {
-            try {
-                queryStatus = PostStatus.valueOf(status.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                queryStatus = PostStatus.ACTIVE;
-            }
-        }
+        List<PostDto> postDtos = posts.stream().map(post -> {
+            String authorName = memberRepository.findById(post.getMemberId())
+                    .map(m -> {
+                        String nickname = m.getNickname();
+                        return (nickname != null && !nickname.isEmpty()) ? nickname : "User-" + post.getMemberId();
+                    })
+                    .orElse("탈퇴한 회원");
+            return PostDto.of(post, null, authorName);
+        }).toList();
 
-        Pageable pageable = PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
-        PostSearchResponse response = postService.getPosts(type, queryStatus, pageable);
+        PostSearchResponse response = PostSearchResponse.builder()
+                .posts(postDtos)
+                .totalCount((long) posts.size())
+                .build();
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
