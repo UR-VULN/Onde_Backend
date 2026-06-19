@@ -23,6 +23,9 @@ import com.onde.core.entity.community.Post;
 import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.PostRepository;
 
+import com.onde.core.repository.PostImageRepository;
+import com.onde.core.entity.community.PostImage;
+
 @RestController
 @RequestMapping("/api/v1/posts")
 @RequiredArgsConstructor
@@ -31,6 +34,7 @@ public class PostController {
     private final PostService postService;
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
+    private final PostImageRepository postImageRepository;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<PostCreateResponse>> createPost(
@@ -71,7 +75,11 @@ public class PostController {
                         return (nickname != null && !nickname.isEmpty()) ? nickname : "User-" + post.getMemberId();
                     })
                     .orElse("탈퇴한 회원");
-            return PostDto.of(post, null, authorName);
+            
+            List<PostImage> postImages = postImageRepository.findByPostIdOrderBySortOrderAsc(post.getId());
+            String thumbnailUrl = postImages.isEmpty() ? null : postImages.get(0).getImageUrl();
+            
+            return PostDto.of(post, thumbnailUrl, authorName);
         }).toList();
 
         PostSearchResponse response = PostSearchResponse.builder()
