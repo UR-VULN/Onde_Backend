@@ -17,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.HtmlUtils;
 import java.util.List;
 
 @RestController
@@ -36,8 +37,8 @@ public class PostController {
             @LoginMember Long memberId) {
 
         PostCreateRequest req = PostCreateRequest.builder()
-                .title(title)
-                .content(content)
+                .title(HtmlUtils.htmlEscape(title))
+                .content(HtmlUtils.htmlEscape(content))
                 .type(type)
                 .rating(rating)
                 .build();
@@ -80,8 +81,8 @@ public class PostController {
             @LoginMember Long memberId) {
 
         PostCreateRequest req = PostCreateRequest.builder()
-                .title(title)
-                .content(content)
+                .title(HtmlUtils.htmlEscape(title))
+                .content(HtmlUtils.htmlEscape(content))
                 .type(type)
                 .rating(rating)
                 .build();

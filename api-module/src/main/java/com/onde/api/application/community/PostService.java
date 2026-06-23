@@ -14,15 +14,16 @@ import com.onde.core.exception.ValidationException;
 import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.PostImageRepository;
 import com.onde.core.repository.PostRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -157,6 +158,26 @@ public class PostService {
     private List<String> uploadImagesParallel(List<MultipartFile> images) {
         if (images == null || images.isEmpty()) {
             return List.of();
+        }
+
+        List<String> allowedExtensions = Arrays.asList("jpg", "jpeg", "png", "gif", "webp");
+
+        for (MultipartFile image : images) {
+            String originalName = image.getOriginalFilename();
+            if (originalName != null) {
+                // 클라이언트가 보낸 파일명에 상위 폴더 접근 기호(../, ..\)가 있는지 검증 (경로 탐색 방어)
+                if (originalName.contains("..") || originalName.contains("/") || originalName.contains("\\")) {
+                    log.warn("경로 탐색 공격 의심 파일명 감지: {}", originalName);
+                    throw new SecurityException("파일 이름에 유효하지 않은 경로 문자가 포함되어 있습니다.");
+                }
+
+                // 악성코드(웹쉘) 업로드 방어: 화이트리스트 확장자 검증
+                String extension = StringUtils.getFilenameExtension(originalName);
+                if (extension == null || !allowedExtensions.contains(extension.toLowerCase())) {
+                    log.warn("허용되지 않은 확장자 업로드 시도: {}", originalName);
+                    throw new SecurityException("허용되지 않은 파일 형식입니다. 안전한 이미지 파일(jpg, png 등)만 업로드 가능합니다.");
+                }
+            }
         }
 
         List<CompletableFuture<String>> futures = images.stream()

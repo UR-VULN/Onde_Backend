@@ -21,7 +21,7 @@ public class Member extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 100) // email is now nullable and not globally unique
+    @Column(length = 100) 
     private String email;
 
     @Column(nullable = true, length = 100)
@@ -42,7 +42,6 @@ public class Member extends BaseEntity {
     @Column
     private Integer age;
 
-    // EnumType.STRING을 줘야 DB에 숫자가 아닌 문자로 예쁘게 들어갑니다.
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20)")
     private MemberRole role;
@@ -59,7 +58,14 @@ public class Member extends BaseEntity {
     @Builder.Default
     private AuthProvider provider = AuthProvider.LOCAL;
 
-    // --- 비즈니스 편의 메서드 ---
+    @Column(nullable = false, columnDefinition = "INT DEFAULT 0")
+    @Builder.Default
+    private int loginFailCount = 0;
+
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    @Builder.Default
+    private boolean isAccountLocked = false;
+
     public void updateRole(MemberRole newRole) {
         this.role = newRole;
     }
@@ -81,5 +87,19 @@ public class Member extends BaseEntity {
         this.name = name;
         this.phoneNumber = phoneNumber;
         this.nickname = nickname;
+    }
+
+    // 로그인 실패 카운트 증가 및 잠금 처리
+    public void addLoginFailCount() {
+        this.loginFailCount++;
+        if (this.loginFailCount >= 5) { // 5회 이상 실패 시 계정 잠금
+            this.isAccountLocked = true;
+        }
+    }
+
+    // 로그인 성공 시 실패 카운트 및 잠금 초기화
+    public void resetLoginFailCount() {
+        this.loginFailCount = 0;
+        this.isAccountLocked = false;
     }
 }

@@ -16,6 +16,7 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -37,11 +38,13 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         String refreshTokenString = jwtTokenProvider.createRefreshToken(userDetails.getUsername());
 
         // 2. Redis에 Refresh Token 세이브
-        RefreshToken refreshToken = new RefreshToken(
-                userDetails.getUsername(),
-                refreshTokenString,
-                jwtTokenProvider.getRefreshTokenValidTimeInSeconds()
-        );
+        RefreshToken refreshToken = RefreshToken.builder()
+                .id(UUID.randomUUID().toString())
+                .email(userDetails.getUsername())
+                .refreshToken(refreshTokenString)
+                .expiration(jwtTokenProvider.getRefreshTokenValidTimeInSeconds())
+                .build();
+
         refreshTokenRepository.save(refreshToken);
 
         // 3. 브라우저 보안 쿠키 베이킹 (HttpOnly, Secure)

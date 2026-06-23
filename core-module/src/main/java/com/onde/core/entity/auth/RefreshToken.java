@@ -1,19 +1,25 @@
 package com.onde.core.entity.auth;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
 import org.springframework.data.redis.core.TimeToLive;
+import org.springframework.data.redis.core.index.Indexed;
 
 @Getter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @RedisHash(value = "auth:refresh") // Redis에 저장될 Key의 Prefix 설정
 public class RefreshToken {
 
     @Id
+    private String id;
+
+    @Indexed
     private String email; // 이메일을 식별자로 사용하여 중복 로그인 관리 용이
 
     private String refreshToken;

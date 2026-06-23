@@ -87,11 +87,12 @@ public class EmailAuthService {
         // 새로운 USER 권한의 토큰 발급
         String accessToken = jwtTokenProvider.createAccessToken(guestMember.getEmail(), guestMember.getRole().getSecurityRole());
         String refreshToken = jwtTokenProvider.createRefreshToken(guestMember.getEmail());
-        refreshTokenRepository.save(new RefreshToken(
-                guestMember.getEmail(),
-                refreshToken,
-                jwtTokenProvider.getRefreshTokenValidTimeInSeconds()
-        ));
+        refreshTokenRepository.save(RefreshToken.builder()
+                .id(UUID.randomUUID().toString())
+                .email(email)
+                .refreshToken(refreshToken)
+                .expiration(jwtTokenProvider.getRefreshTokenValidTimeInSeconds())
+                .build());
 
         Map<String, String> tokens = new HashMap<>();
         tokens.put("accessToken", accessToken);

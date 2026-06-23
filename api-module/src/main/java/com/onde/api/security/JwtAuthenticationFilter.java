@@ -16,6 +16,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Base64;
 
 @Slf4j
 @Component
@@ -40,6 +41,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             // 3. 토큰 검증 및 인증 처리
             if (token != null) {
+                // alg=none 조작 및 서명 없는 토큰 사전 차단
+                if (isVulnerableToken(token)) {
+                    log.error("[Security] 비정상적인 JWT 구조 또는 alg=none 공격 탐지됨");
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "변조된 토큰입니다.");
+                    return; // 더 이상 진행하지 않고 즉시 차단
+                }
+
                 boolean isValid = jwtTokenProvider.validateToken(token);
 
                 if (isValid) {
@@ -54,7 +62,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     log.warn("[JwtAuthenticationFilter] 유효하지 않거나 만료된 토큰입니다.");
                 }
             } 
-            // 테스트 헬퍼(우회 로직) 전체 삭제 완료
 
         } catch (Exception e) {
             log.warn("[JwtAuthenticationFilter] JWT 필터 처리 중 에러 발생: {}", e.getMessage());
@@ -82,5 +89,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
         return null;
+    }
+
+    // JWT Header를 디코딩하여 alg=none 여부 및 3단 구조(Header.Payload.Signature)를 강제 검증
+    private boolean isVulnerableToken(String token) {
+        try {
+            String[] parts = token.split("\\.");
+            
+            // JWT는 무조건 점(.)을 기준으로 3조각이어야 합니다. 서명을 지운 alg=none 공격 차단
+            if (parts.length != 3) {
+                return true;
+            }
+            
+            // Header 검사 (Base64 URL 디코딩)
+            String headerJson = new String(Base64.getUrlDecoder().decode(parts[0]));
+            String normalizedHeader = headerJson.replaceAll("\\s+", "").toLowerCase();
+            
+            // Header에 alg: none 이라고 명시되어 있다면 차단
+            if (normalizedHeader.contains("\"alg\":\"none\"")) {
+                return true;
+            }
+        } catch (Exception e) {
+            // 디코딩 조차 안 되는 이상한 토큰도 모두 방어
+            return true; 
+        }
+        return false;
     }
 }

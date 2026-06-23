@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -81,17 +82,28 @@ public class AuthService {
         return memberRepository.existsByEmail(email);
     }
 
-
-    @Transactional
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public LoginResponse login(LoginRequest request) {
+        // 1. 이메일이 없을 때 던지는 에러를 400(IllegalArgumentException)과 모호한 메시지로 변경
         Member member = memberRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UnauthorizedException(ErrorCode.UNAUTHORIZED));
+                .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 일치하지 않습니다."));
 
-        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
-            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED);
+        if (member.isAccountLocked()) {
+            throw new IllegalArgumentException("비밀번호 5회 오류로 계정이 잠겼습니다. 관리자에게 문의하세요.");
         }
 
-        // 일반 로그인 시 관리자 권한 로그인 제한 (보안을 위해 동일하게 UNAUTHORIZED 예외 발생)
+        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
+            // 실패 카운트는 내부적으로 계속 올리되,
+            member.addLoginFailCount();
+            memberRepository.save(member);
+            
+            // 2. 해커에게 보여주는 메시지는 이메일이 없을 때와 완벽하게 동일하게 뭉뚱그림
+            throw new IllegalArgumentException("이메일 또는 비밀번호가 일치하지 않습니다.");
+        }
+
+        member.resetLoginFailCount();
+        memberRepository.save(member);
+
         if (member.getRole() == MemberRole.USER_ADMIN || 
             member.getRole() == MemberRole.SELLER_ADMIN || 
             member.getRole() == MemberRole.SUPER_ADMIN) {
@@ -106,39 +118,47 @@ public class AuthService {
             throw new BusinessException(ErrorCode.SELLER_PENDING_APPROVAL);
         }
 
-        // 토큰 발급
         String accessToken = jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().getSecurityRole());
         String refreshTokenString = jwtTokenProvider.createRefreshToken(member.getEmail());
 
-        // Refresh Token Redis 저장 (동일 이메일로 로그인 시 기존 토큰 덮어쓰기됨)
-        RefreshToken refreshToken = new RefreshToken(
-                member.getEmail(),
-                refreshTokenString,
-                jwtTokenProvider.getRefreshTokenValidTimeInSeconds()
-        );
+        RefreshToken refreshToken = RefreshToken.builder()
+                .id(UUID.randomUUID().toString()) // 무작위 UUID
+                .email(member.getEmail())         // 이메일은 값으로 보관
+                .refreshToken(refreshTokenString)
+                .expiration(jwtTokenProvider.getRefreshTokenValidTimeInSeconds())
+                .build();
+        
         refreshTokenRepository.save(refreshToken);
 
-        // LoginResponse 객체 생성하여 반환
         return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshTokenString)
                 .tokenType("Bearer")
-                .expiresIn(1800L) // 30분
+                .expiresIn(1800L)
                 .memberId(member.getId())
                 .role(member.getRole().name())
                 .build();
     }
 
-    @Transactional
+    // 어드민 로그인
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public LoginResponse adminLogin(LoginRequest request) {
         Member member = memberRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UnauthorizedException(ErrorCode.UNAUTHORIZED));
+                .orElseThrow(() -> new IllegalArgumentException("이메일 또는 비밀번호가 일치하지 않습니다."));
 
-        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
-            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED);
+        if (member.isAccountLocked()) {
+            throw new IllegalArgumentException("비밀번호 5회 오류로 계정이 잠겼습니다. 관리자에게 문의하세요.");
         }
 
-        // 관리자 권한이 아닌 사용자가 로그인 시도 시 실패 처리
+        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
+            member.addLoginFailCount();
+            memberRepository.save(member);
+            throw new IllegalArgumentException("이메일 또는 비밀번호가 일치하지 않습니다.");
+        }
+
+        member.resetLoginFailCount();
+        memberRepository.save(member);
+
         if (member.getRole() != MemberRole.USER_ADMIN && 
             member.getRole() != MemberRole.SELLER_ADMIN && 
             member.getRole() != MemberRole.SUPER_ADMIN) {
@@ -149,23 +169,23 @@ public class AuthService {
             throw new ForbiddenException(ErrorCode.FORBIDDEN);
         }
 
-        // 토큰 발급
         String accessToken = jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().getSecurityRole());
         String refreshTokenString = jwtTokenProvider.createRefreshToken(member.getEmail());
 
-        // Refresh Token Redis 저장
-        RefreshToken refreshToken = new RefreshToken(
-                member.getEmail(),
-                refreshTokenString,
-                jwtTokenProvider.getRefreshTokenValidTimeInSeconds()
-        );
+        RefreshToken refreshToken = RefreshToken.builder()
+            .id(UUID.randomUUID().toString()) // 새로운 Key가 될 UUID
+            .email(member.getEmail())         // 이메일은 값으로 저장
+            .refreshToken(refreshTokenString)
+            .expiration(jwtTokenProvider.getRefreshTokenValidTimeInSeconds())
+            .build();
+
         refreshTokenRepository.save(refreshToken);
 
         return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshTokenString)
                 .tokenType("Bearer")
-                .expiresIn(1800L) // 30분
+                .expiresIn(1800L)
                 .memberId(member.getId())
                 .role(member.getRole().name())
                 .build();
@@ -178,11 +198,10 @@ public class AuthService {
             throw new IllegalArgumentException("유효하지 않거나 만료된 Refresh Token입니다.");
         }
 
-        // Token에서 식별자 추출
-        String identifier = jwtTokenProvider.getSubject(refreshToken);
+        String email = jwtTokenProvider.getSubject(refreshToken);
 
         // Redis에 저장된 토큰과 일치하는지 확인
-        RefreshToken savedToken = refreshTokenRepository.findById(identifier)
+        RefreshToken savedToken = refreshTokenRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("로그인 정보가 없거나 만료되었습니다."));
 
         if (!savedToken.getRefreshToken().equals(refreshToken)) {
@@ -190,11 +209,11 @@ public class AuthService {
         }
 
         // 회원 정보 조회 및 새로운 Access Token 발급
-        Member member = memberRepository.findByEmail(identifier)
-                .or(() -> memberRepository.findByProviderId(identifier))
+        Member member = memberRepository.findByEmail(email)
+                .or(() -> memberRepository.findByProviderId(email))
                 .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
 
-        String newAccessToken = jwtTokenProvider.createAccessToken(identifier, member.getRole().getSecurityRole());
+        String newAccessToken = jwtTokenProvider.createAccessToken(email, member.getRole().getSecurityRole());
 
         return TokenRefreshResponse.builder()
                 .accessToken(newAccessToken)

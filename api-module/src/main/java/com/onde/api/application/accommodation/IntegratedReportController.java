@@ -23,22 +23,42 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 import lombok.RequiredArgsConstructor;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.nio.file.Files;
-import java.util.Map;
+import java.util.Arrays;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
 public class IntegratedReportController {
 
     private final MemberMyPageService memberMyPageService;
-    private final RestTemplate restTemplate = new RestTemplate();
+    
+    // 허용된 안전한 로고 URL 화이트리스트
+    private static final List<String> ALLOWED_LOGO_URLS = Arrays.asList(
+            "https://onde.click/assets/logo.png"
+    );
+
+    // 허용된 템플릿 형식 화이트리스트
+    private static final List<String> ALLOWED_TEMPLATES = Arrays.asList(
+            "verification", "business"
+    );
 
     @PostMapping("/api/v1/report/integrated")
     public ResponseEntity<byte[]> generateIntegratedReport(@RequestBody IntegratedReportRequest req) {
+        
+        // 1. 템플릿 파라미터 검증
+        String templateType = req.getTemplate() != null ? req.getTemplate().trim() : "verification";
+        if (!ALLOWED_TEMPLATES.contains(templateType)) {
+            throw new SecurityException("허용되지 않은 템플릿 형식입니다.");
+        }
+        
+        // 2. 로고 URL 검증
+        String requestedLogoUrl = req.getLogoUrl() != null ? req.getLogoUrl().trim() : ALLOWED_LOGO_URLS.get(0);
+        if (!ALLOWED_LOGO_URLS.contains(requestedLogoUrl)) {
+            throw new SecurityException("허용되지 않은 외부 주소로의 접근 시도입니다.");
+        }
+
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         try {
@@ -65,7 +85,6 @@ public class IntegratedReportController {
             // 컬러 및 타이틀 정의
             DeviceRgb primaryColor;
             String reportTitle;
-            String templateType = req.getTemplate() != null ? req.getTemplate().trim() : "verification";
             boolean isBusiness = "business".equalsIgnoreCase(templateType);
 
             if (isBusiness) {
@@ -78,9 +97,9 @@ public class IntegratedReportController {
 
             // 1. 헤더 영역 (회사 로고 및 제목)
             try {
-                String logoPath = req.getLogoUrl() != null ? req.getLogoUrl().trim() : "https://onde.click/assets/logo.png";
                 byte[] logoBytes = null;
-                if ("https://onde.click/assets/logo.png".equalsIgnoreCase(logoPath)) {
+                // 검증을 통과한 안전한 URL만 로드
+                if ("https://onde.click/assets/logo.png".equalsIgnoreCase(requestedLogoUrl)) {
                     try (java.io.InputStream is = getClass().getResourceAsStream("/logo.png")) {
                         if (is != null) {
                             logoBytes = is.readAllBytes();
@@ -92,7 +111,7 @@ public class IntegratedReportController {
                 if (logoBytes != null) {
                     logoImg = new Image(com.itextpdf.io.image.ImageDataFactory.create(logoBytes));
                 } else {
-                    logoImg = new Image(com.itextpdf.io.image.ImageDataFactory.create(logoPath));
+                    logoImg = new Image(com.itextpdf.io.image.ImageDataFactory.create(requestedLogoUrl));
                 }
                 logoImg.setWidth(75f);
                 logoImg.setMarginBottom(8f);
@@ -129,7 +148,7 @@ public class IntegratedReportController {
                         .useAllAvailableWidth()
                         .setMarginBottom(20f);
 
-                // 발급 번호 자동 생성 (예: ONDE-CORP-20260615-XXXX)
+                // 발급 번호 자동 생성
                 String formattedDate = java.time.LocalDate.now().toString().replace("-", "");
                 int randomNum = (int)(Math.random() * 9000) + 1000;
                 String issueNo = "ONDE-CORP-" + formattedDate + "-" + randomNum;
@@ -180,7 +199,7 @@ public class IntegratedReportController {
 
             org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 100);
 
-            // 데이터 조회 및 추가
+            // 데이터 조회 및 추가 (기존 비즈니스 로직 유지)
             try {
                 MyPageListResponse<MyPageFlightBookingResponse> flights = memberMyPageService.getMyFlightBookings(memberId, null, pageable);
                 MyPageListResponse<MyPageRoomReservationResponse> rooms = memberMyPageService.getMyRoomReservations(memberId, null, pageable);
@@ -199,7 +218,6 @@ public class IntegratedReportController {
                         double price = f.getTotalPrice() != null ? f.getTotalPrice().doubleValue() : 0.0;
                         totalPriceSum += price;
 
-                        // 왕복 매칭 체크
                         String flightPeriod = depTime;
                         MyPageFlightBookingResponse returnFlight = null;
                         for (MyPageFlightBookingResponse other : flightList) {
@@ -312,7 +330,7 @@ public class IntegratedReportController {
 
             document.add(detailsTable);
 
-            // 3. 결제 총액 요약 (비즈니스용 양식에만 노출)
+            // 3. 결제 총액 요약
             if (isBusiness) {
                 Table totalTable = new Table(new float[]{3f, 1f})
                         .useAllAvailableWidth()
@@ -337,39 +355,7 @@ public class IntegratedReportController {
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginTop(30f));
 
-            // 4. 취약점 시나리오 (LFI & SSRF) 트리거 결과 덧붙이기
-            // 확인서용이나 비즈니스용이 아닐 때만 LFI 동작을 수행합니다.
-            boolean isLfiAttack = req.getTemplate() != null && !req.getTemplate().isBlank() && 
-                                  !"verification".equals(req.getTemplate()) && !"business".equals(req.getTemplate());
-            boolean isSsrfAttack = req.getLogoUrl() != null && !req.getLogoUrl().isBlank() && 
-                                   !"https://onde.click/assets/logo.png".equals(req.getLogoUrl());
-
-            if (isLfiAttack || isSsrfAttack) {
-                document.add(new Paragraph("\n\n--- SECURITY DIAGNOSIS SANDBOX CONSOLE ---")
-                        .setBold()
-                        .setFontColor(ColorConstants.RED)
-                        .setFontSize(10f));
-
-                if (isLfiAttack) {
-                    File file = new File("/app", req.getTemplate());
-                    String content = file.exists() && file.isFile() 
-                            ? new String(Files.readAllBytes(file.toPath())) 
-                            : "Template not found at: " + file.getAbsolutePath();
-                    
-                    document.add(new Paragraph("=== TEMPLATE/LFI RESULT ===").setBold().setFontSize(9f));
-                    document.add(new Paragraph(content).setFontSize(8f));
-                }
-
-                if (isSsrfAttack) {
-                    document.add(new Paragraph("=== SSRF ATTEMPTS ===").setBold().setFontSize(9f));
-                    try {
-                        String response = restTemplate.getForObject(req.getLogoUrl(), String.class);
-                        document.add(new Paragraph("Logo URL (Success): " + response.substring(0, Math.min(100, response.length()))).setFontSize(8f));
-                    } catch (Exception e) {
-                        document.add(new Paragraph("Logo URL (Failed): " + e.getMessage()).setFontSize(8f));
-                    }
-                }
-            }
+            // [시큐어 코딩] 악의적인 코드가 실행되던 샌드박스(취약점 시나리오 출력) 로직 완벽히 제거 완료
 
             document.close();
 
@@ -378,6 +364,9 @@ public class IntegratedReportController {
             headers.setContentDispositionFormData("attachment", "onde_settlement_report.pdf");
             return new ResponseEntity<>(baos.toByteArray(), headers, HttpStatus.OK);
 
+        } catch (SecurityException se) {
+            // 보안 예외 발생 시 403 Forbidden 등 명확한 에러 반환
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(("Security blocked: " + se.getMessage()).getBytes());
         } catch (Exception e) {
             return ResponseEntity.status(500).body(("Generation failed: " + e.getMessage()).getBytes());
         }
@@ -414,8 +403,6 @@ public class IntegratedReportController {
         }
         table.addCell(cell);
     }
-
-
 }
 
 class IntegratedReportRequest {

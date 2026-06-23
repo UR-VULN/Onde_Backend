@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.Map;
+import jakarta.validation.Valid;
 
 @Slf4j
 @RestController
@@ -35,7 +36,7 @@ public class FlightController {
      */
     @PostMapping("/reservations/flights")
     public ResponseEntity<ApiResponse<FlightBookingResponse>> bookSeat(
-            @RequestBody FlightBookingRequest req,
+            @Valid @RequestBody FlightBookingRequest req,
             @LoginMember Long userId) {
         String lockKey = "flight:lock:" + req.getScheduleId() + ":" + req.getSeatClass().name();
 

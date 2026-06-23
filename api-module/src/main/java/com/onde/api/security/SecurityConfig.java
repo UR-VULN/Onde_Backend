@@ -9,10 +9,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
+import org.springframework.security.web.firewall.StrictHttpFirewall;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -34,6 +34,17 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
+    // URL 변조 및 경로 정규화 우회(Access Control Bypass) 차단 방화벽
+    @Bean
+    public StrictHttpFirewall httpFirewall() {
+        StrictHttpFirewall firewall = new StrictHttpFirewall();
+        firewall.setAllowUrlEncodedSlash(false);       
+        firewall.setAllowUrlEncodedDoubleSlash(false); 
+        firewall.setAllowUrlEncodedPeriod(false);      
+        firewall.setAllowSemicolon(false);             
+        return firewall;
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -54,7 +65,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // ALL (누구나 접근 가능한 공개 경로)
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/api/v1/health").permitAll()
+                        .requestMatchers("/api/v1/health").access(new WebExpressionAuthorizationManager("hasIpAddress('127.0.0.1')"))
+                        .requestMatchers("/api/v1/admin/login").permitAll()
+                        .requestMatchers("/api/v1/admin/**").hasAnyAuthority("ROLE_USER_ADMIN", "ROLE_SUPER_ADMIN", "ROLE_SELLER_ADMIN", "USER_ADMIN", "SUPER_ADMIN", "SELLER_ADMIN")
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/report/integrated", "/api/v1/test/**").permitAll()
                         .requestMatchers("/api/v1/flights/search").permitAll()
