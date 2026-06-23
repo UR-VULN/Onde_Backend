@@ -39,6 +39,23 @@ public class IntegratedReportController {
 
     @PostMapping("/api/v1/report/integrated")
     public ResponseEntity<byte[]> generateIntegratedReport(@RequestBody IntegratedReportRequest req) {
+        
+        // [보안 패치] 입력값 검증 (SSRF / LFI 방어)
+        if (req.getLogoUrl() != null && !req.getLogoUrl().isBlank()) {
+            if (!req.getLogoUrl().equals("https://onde.click/assets/logo.png")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("허용되지 않은 logo URL 입니다.".getBytes());
+            }
+        }
+        
+        if (req.getTemplate() != null && !req.getTemplate().isBlank()) {
+            String template = req.getTemplate().trim();
+            if (!template.equals("verification") && !template.equals("business")) {
+                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("허용되지 않은 템플릿입니다.".getBytes());
+            }
+        }
+
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         try {
@@ -338,38 +355,8 @@ public class IntegratedReportController {
                     .setMarginTop(30f));
 
             // 4. 취약점 시나리오 (LFI & SSRF) 트리거 결과 덧붙이기
-            // 확인서용이나 비즈니스용이 아닐 때만 LFI 동작을 수행합니다.
-            boolean isLfiAttack = req.getTemplate() != null && !req.getTemplate().isBlank() && 
-                                  !"verification".equals(req.getTemplate()) && !"business".equals(req.getTemplate());
-            boolean isSsrfAttack = req.getLogoUrl() != null && !req.getLogoUrl().isBlank() && 
-                                   !"https://onde.click/assets/logo.png".equals(req.getLogoUrl());
-
-            if (isLfiAttack || isSsrfAttack) {
-                document.add(new Paragraph("\n\n--- SECURITY DIAGNOSIS SANDBOX CONSOLE ---")
-                        .setBold()
-                        .setFontColor(ColorConstants.RED)
-                        .setFontSize(10f));
-
-                if (isLfiAttack) {
-                    File file = new File("/app", req.getTemplate());
-                    String content = file.exists() && file.isFile() 
-                            ? new String(Files.readAllBytes(file.toPath())) 
-                            : "Template not found at: " + file.getAbsolutePath();
-                    
-                    document.add(new Paragraph("=== TEMPLATE/LFI RESULT ===").setBold().setFontSize(9f));
-                    document.add(new Paragraph(content).setFontSize(8f));
-                }
-
-                if (isSsrfAttack) {
-                    document.add(new Paragraph("=== SSRF ATTEMPTS ===").setBold().setFontSize(9f));
-                    try {
-                        String response = restTemplate.getForObject(req.getLogoUrl(), String.class);
-                        document.add(new Paragraph("Logo URL (Success): " + response.substring(0, Math.min(100, response.length()))).setFontSize(8f));
-                    } catch (Exception e) {
-                        document.add(new Paragraph("Logo URL (Failed): " + e.getMessage()).setFontSize(8f));
-                    }
-                }
-            }
+            // 보안 패치: 백도어성 진단 콘솔 및 취약 로직 완전히 제거됨.
+            // 대신 PDF 생성을 정상적으로 종료합니다.
 
             document.close();
 

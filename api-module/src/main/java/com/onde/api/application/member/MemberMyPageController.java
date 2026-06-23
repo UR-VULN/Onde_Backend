@@ -1,6 +1,7 @@
 package com.onde.api.application.member;
 
 import com.onde.api.application.member.dto.MemberProfileResponse;
+import com.onde.api.application.member.dto.MaskedMemberProfileResponse;
 import com.onde.api.application.member.dto.MyPageResponseDtos.*;
 import com.onde.api.application.member.dto.ProfileUpdateRequestDto;
 import com.onde.api.application.member.dto.SellerProfileResponse;
@@ -22,9 +23,9 @@ public class MemberMyPageController {
     private final MemberMyPageService memberMyPageService;
 
     @GetMapping({"/api/v1/members/me/profile", "/v1/user/profile"})
-    public ResponseEntity<ApiResponse<MemberProfileResponse>> getMyProfile(
+    public ResponseEntity<ApiResponse<MaskedMemberProfileResponse>> getMyProfile(
             @LoginMember(required = true) Long userId) {
-        MemberProfileResponse response = memberMyPageService.getProfile(userId);
+        MaskedMemberProfileResponse response = memberMyPageService.getMaskedProfile(userId);
         return ResponseEntity.ok(ApiResponse.success(response, "프로필 정보 조회 성공"));
     }
 

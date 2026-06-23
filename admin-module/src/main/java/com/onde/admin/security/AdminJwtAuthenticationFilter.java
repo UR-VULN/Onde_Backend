@@ -54,7 +54,7 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
                     new UsernamePasswordAuthenticationToken(principal, token, authorities);
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
-        } 
+        }
 
 
         filterChain.doFilter(request, response);

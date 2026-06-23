@@ -16,6 +16,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.Order;
+import org.springframework.security.authorization.AuthorizationDecision;
+import org.springframework.security.web.util.matcher.IpAddressMatcher;
 import lombok.RequiredArgsConstructor;
 import java.util.Arrays;
 
@@ -34,7 +38,32 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
 
+    @Value("${management.health.allowed-ip:127.0.0.1}")
+    private String allowedIp;
+
+    /**
+     * [1순위 필터 체인] 인프라 헬스 체크 전용 서브 시스템 (외부 IP 차단)
+     */
     @Bean
+    @Order(1)
+    public SecurityFilterChain healthSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .securityMatcher("/api/v1/health/**")
+            .csrf(AbstractHttpConfigurer::disable)
+            .formLogin(AbstractHttpConfigurer::disable)
+            .httpBasic(AbstractHttpConfigurer::disable)
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/v1/health/**").access((authentication, context) -> 
+                    new AuthorizationDecision(new IpAddressMatcher(allowedIp).matches(context.getRequest())))
+                .anyRequest().denyAll()
+            );
+
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 // 1. 우리의 커스텀 CORS 설정을 등록하여 프론트 통신 차단 해제 (이식 완료)
@@ -54,7 +83,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // ALL (누구나 접근 가능한 공개 경로)
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/api/v1/health").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/report/integrated", "/api/v1/test/**").permitAll()
                         .requestMatchers("/api/v1/flights/search").permitAll()

@@ -39,7 +39,7 @@ public class EmailAuthService {
     @Transactional
     public void sendVerificationCode(String email) {
         if (memberRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("이미 사용중인 이메일입니다.");
+            throw new IllegalArgumentException("입력하신 값이 유효하지 않습니다.");
         }
 
         // 6자리 난수 생성

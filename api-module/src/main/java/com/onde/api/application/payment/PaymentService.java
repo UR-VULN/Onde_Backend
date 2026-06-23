@@ -62,13 +62,22 @@ public class PaymentService {
     public PaymentPrepareResponse preparePayment(Long userId, PaymentPrepareRequest req) {
         // 1. 현재 사용자가 보유한 사용 가능한 실시간 마일리지 잔액 조회
         int currentMileage = mileageService.getCurrentMileage(userId);
-        if (req.getUsedMileage() != null && req.getUsedMileage() > currentMileage) {
-            throw new IllegalArgumentException("사용 가능한 마일리지를 초과했습니다.");
+        BigDecimal verifiedTotalAmount = resolveServerTotalAmount(req);
+        
+        if (req.getUsedMileage() != null) {
+            if (req.getUsedMileage() < 0) {
+                throw new IllegalArgumentException("사용 마일리지는 0 이상이어야 합니다.");
+            }
+            if (req.getUsedMileage() > currentMileage) {
+                throw new IllegalArgumentException("사용 가능한 마일리지를 초과했습니다.");
+            }
+            if (BigDecimal.valueOf(req.getUsedMileage()).compareTo(verifiedTotalAmount) > 0) {
+                throw new IllegalArgumentException("결제 금액을 초과하여 마일리지를 사용할 수 없습니다.");
+            }
         }
 
         // 지갑 잔액 검증 로직 추가
         BigDecimal walletBalance = walletService.getBalance(userId);
-        BigDecimal verifiedTotalAmount = resolveServerTotalAmount(req);
         Integer usedMileage = req.getUsedMileage() != null ? req.getUsedMileage() : 0;
         BigDecimal pgAmount = verifiedTotalAmount.subtract(BigDecimal.valueOf(usedMileage));
         

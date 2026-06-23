@@ -10,6 +10,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,7 +29,7 @@ public class GlobalExceptionHandler {
                 ErrorCode errorCode = e.getErrorCode();
                 String userMessage = e.getMessage() != null ? e.getMessage() : errorCode.getMessage();
 
-                ErrorResponse response = ErrorResponse.of(errorCode, userMessage, userMessage, null);
+                ErrorResponse response = ErrorResponse.of(errorCode, userMessage, null, null);
 
                 return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
         }
@@ -56,7 +57,7 @@ public class GlobalExceptionHandler {
                 ErrorResponse response = ErrorResponse.of(
                                 ErrorCode.INVALID_INPUT_VALUE,
                                 defaultMessage,
-                                "Validation failed for object='" + e.getBindingResult().getObjectName() + "'",
+                                null,
                                 details
                 );
 
@@ -81,6 +82,15 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(ErrorCode.FORBIDDEN.getHttpStatus()).body(response);
         }
 
+        @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+        public ResponseEntity<ErrorResponse> handleTypeMismatchException(MethodArgumentTypeMismatchException e) {
+                log.warn("⚠️ [TypeMismatchException] 파라미터 타입 불일치: {}", e.getMessage());
+
+                ErrorResponse response = ErrorResponse.of(ErrorCode.INVALID_INPUT_VALUE, "잘못된 요청입니다.");
+
+                return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus()).body(response);
+        }
+
         /**
          * 3. 시스템 최상위 예외 (500 Internal Server Error 방어선)
          */
@@ -88,13 +98,10 @@ public class GlobalExceptionHandler {
         public ResponseEntity<ErrorResponse> handleException(Exception e) {
                 log.error("🚨 [Unhandled Exception] 예측하지 못한 시스템 최상위 에러 감지: ", e);
 
-                String systemMessage = String.format("%s: %s", e.getClass().getName(),
-                                e.getMessage() != null ? e.getMessage() : "No detailed message");
-
                 ErrorResponse response = ErrorResponse.of(
                                 ErrorCode.INTERNAL_SERVER_ERROR,
                                 "서버 내부 오류가 발생했습니다. 관리자에게 문의하세요.",
-                                systemMessage,
+                                null,
                                 null
                 );
 

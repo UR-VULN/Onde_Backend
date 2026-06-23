@@ -68,3 +68,4 @@ management:
   health:
     defaults:
       enabled: false    
+    allowed-ip: ${HEALTH_CHECK_ALLOWED_IP:127.0.0.1}

@@ -82,6 +82,9 @@ public class AwsS3Service {
         }
     }
 
+    private static final java.util.List<String> ALLOWED_EXTENSIONS = java.util.Arrays.asList(".jpg", ".jpeg", ".png", ".gif", ".webp");
+    private static final java.util.List<String> ALLOWED_MIME_TYPES = java.util.Arrays.asList("image/jpeg", "image/png", "image/gif", "image/webp");
+
     /**
      * S3 버킷에 파일을 업로드하고, S3 직접 주소가 아닌 인프라 정책에 명시된 CloudFront CDN 도메인 URL로 반환합니다.
      */
@@ -90,13 +93,25 @@ public class AwsS3Service {
             return "";
         }
 
+        // [보안 패치] 1. Content-Type (MIME Type) 검증
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
+            throw new IllegalArgumentException("허용되지 않는 파일 형식입니다. (Content-Type 검증 실패)");
+        }
+
         String originalFilename = file.getOriginalFilename();
         String extension = "";
         if (originalFilename != null && originalFilename.contains(".")) {
-            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
         } else {
             extension = ".jpg";
         }
+
+        // [보안 패치] 2. 파일 확장자 검증
+        if (!ALLOWED_EXTENSIONS.contains(extension)) {
+            throw new IllegalArgumentException("허용되지 않는 파일 확장자입니다. (확장자 검증 실패)");
+        }
+
         String randomName = UUID.randomUUID().toString();
         String s3Key = dirName + "/" + randomName + extension;
 

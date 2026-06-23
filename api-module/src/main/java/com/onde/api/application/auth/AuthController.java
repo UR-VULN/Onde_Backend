@@ -40,20 +40,14 @@ public class AuthController {
 
     @org.springframework.web.bind.annotation.GetMapping({"/check-nickname", "/api/v1/auth/check-nickname"})
     public ResponseEntity<ApiResponse<Boolean>> checkNickname(@org.springframework.web.bind.annotation.RequestParam("nickname") String nickname) {
-        boolean duplicate = authService.checkNicknameDuplicate(nickname);
-        if (duplicate) {
-            return ResponseEntity.ok(ApiResponse.success(true, "이미 사용 중인 닉네임입니다."));
-        }
-        return ResponseEntity.ok(ApiResponse.success(false, "사용 가능한 닉네임입니다."));
+        // [보안 패치] User Enumeration 방어를 위해 항상 동일한 응답 반환
+        return ResponseEntity.ok(ApiResponse.success(false, "요청이 처리되었습니다."));
     }
 
     @org.springframework.web.bind.annotation.GetMapping({"/check-email", "/api/v1/auth/check-email"})
     public ResponseEntity<ApiResponse<Boolean>> checkEmail(@org.springframework.web.bind.annotation.RequestParam("email") String email) {
-        boolean duplicate = authService.checkEmailDuplicate(email);
-        if (duplicate) {
-            return ResponseEntity.ok(ApiResponse.success(true, "이미 사용 중인 이메일입니다."));
-        }
-        return ResponseEntity.ok(ApiResponse.success(false, "사용 가능한 이메일입니다."));
+        // [보안 패치] User Enumeration 방어를 위해 항상 동일한 응답 반환
+        return ResponseEntity.ok(ApiResponse.success(false, "요청이 처리되었습니다."));
     }
 
 

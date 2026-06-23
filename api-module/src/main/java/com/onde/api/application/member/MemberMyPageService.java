@@ -1,6 +1,7 @@
 package com.onde.api.application.member;
 
 import com.onde.api.application.member.dto.MemberProfileResponse;
+import com.onde.api.application.member.dto.MaskedMemberProfileResponse;
 import com.onde.api.application.member.dto.MyPageResponseDtos.*;
 import com.onde.api.application.member.dto.ProfileUpdateRequestDto;
 import com.onde.api.application.member.dto.SellerProfileResponse;
@@ -288,6 +289,11 @@ public class MemberMyPageService {
                 .build();
     }
 
+    public MaskedMemberProfileResponse getMaskedProfile(Long userId) {
+        MemberProfileResponse original = getProfile(userId);
+        return MaskedMemberProfileResponse.from(original);
+    }
+
     @Transactional
     public void updateProfile(Long userId, ProfileUpdateRequestDto requestDto) {
         com.onde.core.entity.member.Member member = memberRepository.findById(userId)
@@ -301,7 +307,9 @@ public class MemberMyPageService {
         }
 
         // 기본 정보 업데이트
-        member.updateProfile(requestDto.getName(), requestDto.getPhoneNumber(), requestDto.getNickname());
+        String safeName = requestDto.getName() != null ? org.springframework.web.util.HtmlUtils.htmlEscape(requestDto.getName()) : null;
+        String safeNickname = requestDto.getNickname() != null ? org.springframework.web.util.HtmlUtils.htmlEscape(requestDto.getNickname()) : null;
+        member.updateProfile(safeName, requestDto.getPhoneNumber(), safeNickname);
 
         // 비밀번호 변경 요청이 있는 경우에만 처리
         if (requestDto.getNewPassword() != null && !requestDto.getNewPassword().isBlank()) {
@@ -334,7 +342,9 @@ public class MemberMyPageService {
         }
 
         // 프로필 정보 업데이트
-        member.updateProfile(request.getName(), request.getPhoneNumber(), request.getNickname());
+        String safeName = request.getName() != null ? org.springframework.web.util.HtmlUtils.htmlEscape(request.getName()) : null;
+        String safeNickname = request.getNickname() != null ? org.springframework.web.util.HtmlUtils.htmlEscape(request.getNickname()) : null;
+        member.updateProfile(safeName, request.getPhoneNumber(), safeNickname);
 
         // 비밀번호 변경 처리
         if (request.getPassword() != null && !request.getPassword().isBlank()) {

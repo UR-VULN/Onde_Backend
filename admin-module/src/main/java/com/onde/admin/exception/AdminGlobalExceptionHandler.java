@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -21,7 +22,7 @@ public class AdminGlobalExceptionHandler {
         String userMessage = e.getMessage() != null ? e.getMessage() : errorCode.getMessage();
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
-                .body(ErrorResponse.of(errorCode, userMessage, userMessage, null));
+                .body(ErrorResponse.of(errorCode, userMessage, null, null));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -39,6 +40,14 @@ public class AdminGlobalExceptionHandler {
         return ResponseEntity
                 .status(ErrorCode.FORBIDDEN.getHttpStatus())
                 .body(ErrorResponse.of(ErrorCode.FORBIDDEN, e.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatchException(MethodArgumentTypeMismatchException e) {
+        log.warn("Admin TypeMismatchException: {}", e.getMessage());
+        return ResponseEntity
+                .status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus())
+                .body(ErrorResponse.of(ErrorCode.INVALID_INPUT_VALUE, "잘못된 요청입니다."));
     }
 
     @ExceptionHandler(Exception.class)
