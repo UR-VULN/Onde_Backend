@@ -43,10 +43,17 @@ public class SellerAccommodationService {
     public Long registerAccommodation(SellerAccommodationRegisterRequest request) {
         Accommodation accommodation = new Accommodation();
         accommodation.setSellerId(request.getSellerId());
-        accommodation.setName(request.getName());
-        accommodation.setDescription(request.getDescription());
-        accommodation.setCategory(request.getCategory());
-        accommodation.setLocation(request.getLocation());
+        
+        // [보안 패치] Stored XSS 방지를 위해 입력값 HTML 이스케이프 처리
+        String safeName = request.getName() != null ? org.springframework.web.util.HtmlUtils.htmlEscape(request.getName()) : null;
+        String safeDescription = request.getDescription() != null ? org.springframework.web.util.HtmlUtils.htmlEscape(request.getDescription()) : null;
+        String safeCategory = request.getCategory() != null ? org.springframework.web.util.HtmlUtils.htmlEscape(request.getCategory()) : null;
+        String safeLocation = request.getLocation() != null ? org.springframework.web.util.HtmlUtils.htmlEscape(request.getLocation()) : null;
+
+        accommodation.setName(safeName);
+        accommodation.setDescription(safeDescription);
+        accommodation.setCategory(safeCategory);
+        accommodation.setLocation(safeLocation);
         
         String license = request.getBusinessLicense();
         if (license == null || license.isBlank()) {
@@ -63,14 +70,16 @@ public class SellerAccommodationService {
         if (roomsList == null || roomsList.isEmpty()) {
             Room room = new Room();
             room.setAccommodation(savedAccommodation);
-            room.setName(request.getName()); // name defaults to accommodation name
+            room.setName(safeName); // name defaults to accommodation name
             room.setCapacity(2);
             roomRepository.save(room);
         } else {
             for (SellerAccommodationRegisterRequest.RoomRegisterRequest roomReq : roomsList) {
                 Room room = new Room();
                 room.setAccommodation(savedAccommodation);
-                room.setName(roomReq.getName() == null || roomReq.getName().isBlank() ? request.getName() : roomReq.getName());
+                
+                String roomName = roomReq.getName() == null || roomReq.getName().isBlank() ? safeName : org.springframework.web.util.HtmlUtils.htmlEscape(roomReq.getName());
+                room.setName(roomName);
                 room.setCapacity(roomReq.getCapacity() == null ? 2 : roomReq.getCapacity());
                 roomRepository.save(room);
             }
@@ -80,7 +89,7 @@ public class SellerAccommodationService {
         if (request.getLatitude() != null && request.getLongitude() != null) {
             Property property = Property.builder()
                     .sellerId(request.getSellerId())
-                    .addressName(request.getName())
+                    .addressName(safeName)
                     .latitude(request.getLatitude())
                     .longitude(request.getLongitude())
                     .isVerified(false)
