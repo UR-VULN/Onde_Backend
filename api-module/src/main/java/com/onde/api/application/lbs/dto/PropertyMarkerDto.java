@@ -14,7 +14,6 @@ public class PropertyMarkerDto {
     private String addressName;
     private Double latitude;
     private Double longitude;
-    private Long memberId;
     private String thumbnailUrl;
     private Integer minPrice;
 
@@ -24,7 +23,6 @@ public class PropertyMarkerDto {
                 .addressName(property.getAddressName())
                 .latitude(property.getLatitude())
                 .longitude(property.getLongitude())
-                .memberId(property.getSellerId())
                 .build();
     }
 }

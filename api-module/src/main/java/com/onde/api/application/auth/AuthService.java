@@ -25,27 +25,24 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
-        // 비밀번호 확인 일치 여부 검증
         if (request.getPasswordConfirm() != null && !request.getPassword().equals(request.getPasswordConfirm())) {
             throw new IllegalArgumentException("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
         }
 
-        // 이메일 중복 검증
         if (memberRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
         }
 
-        // 닉네임 중복 검증
         if (request.getNickname() != null && memberRepository.existsByNickname(request.getNickname())) {
             throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
         }
 
-        // 비밀번호 암호화 및 Member 엔티티 생성
-        MemberRole role = request.getRole() != null ? request.getRole() : MemberRole.USER;
-        MemberStatus initialStatus = role == MemberRole.SELLER ? MemberStatus.PENDING : MemberStatus.ACTIVE;
+        MemberRole role = MemberRole.USER;
+        MemberStatus initialStatus = MemberStatus.ACTIVE;
         Member member = Member.builder()
                 .email(request.getEmail())
                 .name(request.getName())
@@ -72,26 +69,67 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public boolean checkNicknameDuplicate(String nickname) {
+    public boolean checkNicknameDuplicate(String nickname, String clientIp) {
+        String ipKey = "rate_limit:ip:enum:" + clientIp;
+        Long reqCount = redisTemplate.opsForValue().increment(ipKey);
+        if (reqCount != null && reqCount == 1) {
+            redisTemplate.expire(ipKey, 60, java.util.concurrent.TimeUnit.SECONDS);
+        }
+        if (reqCount != null && reqCount > 10) {
+            throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS);
+        }
         return memberRepository.existsByNickname(nickname);
     }
 
     @Transactional(readOnly = true)
-    public boolean checkEmailDuplicate(String email) {
+    public boolean checkEmailDuplicate(String email, String clientIp) {
+        String ipKey = "rate_limit:ip:enum:" + clientIp;
+        Long reqCount = redisTemplate.opsForValue().increment(ipKey);
+        if (reqCount != null && reqCount == 1) {
+            redisTemplate.expire(ipKey, 60, java.util.concurrent.TimeUnit.SECONDS);
+        }
+        if (reqCount != null && reqCount > 10) {
+            throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS);
+        }
         return memberRepository.existsByEmail(email);
     }
 
 
     @Transactional
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponse login(LoginRequest request, String clientIp) {
+        String ipKey = "rate_limit:ip:" + clientIp;
+        Long reqCount = redisTemplate.opsForValue().increment(ipKey);
+        if (reqCount != null && reqCount == 1) {
+            redisTemplate.expire(ipKey, 60, java.util.concurrent.TimeUnit.SECONDS);
+        }
+        if (reqCount != null && reqCount > 10) {
+            throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS);
+        }
+
+        String lockKey = "lockout:" + request.getEmail();
+        String failedCountKey = "failed_login:" + request.getEmail();
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(lockKey))) {
+            throw new UnauthorizedException(ErrorCode.ACCOUNT_LOCKED);
+        }
+
         Member member = memberRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UnauthorizedException(ErrorCode.UNAUTHORIZED));
 
         if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
+            Long fails = redisTemplate.opsForValue().increment(failedCountKey);
+            if (fails != null && fails == 1) {
+                redisTemplate.expire(failedCountKey, 30, java.util.concurrent.TimeUnit.MINUTES);
+            }
+            if (fails != null && fails >= 5) {
+                redisTemplate.opsForValue().set(lockKey, "locked", 30, java.util.concurrent.TimeUnit.MINUTES);
+                redisTemplate.delete(failedCountKey);
+                throw new UnauthorizedException(ErrorCode.ACCOUNT_LOCKED);
+            }
             throw new UnauthorizedException(ErrorCode.UNAUTHORIZED);
         }
 
-        // 일반 로그인 시 관리자 권한 로그인 제한 (보안을 위해 동일하게 UNAUTHORIZED 예외 발생)
+        redisTemplate.delete(failedCountKey);
+
         if (member.getRole() == MemberRole.USER_ADMIN || 
             member.getRole() == MemberRole.SELLER_ADMIN || 
             member.getRole() == MemberRole.SUPER_ADMIN) {
@@ -106,82 +144,44 @@ public class AuthService {
             throw new BusinessException(ErrorCode.SELLER_PENDING_APPROVAL);
         }
 
-        // 토큰 발급
-        String accessToken = jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().getSecurityRole());
-        String refreshTokenString = jwtTokenProvider.createRefreshToken(member.getEmail());
+        String accessToken = jwtTokenProvider.createAccessToken(String.valueOf(member.getId()));
+        String refreshTokenString = jwtTokenProvider.createRefreshToken(String.valueOf(member.getId()));
 
-        // Refresh Token Redis 저장 (동일 이메일로 로그인 시 기존 토큰 덮어쓰기됨)
         RefreshToken refreshToken = new RefreshToken(
-                member.getEmail(),
+                String.valueOf(member.getId()),
                 refreshTokenString,
                 jwtTokenProvider.getRefreshTokenValidTimeInSeconds()
         );
         refreshTokenRepository.save(refreshToken);
 
-        // LoginResponse 객체 생성하여 반환
+        // [단일 세션 정책] Access Token을 Redis에 저장 (15분 유지)하여 기존 발급된 토큰 무효화
+        redisTemplate.opsForValue().set(
+                "active_access_token:" + member.getId(),
+                accessToken,
+                900L,
+                java.util.concurrent.TimeUnit.SECONDS
+        );
+
         return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshTokenString)
                 .tokenType("Bearer")
-                .expiresIn(1800L) // 30분
+                .expiresIn(900L) // 15분
                 .memberId(member.getId())
                 .role(member.getRole().name())
                 .build();
     }
+
+
 
     @Transactional
-    public LoginResponse adminLogin(LoginRequest request) {
-        Member member = memberRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UnauthorizedException(ErrorCode.UNAUTHORIZED));
-
-        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
-            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED);
-        }
-
-        // 관리자 권한이 아닌 사용자가 로그인 시도 시 실패 처리
-        if (member.getRole() != MemberRole.USER_ADMIN && 
-            member.getRole() != MemberRole.SELLER_ADMIN && 
-            member.getRole() != MemberRole.SUPER_ADMIN) {
-            throw new UnauthorizedException(ErrorCode.UNAUTHORIZED);
-        }
-
-        if (member.getStatus() == MemberStatus.BANNED) {
-            throw new ForbiddenException(ErrorCode.FORBIDDEN);
-        }
-
-        // 토큰 발급
-        String accessToken = jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().getSecurityRole());
-        String refreshTokenString = jwtTokenProvider.createRefreshToken(member.getEmail());
-
-        // Refresh Token Redis 저장
-        RefreshToken refreshToken = new RefreshToken(
-                member.getEmail(),
-                refreshTokenString,
-                jwtTokenProvider.getRefreshTokenValidTimeInSeconds()
-        );
-        refreshTokenRepository.save(refreshToken);
-
-        return LoginResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshTokenString)
-                .tokenType("Bearer")
-                .expiresIn(1800L) // 30분
-                .memberId(member.getId())
-                .role(member.getRole().name())
-                .build();
-    }
-
-    @Transactional(readOnly = true)
     public TokenRefreshResponse refresh(String refreshToken) {
-        // Refresh Token 유효성 검증
         if (!jwtTokenProvider.validateToken(refreshToken)) {
             throw new IllegalArgumentException("유효하지 않거나 만료된 Refresh Token입니다.");
         }
 
-        // Token에서 식별자 추출
         String identifier = jwtTokenProvider.getSubject(refreshToken);
 
-        // Redis에 저장된 토큰과 일치하는지 확인
         RefreshToken savedToken = refreshTokenRepository.findById(identifier)
                 .orElseThrow(() -> new IllegalArgumentException("로그인 정보가 없거나 만료되었습니다."));
 
@@ -189,17 +189,32 @@ public class AuthService {
             throw new IllegalArgumentException("Refresh Token이 일치하지 않습니다.");
         }
 
-        // 회원 정보 조회 및 새로운 Access Token 발급
-        Member member = memberRepository.findByEmail(identifier)
-                .or(() -> memberRepository.findByProviderId(identifier))
-                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+        Member member = memberRepository.findById(Long.parseLong(identifier))
+                .orElseThrow(() -> new com.onde.core.exception.UnauthorizedException(com.onde.core.exception.ErrorCode.UNAUTHORIZED));
 
-        String newAccessToken = jwtTokenProvider.createAccessToken(identifier, member.getRole().getSecurityRole());
+        String newAccessToken = jwtTokenProvider.createAccessToken(identifier);
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(identifier);
+
+        RefreshToken newRefreshTokenEntity = new RefreshToken(
+                identifier,
+                newRefreshToken,
+                jwtTokenProvider.getRefreshTokenValidTimeInSeconds()
+        );
+        refreshTokenRepository.save(newRefreshTokenEntity);
+
+        // [단일 세션 정책] 새 Access Token을 Redis에 갱신
+        redisTemplate.opsForValue().set(
+                "active_access_token:" + identifier,
+                newAccessToken,
+                900L,
+                java.util.concurrent.TimeUnit.SECONDS
+        );
 
         return TokenRefreshResponse.builder()
                 .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
                 .tokenType("Bearer")
-                .expiresIn(1800L) // 30분
+                .expiresIn(900L) // 15분
                 .build();
     }
 }

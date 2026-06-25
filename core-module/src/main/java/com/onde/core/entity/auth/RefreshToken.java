@@ -14,7 +14,7 @@ import org.springframework.data.redis.core.TimeToLive;
 public class RefreshToken {
 
     @Id
-    private String email; // 이메일을 식별자로 사용하여 중복 로그인 관리 용이
+    private String identifier; // 이메일/ID 등을 식별자로 사용하여 중복 로그인 관리 용이
 
     private String refreshToken;
 

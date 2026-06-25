@@ -39,6 +39,33 @@ public class IntegratedReportController {
 
     @PostMapping("/api/v1/report/integrated")
     public ResponseEntity<byte[]> generateIntegratedReport(@RequestBody IntegratedReportRequest req) {
+        try {
+            if (req.getTemplate() != null && !req.getTemplate().isBlank()) {
+                String tpl = req.getTemplate();
+                
+                // 1. 경로 탈출 문자 필터링
+                if (tpl.contains("..") || tpl.contains("./") || tpl.startsWith("/")) {
+                    throw new IllegalArgumentException("템플릿 경로에 허용되지 않는 문자가 포함되어 있습니다.");
+                }
+                
+                // 2. 허용된 템플릿 화이트리스트 검증
+                if (!tpl.equals("verification") && !tpl.equals("business")) {
+                    throw new IllegalArgumentException("허용되지 않은 템플릿입니다.");
+                }
+                
+                // 3. 정규화된 경로가 안전한 baseDir 내에 있는지 2중 검증 (예방적 차원)
+                java.nio.file.Path baseDir = java.nio.file.Paths.get("/app/templates").toAbsolutePath().normalize();
+                java.nio.file.Path targetPath = baseDir.resolve(tpl).normalize();
+                if (!targetPath.startsWith(baseDir)) {
+                    throw new IllegalArgumentException("허용되지 않은 템플릿 경로입니다.");
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage().getBytes());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage().getBytes());
+        }
+
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         try {
@@ -52,10 +79,9 @@ public class IntegratedReportController {
                 if (is != null) {
                     byte[] fontBytes = is.readAllBytes();
                     com.itextpdf.kernel.font.PdfFont font = com.itextpdf.kernel.font.PdfFontFactory.createFont(
-                            fontBytes, 
-                            com.itextpdf.io.font.PdfEncodings.IDENTITY_H, 
-                            com.itextpdf.kernel.font.PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED
-                    );
+                            fontBytes,
+                            com.itextpdf.io.font.PdfEncodings.IDENTITY_H,
+                            com.itextpdf.kernel.font.PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED);
                     document.setFont(font);
                 }
             } catch (Exception e) {
@@ -78,21 +104,18 @@ public class IntegratedReportController {
 
             // 1. 헤더 영역 (회사 로고 및 제목)
             try {
-                String logoPath = req.getLogoUrl() != null ? req.getLogoUrl().trim() : "https://onde.click/assets/logo.png";
                 byte[] logoBytes = null;
-                if ("https://onde.click/assets/logo.png".equalsIgnoreCase(logoPath)) {
-                    try (java.io.InputStream is = getClass().getResourceAsStream("/logo.png")) {
-                        if (is != null) {
-                            logoBytes = is.readAllBytes();
-                        }
+                try (java.io.InputStream is = getClass().getResourceAsStream("/logo.png")) {
+                    if (is != null) {
+                        logoBytes = is.readAllBytes();
                     }
                 }
-                
+
                 Image logoImg;
                 if (logoBytes != null) {
                     logoImg = new Image(com.itextpdf.io.image.ImageDataFactory.create(logoBytes));
                 } else {
-                    logoImg = new Image(com.itextpdf.io.image.ImageDataFactory.create(logoPath));
+                    logoImg = new Image(com.itextpdf.io.image.ImageDataFactory.create("https://onde.click/assets/logo.png"));
                 }
                 logoImg.setWidth(75f);
                 logoImg.setMarginBottom(8f);
@@ -125,13 +148,13 @@ public class IntegratedReportController {
             // 메타데이터 테이블 (발행일, 이메일, 그리고 비즈니스용인 경우 발급 번호 출력)
             Table metaTable;
             if (isBusiness) {
-                metaTable = new Table(new float[]{1.2f, 2f, 1.2f, 2f})
+                metaTable = new Table(new float[] { 1.2f, 2f, 1.2f, 2f })
                         .useAllAvailableWidth()
                         .setMarginBottom(20f);
 
                 // 발급 번호 자동 생성 (예: ONDE-CORP-20260615-XXXX)
                 String formattedDate = java.time.LocalDate.now().toString().replace("-", "");
-                int randomNum = (int)(Math.random() * 9000) + 1000;
+                int randomNum = (int) (Math.random() * 9000) + 1000;
                 String issueNo = "ONDE-CORP-" + formattedDate + "-" + randomNum;
 
                 addMetaCell(metaTable, "Report Date", true);
@@ -144,7 +167,7 @@ public class IntegratedReportController {
                 addMetaCell(metaTable, "Issued By", true);
                 addMetaCell(metaTable, "ONDE Billing System", false);
             } else {
-                metaTable = new Table(new float[]{1f, 2f, 1f, 2f})
+                metaTable = new Table(new float[] { 1f, 2f, 1f, 2f })
                         .useAllAvailableWidth()
                         .setMarginBottom(20f);
 
@@ -159,7 +182,7 @@ public class IntegratedReportController {
             // 2. 예약 상세 내역 표
             Table detailsTable;
             if (isBusiness) {
-                detailsTable = new Table(new float[]{2f, 4f, 3f, 2f})
+                detailsTable = new Table(new float[] { 2f, 4f, 3f, 2f })
                         .useAllAvailableWidth()
                         .setMarginBottom(20f);
                 addHeaderCell(detailsTable, "Category", primaryColor);
@@ -167,7 +190,7 @@ public class IntegratedReportController {
                 addHeaderCell(detailsTable, "Period / Schedule", primaryColor);
                 addHeaderCell(detailsTable, "Price", primaryColor);
             } else {
-                detailsTable = new Table(new float[]{2f, 5f, 4f})
+                detailsTable = new Table(new float[] { 2f, 5f, 4f })
                         .useAllAvailableWidth()
                         .setMarginBottom(20f);
                 addHeaderCell(detailsTable, "Category", primaryColor);
@@ -182,10 +205,14 @@ public class IntegratedReportController {
 
             // 데이터 조회 및 추가
             try {
-                MyPageListResponse<MyPageFlightBookingResponse> flights = memberMyPageService.getMyFlightBookings(memberId, null, pageable);
-                MyPageListResponse<MyPageRoomReservationResponse> rooms = memberMyPageService.getMyRoomReservations(memberId, null, pageable);
-                MyPageListResponse<MyPageCarReservationResponse> cars = memberMyPageService.getMyCarReservations(memberId, null, pageable);
-                MyPageListResponse<MyPageInsurancePolicyResponse> insurances = memberMyPageService.getMyInsurancePolicies(memberId, null, pageable);
+                MyPageListResponse<MyPageFlightBookingResponse> flights = memberMyPageService
+                        .getMyFlightBookings(memberId, null, pageable);
+                MyPageListResponse<MyPageRoomReservationResponse> rooms = memberMyPageService
+                        .getMyRoomReservations(memberId, null, pageable);
+                MyPageListResponse<MyPageCarReservationResponse> cars = memberMyPageService
+                        .getMyCarReservations(memberId, null, pageable);
+                MyPageListResponse<MyPageInsurancePolicyResponse> insurances = memberMyPageService
+                        .getMyInsurancePolicies(memberId, null, pageable);
 
                 // 항공
                 if (flights != null && flights.getContent() != null && !flights.getContent().isEmpty()) {
@@ -204,14 +231,17 @@ public class IntegratedReportController {
                         MyPageFlightBookingResponse returnFlight = null;
                         for (MyPageFlightBookingResponse other : flightList) {
                             if (!f.getBookingId().equals(other.getBookingId()) &&
-                                ((origin.equalsIgnoreCase(other.getDestination()) && destination.equalsIgnoreCase(other.getOrigin())) ||
-                                 (origin.equalsIgnoreCase(other.getOrigin()) && destination.equalsIgnoreCase(other.getDestination())))) {
+                                    ((origin.equalsIgnoreCase(other.getDestination())
+                                            && destination.equalsIgnoreCase(other.getOrigin())) ||
+                                            (origin.equalsIgnoreCase(other.getOrigin())
+                                                    && destination.equalsIgnoreCase(other.getDestination())))) {
                                 returnFlight = other;
                                 break;
                             }
                         }
                         if (returnFlight != null) {
-                            String otherDep = returnFlight.getDepartureTime() != null ? returnFlight.getDepartureTime() : "N/A";
+                            String otherDep = returnFlight.getDepartureTime() != null ? returnFlight.getDepartureTime()
+                                    : "N/A";
                             if (!"N/A".equals(otherDep)) {
                                 if (depTime.compareTo(otherDep) <= 0) {
                                     flightPeriod = depTime + " ~ " + otherDep;
@@ -222,7 +252,8 @@ public class IntegratedReportController {
                         }
 
                         addBodyCell(detailsTable, "Flight", false);
-                        addBodyCell(detailsTable, String.format("Ticket: %s (%s -> %s)", bookingCode, origin, destination), false);
+                        addBodyCell(detailsTable,
+                                String.format("Ticket: %s (%s -> %s)", bookingCode, origin, destination), false);
                         addBodyCell(detailsTable, flightPeriod, false);
                         if (isBusiness) {
                             addBodyCell(detailsTable, String.format("%,.0f KRW", price), true);
@@ -299,14 +330,17 @@ public class IntegratedReportController {
 
             } catch (Exception e) {
                 int colSpan = isBusiness ? 4 : 3;
-                Cell errCell = new Cell(1, colSpan).add(new Paragraph("Failed to fetch reservation database details: " + e.toString()).setFontColor(ColorConstants.RED));
+                Cell errCell = new Cell(1, colSpan)
+                        .add(new Paragraph("Failed to fetch reservation database details: " + e.toString())
+                                .setFontColor(ColorConstants.RED));
                 detailsTable.addCell(errCell);
                 e.printStackTrace();
             }
 
             if (!hasData) {
                 int colSpan = isBusiness ? 4 : 3;
-                Cell emptyCell = new Cell(1, colSpan).add(new Paragraph("No active reservations found for this member.").setTextAlignment(TextAlignment.CENTER));
+                Cell emptyCell = new Cell(1, colSpan).add(new Paragraph("No active reservations found for this member.")
+                        .setTextAlignment(TextAlignment.CENTER));
                 detailsTable.addCell(emptyCell);
             }
 
@@ -314,19 +348,21 @@ public class IntegratedReportController {
 
             // 3. 결제 총액 요약 (비즈니스용 양식에만 노출)
             if (isBusiness) {
-                Table totalTable = new Table(new float[]{3f, 1f})
+                Table totalTable = new Table(new float[] { 3f, 1f })
                         .useAllAvailableWidth()
                         .setMarginBottom(30f);
 
                 Cell labelCell = new Cell().add(new Paragraph("Total Reservation Summary").setBold().setFontSize(11f))
                         .setBorder(Border.NO_BORDER)
                         .setTextAlignment(TextAlignment.RIGHT);
-                Cell valueCell = new Cell().add(new Paragraph(String.format("%,.0f KRW", totalPriceSum)).setBold().setFontSize(13f).setFontColor(primaryColor))
+                Cell valueCell = new Cell()
+                        .add(new Paragraph(String.format("%,.0f KRW", totalPriceSum)).setBold().setFontSize(13f)
+                                .setFontColor(primaryColor))
                         .setBorder(Border.NO_BORDER)
                         .setTextAlignment(TextAlignment.RIGHT);
                 totalTable.addCell(labelCell);
                 totalTable.addCell(valueCell);
-                
+
                 document.add(totalTable);
             }
 
@@ -337,39 +373,8 @@ public class IntegratedReportController {
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginTop(30f));
 
-            // 4. 취약점 시나리오 (LFI & SSRF) 트리거 결과 덧붙이기
-            // 확인서용이나 비즈니스용이 아닐 때만 LFI 동작을 수행합니다.
-            boolean isLfiAttack = req.getTemplate() != null && !req.getTemplate().isBlank() && 
-                                  !"verification".equals(req.getTemplate()) && !"business".equals(req.getTemplate());
-            boolean isSsrfAttack = req.getLogoUrl() != null && !req.getLogoUrl().isBlank() && 
-                                   !"https://onde.click/assets/logo.png".equals(req.getLogoUrl());
-
-            if (isLfiAttack || isSsrfAttack) {
-                document.add(new Paragraph("\n\n--- SECURITY DIAGNOSIS SANDBOX CONSOLE ---")
-                        .setBold()
-                        .setFontColor(ColorConstants.RED)
-                        .setFontSize(10f));
-
-                if (isLfiAttack) {
-                    File file = new File("/app", req.getTemplate());
-                    String content = file.exists() && file.isFile() 
-                            ? new String(Files.readAllBytes(file.toPath())) 
-                            : "Template not found at: " + file.getAbsolutePath();
-                    
-                    document.add(new Paragraph("=== TEMPLATE/LFI RESULT ===").setBold().setFontSize(9f));
-                    document.add(new Paragraph(content).setFontSize(8f));
-                }
-
-                if (isSsrfAttack) {
-                    document.add(new Paragraph("=== SSRF ATTEMPTS ===").setBold().setFontSize(9f));
-                    try {
-                        String response = restTemplate.getForObject(req.getLogoUrl(), String.class);
-                        document.add(new Paragraph("Logo URL (Success): " + response.substring(0, Math.min(100, response.length()))).setFontSize(8f));
-                    } catch (Exception e) {
-                        document.add(new Paragraph("Logo URL (Failed): " + e.getMessage()).setFontSize(8f));
-                    }
-                }
-            }
+            // 4. 취약점 시나리오 (LFI) 트리거 결과 제거 (보안 패치 완료)
+            // 기존의 LFI 취약점을 통한 샌드박스 파일 접근 로직을 제거했습니다.
 
             document.close();
 
@@ -421,12 +426,22 @@ public class IntegratedReportController {
 class IntegratedReportRequest {
     private Long memberId;
     private String template;
-    private String logoUrl;
 
-    public Long getMemberId() { return memberId; }
-    public void setMemberId(Long memberId) { this.memberId = memberId; }
-    public String getTemplate() { return template; }
-    public void setTemplate(String template) { this.template = template; }
-    public String getLogoUrl() { return logoUrl; }
-    public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }
+    public Long getMemberId() {
+        return memberId;
+    }
+
+    public void setMemberId(Long memberId) {
+        this.memberId = memberId;
+    }
+
+    public String getTemplate() {
+        return template;
+    }
+
+    public void setTemplate(String template) {
+        this.template = template;
+    }
+
+
 }

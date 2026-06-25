@@ -18,9 +18,27 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns("*") // 개발 편의상 모든 Origin 허용
+                // [이행진단 1, 2] 개발 편의상 사용하던 와일드카드(*) 대신 명시적 Origin 화이트리스트 적용
+                .allowedOrigins(
+                        "http://localhost:5173", 
+                        "http://localhost:3000", 
+                        "https://onde.click", 
+                        "https://www.onde.click", 
+                        "https://admin.onde.click"
+                )
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
+                // [이행진단 1] 와일드카드(*) 대신 명시적 Allowed Headers 적용
+                .allowedHeaders(
+                        "Authorization", 
+                        "Content-Type", 
+                        "Accept", 
+                        "Origin", 
+                        "X-Requested-With", 
+                        "X-XSRF-TOKEN", 
+                        "X-CSRF-TOKEN",
+                        "Access-Control-Request-Method",
+                        "Access-Control-Request-Headers"
+                )
                 .allowCredentials(true);
     }
 }

@@ -19,7 +19,7 @@ public class JwtTokenProvider {
     
     private Key key;
 
-    private final long accessTokenValidTime = 30 * 60 * 1000L; // 30분 유효기간
+    private final long accessTokenValidTime = 15 * 60 * 1000L; // 15분 유효기간
     private final long refreshTokenValidTime = 14 * 24 * 60 * 60 * 1000L; // 14일 유효기간
 
     // 서버 실행 시 환경변수의 키를 바이트 배열로 변환하여 Key 객체 초기화
@@ -29,9 +29,8 @@ public class JwtTokenProvider {
     }
     
     // Access Token 생성 메서드
-    public String createAccessToken(String identifier, String role) {
+    public String createAccessToken(String identifier) {
         Claims claims = Jwts.claims().setSubject(identifier);
-        claims.put("role", role); // 토큰 Payload에 권한(Role) 정보 담기
 
         Date now = new Date();
         return Jwts.builder()

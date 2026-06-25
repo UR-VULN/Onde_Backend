@@ -22,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.HtmlUtils;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -69,11 +70,11 @@ public class PostService {
             authorName = "User-" + memberId;
         }
 
-        // 3. 게시글 저장
+        // 3. 게시글 저장 (XSS 방지: HTML 특수문자 이스케이핑)
         Post post = Post.builder()
                 .memberId(memberId)
-                .title(req.getTitle())
-                .content(req.getContent())
+                .title(HtmlUtils.htmlEscape(req.getTitle()))
+                .content(HtmlUtils.htmlEscape(req.getContent()))
                 .type(req.getType())
                 .status(PostStatus.ACTIVE)
                 .likeCount(0)
@@ -180,8 +181,9 @@ public class PostService {
             throw new ForbiddenException(ErrorCode.POST_NOT_OWNER);
         }
 
-        post.setTitle(req.getTitle());
-        post.setContent(req.getContent());
+        // XSS 방지: HTML 특수문자 이스케이핑
+        post.setTitle(HtmlUtils.htmlEscape(req.getTitle()));
+        post.setContent(HtmlUtils.htmlEscape(req.getContent()));
         if (req.getRating() != null) {
             post.setRating(req.getRating());
         }

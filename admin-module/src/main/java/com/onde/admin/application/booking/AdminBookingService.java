@@ -50,7 +50,7 @@ public class AdminBookingService {
      */
     public AdminBookingSearchResponse searchBookings(AdminBookingSearchRequest request) {
         List<Reservation> reservations = reservationRepository.findAll();
-        
+
         List<AdminBookingDto> dtos = reservations.stream()
                 .filter(r -> request.status() == null || r.getStatus() == request.status())
                 .filter(r -> matchesTargetType(r, request.targetType()))
@@ -62,8 +62,7 @@ public class AdminBookingService {
                         resolveTargetName(r),
                         r.getCheckIn(),
                         r.getCheckOut(),
-                        r.getStatus()
-                ))
+                        r.getStatus()))
                 .filter(dto -> request.memberName() == null || dto.memberName().contains(request.memberName()))
                 .collect(Collectors.toList());
 
@@ -76,8 +75,10 @@ public class AdminBookingService {
         }
         String normalized = targetType.trim().toUpperCase();
         return switch (normalized) {
-            case "ACCOMMODATION", "ROOM", "STAYS" -> reservation.getTargetType() == com.onde.core.entity.reservation.ReservationTarget.ROOM;
-            case "CAR", "CARS", "RENTAL_CAR" -> reservation.getTargetType() == com.onde.core.entity.reservation.ReservationTarget.CAR;
+            case "ACCOMMODATION", "ROOM", "STAYS" ->
+                reservation.getTargetType() == com.onde.core.entity.reservation.ReservationTarget.ROOM;
+            case "CAR", "CARS", "RENTAL_CAR" ->
+                reservation.getTargetType() == com.onde.core.entity.reservation.ReservationTarget.CAR;
             default -> true;
         };
     }
@@ -110,7 +111,7 @@ public class AdminBookingService {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESERVATION_NOT_FOUND));
 
-        reservation.setStatus(ReservationStatus.COMPLETED); 
+        reservation.setStatus(ReservationStatus.COMPLETED);
     }
 
     /**
@@ -132,8 +133,7 @@ public class AdminBookingService {
                 savedReservation.getId(),
                 previousStatus,
                 savedReservation.getStatus(),
-                savedReservation.getUpdatedAt()
-        );
+                savedReservation.getUpdatedAt());
     }
 
     /**
@@ -157,7 +157,8 @@ public class AdminBookingService {
      * 관리자 항공 예약 상태 수동 변경
      */
     @Transactional
-    public AdminBookingStatusUpdateResponse updateFlightBookingStatus(Long bookingId, AdminBookingStatusUpdateRequest request) {
+    public AdminBookingStatusUpdateResponse updateFlightBookingStatus(Long bookingId,
+            AdminBookingStatusUpdateRequest request) {
         FlightBooking booking = flightBookingRepository.findById(bookingId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.BOOKING_NOT_FOUND));
 
@@ -171,8 +172,7 @@ public class AdminBookingService {
                 savedBooking.getBookingCode(),
                 previousStatus,
                 savedBooking.getStatus(),
-                savedBooking.getUpdatedAt()
-        );
+                savedBooking.getUpdatedAt());
     }
 
     /**
@@ -193,8 +193,7 @@ public class AdminBookingService {
                             booking.getPassenger().getPassengerBirthdate(),
                             booking.getSeatClass().name(),
                             booking.getTotalPrice(),
-                            booking.getStatus().name()
-                    );
+                            booking.getStatus().name());
                     writer.write(line);
                 } catch (IOException e) {
                     throw new RuntimeException("CSV 스트림 쓰기 중 입출력 오류 발생", e);
@@ -231,10 +230,12 @@ public class AdminBookingService {
         booking.setStatus(BookingStatus.CANCELLED_BY_ADMIN);
         FlightBooking savedBooking = flightBookingRepository.save(booking);
 
-        log.info("💰 Publishing AdminBookingCancelEvent for payment refund and mileage restore. bookingId={}", bookingId);
-        
+        log.info("💰 Publishing AdminBookingCancelEvent for payment refund and mileage restore. bookingId={}",
+                bookingId);
+
         // 이벤트 발행을 통해 결제 취소 및 마일리지 복구 로직 비동기 연동
-        eventPublisher.publishEvent(new com.onde.core.event.AdminBookingCancelEvent(this, bookingId, savedBooking.getUserId(), "FLIGHT"));
+        eventPublisher.publishEvent(
+                new com.onde.core.event.AdminBookingCancelEvent(this, bookingId, savedBooking.getUserId(), "FLIGHT"));
 
         return AdminBookingCancelResponse.builder()
                 .bookingCode(savedBooking.getBookingCode())

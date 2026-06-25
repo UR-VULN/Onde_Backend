@@ -281,9 +281,9 @@ public class MemberMyPageService {
                 .orElseThrow(() -> new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.MEMBER_NOT_FOUND));
 
         return MemberProfileResponse.builder()
-                .email(member.getEmail())
-                .name(member.getName())
-                .phoneNumber(member.getPhoneNumber())
+                .email(com.onde.core.util.DataMaskingUtil.maskEmail(member.getEmail()))
+                .name(com.onde.core.util.DataMaskingUtil.maskName(member.getName()))
+                .phoneNumber(com.onde.core.util.DataMaskingUtil.maskPhoneNumber(member.getPhoneNumber()))
                 .nickname(member.getNickname())
                 .build();
     }
@@ -314,9 +314,9 @@ public class MemberMyPageService {
                 .orElseThrow(() -> new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.MEMBER_NOT_FOUND));
 
         return SellerProfileResponse.builder()
-                .email(member.getEmail())
-                .name(member.getName())
-                .phoneNumber(member.getPhoneNumber())
+                .email(com.onde.core.util.DataMaskingUtil.maskEmail(member.getEmail()))
+                .name(com.onde.core.util.DataMaskingUtil.maskName(member.getName()))
+                .phoneNumber(com.onde.core.util.DataMaskingUtil.maskPhoneNumber(member.getPhoneNumber()))
                 .nickname(member.getNickname())
                 .build();
     }

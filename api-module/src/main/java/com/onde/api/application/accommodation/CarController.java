@@ -33,7 +33,11 @@ public class CarController {
 
     // 렌터카 예약 생성
     @PostMapping("/reservations")
-    public ResponseEntity<ApiResponse<CarReservationResponse>> reserveCar(@RequestBody CarReservationRequest request) {
+    public ResponseEntity<ApiResponse<CarReservationResponse>> reserveCar(
+            @com.onde.api.security.LoginMember Long memberId,
+            @RequestBody CarReservationRequest request) {
+        // 보안 패치: 인증 토큰의 memberId 강제 주입
+        request.setMemberId(memberId);
         Reservation reservation = reservationService.reserveCar(request);
         String modelName = carRepository.findById(request.getCarId())
                 .map(com.onde.core.entity.accommodation.Car::getModelName)

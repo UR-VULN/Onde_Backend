@@ -1,5 +1,10 @@
 # Trigger deploy
 spring:
+  jackson:
+    parser:
+      strict-duplicate-detection: true
+    deserialization:
+      fail-on-unknown-properties: true
   profiles:
     include: api 
   main:
@@ -39,6 +44,9 @@ spring:
 server:
   port: 8080
   forward-headers-strategy: framework
+  error:
+    include-stacktrace: never
+    include-message: never
 
 jwt:
   secret: ${JWT_SECRET}

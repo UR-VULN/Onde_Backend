@@ -7,6 +7,7 @@ import com.onde.core.support.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 /**
  * 결제 관련 API 요청을 처리하는 컨트롤러 클래스입니다.
@@ -30,7 +31,7 @@ public class PaymentController {
     @PostMapping("/prepare")
     public ResponseEntity<ApiResponse<PaymentPrepareResponse>> preparePayment(
             @LoginMember Long userId,
-            @RequestBody PaymentPrepareRequest body) {
+            @RequestBody @Valid PaymentPrepareRequest body) {
 
         PaymentPrepareResponse result = paymentService.preparePayment(userId, body);
         return ResponseEntity.ok(ApiResponse.success(result, "결제 사전 검증 완료. merchantUid로 결제를 진행하세요."));

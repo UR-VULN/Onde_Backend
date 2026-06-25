@@ -2,10 +2,17 @@ package com.onde.api.application.accommodation;
 
 import com.onde.core.entity.accommodation.Inventory;
 import com.onde.core.entity.reservation.ReservationTarget;
+import com.onde.core.repository.AccommodationRepository;
+import com.onde.core.repository.CarRepository;
 import com.onde.core.repository.InventoryRepository;
+import com.onde.core.exception.ForbiddenException;
+import com.onde.core.exception.ErrorCode;
+import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
 import lombok.*;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,9 +28,13 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/v1/seller/inventory")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('SELLER')")
 public class SellerInventoryController {
 
     private final InventoryRepository inventoryRepository;
+    private final AccommodationRepository accommodationRepository;
+    private final com.onde.core.repository.RoomRepository roomRepository;
+    private final CarRepository carRepository;
 
     /**
      * 특정 상품(숙소 객실 또는 차량)의 월별 재고 및 가격 달력 데이터를 조회합니다.
@@ -34,12 +45,16 @@ public class SellerInventoryController {
      */
     @GetMapping("/calendar")
     public ResponseEntity<ApiResponse<Map<String, CalendarDayInfo>>> getCalendar(
+            @LoginMember Long sellerId,
             @RequestParam("propertyKey") String propertyKey,
             @RequestParam("month") String monthStr) {
 
         // propertyKey를 파싱하여 대상 타입(ROOM/CAR)과 식별자(ID) 추출 (예: stay-1 -> ROOM, 1)
         ReservationTarget targetType = parseTargetType(propertyKey);
         Long targetId = parseTargetId(propertyKey);
+        
+        // 소유자 검증
+        verifyOwnership(sellerId, targetType, targetId);
 
         // 조회할 대상 월 파싱 및 시작일/종료일 계산 (예: 2026-05)
         YearMonth ym = YearMonth.parse(monthStr, DateTimeFormatter.ofPattern("yyyy-MM"));
@@ -89,9 +104,14 @@ public class SellerInventoryController {
      */
     @PatchMapping("/calendar")
     @Transactional
-    public ResponseEntity<ApiResponse<Void>> updateCalendar(@RequestBody CalendarUpdateRequest request) {
+    public ResponseEntity<ApiResponse<Void>> updateCalendar(
+            @LoginMember Long sellerId,
+            @RequestBody CalendarUpdateRequest request) {
         ReservationTarget targetType = parseTargetType(request.getPropertyKey());
         Long targetId = parseTargetId(request.getPropertyKey());
+
+        // 소유자 검증
+        verifyOwnership(sellerId, targetType, targetId);
 
         // 대상 연월 설정 (기본값: "2026-05")
         String monthStr = request.getMonth() != null ? request.getMonth() : "2026-05";
@@ -121,6 +141,34 @@ public class SellerInventoryController {
         inventoryRepository.save(inventory);
 
         return ResponseEntity.ok(ApiResponse.success(null, "달력 재고 및 금액이 성공적으로 변경되었습니다."));
+    }
+
+    private void verifyOwnership(Long sellerId, ReservationTarget targetType, Long targetId) {
+        if (targetType == ReservationTarget.ROOM) {
+            roomRepository.findById(targetId)
+                    .ifPresentOrElse(
+                            room -> {
+                                if (!room.getAccommodation().getSellerId().equals(sellerId)) {
+                                    throw new ForbiddenException(ErrorCode.FORBIDDEN);
+                                }
+                            },
+                            () -> {
+                                throw new IllegalArgumentException("존재하지 않는 객실입니다.");
+                            }
+                    );
+        } else if (targetType == ReservationTarget.CAR) {
+            carRepository.findById(targetId)
+                    .ifPresentOrElse(
+                            car -> {
+                                if (!car.getSellerId().equals(sellerId)) {
+                                    throw new ForbiddenException(ErrorCode.FORBIDDEN);
+                                }
+                            },
+                            () -> {
+                                throw new IllegalArgumentException("존재하지 않는 렌터카입니다.");
+                            }
+                    );
+        }
     }
 
     /**

@@ -93,10 +93,31 @@ public class AwsS3Service {
         String originalFilename = file.getOriginalFilename();
         String extension = "";
         if (originalFilename != null && originalFilename.contains(".")) {
-            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            extension = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
         } else {
             extension = ".jpg";
         }
+
+        // [보안 패치 1] 확장자 화이트리스트 검증
+        java.util.List<String> allowedExtensions = java.util.Arrays.asList(".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf");
+        if (!allowedExtensions.contains(extension)) {
+            log.error("허용되지 않는 파일 확장자 업로드 시도: {}", originalFilename);
+            throw new IllegalArgumentException("허용되지 않는 파일 확장자입니다. (이미지 및 PDF만 허용)");
+        }
+
+        // [보안 패치 1-2] 매직 바이트(시그니처) 검증 (위변조 방지)
+        byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+            validateMagicBytes(fileBytes, extension);
+            
+            // [보안 패치 1-3] 이미지 재인코딩 (폴리글랏/EXIF 악성코드 제거)
+            fileBytes = stripExifAndReencode(fileBytes, extension);
+        } catch (java.io.IOException e) {
+            log.error("파일 바이트 읽기 실패: {}", originalFilename);
+            throw new IllegalArgumentException("파일을 읽을 수 없습니다.");
+        }
+
         String randomName = UUID.randomUUID().toString();
         String s3Key = dirName + "/" + randomName + extension;
 
@@ -105,14 +126,22 @@ public class AwsS3Service {
             return cloudFrontDomain + "/" + s3Key;
         }
 
+        // [보안 패치 2] Content-Type 강제 고정 (브라우저가 HTML로 해석하지 못하게 방어)
+        String safeContentType = "application/octet-stream";
+        if (extension.equals(".jpg") || extension.equals(".jpeg")) safeContentType = "image/jpeg";
+        else if (extension.equals(".png")) safeContentType = "image/png";
+        else if (extension.equals(".gif")) safeContentType = "image/gif";
+        else if (extension.equals(".webp")) safeContentType = "image/webp";
+        else if (extension.equals(".pdf")) safeContentType = "application/pdf";
+
         try {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucket)
                     .key(s3Key)
-                    .contentType(file.getContentType())
+                    .contentType(safeContentType) // 기존 브라우저가 보낸 file.getContentType() 신뢰 X
                     .build();
 
-            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(fileBytes));
             log.info("[PRODUCTION S3] Successfully uploaded file to S3. Key: {}", s3Key);
 
             // 인프라 정책: S3 직접 URL이 아닌 CloudFront CDN 도메인 URL 리턴 및 DB 보관
@@ -148,6 +177,72 @@ public class AwsS3Service {
         } catch (Exception e) {
             log.error("[PRODUCTION S3] Presigned URL generation failed for key={}, error: {}", s3Key, e.getMessage());
             throw new RuntimeException("S3 Presigned URL 생성 중 오류가 발생했습니다.", e);
+        }
+    }
+
+    /**
+     * 파일 매직 바이트를 검증하여 실제 파일 형식이 확장자와 일치하는지 확인합니다.
+     */
+    private void validateMagicBytes(byte[] bytes, String extension) {
+        if (bytes == null || bytes.length < 8) {
+            throw new IllegalArgumentException("유효하지 않은 파일입니다. (크기가 너무 작음)");
+        }
+
+        boolean isValid = false;
+        if (extension.equals(".jpg") || extension.equals(".jpeg")) {
+            // FF D8 FF
+            isValid = (bytes[0] == (byte) 0xFF && bytes[1] == (byte) 0xD8 && bytes[2] == (byte) 0xFF);
+        } else if (extension.equals(".png")) {
+            // 89 50 4E 47 0D 0A 1A 0A
+            isValid = (bytes[0] == (byte) 0x89 && bytes[1] == (byte) 0x50 && bytes[2] == (byte) 0x4E && bytes[3] == (byte) 0x47);
+        } else if (extension.equals(".gif")) {
+            // GIF8 (47 49 46 38)
+            isValid = (bytes[0] == (byte) 0x47 && bytes[1] == (byte) 0x49 && bytes[2] == (byte) 0x46 && bytes[3] == (byte) 0x38);
+        } else if (extension.equals(".webp")) {
+            // RIFF .... WEBP
+            isValid = (bytes[0] == (byte) 0x52 && bytes[1] == (byte) 0x49 && bytes[2] == (byte) 0x46 && bytes[3] == (byte) 0x46 &&
+                       bytes[8] == (byte) 0x57 && bytes[9] == (byte) 0x45 && bytes[10] == (byte) 0x42 && bytes[11] == (byte) 0x50);
+        } else if (extension.equals(".pdf")) {
+            // %PDF (25 50 44 46)
+            isValid = (bytes[0] == (byte) 0x25 && bytes[1] == (byte) 0x50 && bytes[2] == (byte) 0x44 && bytes[3] == (byte) 0x46);
+        }
+
+        if (!isValid) {
+            log.error("파일 매직 바이트 검증 실패. 위변조된 파일일 가능성이 있습니다. 확장자: {}", extension);
+            throw new IllegalArgumentException("파일의 실제 형식이 확장자와 일치하지 않습니다. (위변조 감지)");
+        }
+    }
+
+    /**
+     * 이미지를 파싱하고 순수 픽셀 데이터만 다시 써서(Re-encoding) EXIF 등 메타데이터에 숨겨진 악성 코드를 제거합니다.
+     */
+    private byte[] stripExifAndReencode(byte[] originalBytes, String extension) {
+        // PDF나 WebP, GIF 등은 ImageIO 기본 지원 한계나 애니메이션 파손 우려로 재인코딩 생략 
+        // (대신 매직바이트, 화이트리스트, Content-Type 강제로 방어)
+        if (extension.equals(".pdf") || extension.equals(".webp") || extension.equals(".gif")) {
+            return originalBytes;
+        }
+
+        try {
+            java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(originalBytes);
+            java.awt.image.BufferedImage image = javax.imageio.ImageIO.read(bais);
+            if (image == null) {
+                throw new IllegalArgumentException("유효하지 않은 이미지 데이터입니다. (손상된 파일)");
+            }
+            
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            String format = extension.equals(".png") ? "png" : "jpg";
+            
+            // 다시 쓰면서 원본의 악성 EXIF 헤더 등은 모두 증발함
+            boolean success = javax.imageio.ImageIO.write(image, format, baos);
+            if (!success) {
+                throw new IllegalArgumentException("이미지 재인코딩에 실패했습니다.");
+            }
+            
+            return baos.toByteArray();
+        } catch (Exception e) {
+            log.error("이미지 폴리글랏 검증/재인코딩 실패: {}", e.getMessage());
+            throw new IllegalArgumentException("이미지 파싱 및 재인코딩에 실패했습니다. (위변조 감지)");
         }
     }
 }

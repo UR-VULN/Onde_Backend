@@ -24,6 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
+    private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -44,12 +45,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 if (isValid) {
                     String identifier = jwtTokenProvider.getSubject(token);
-                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(identifier);
+                    
+                    // [단일 세션 정책] Redis에서 현재 활성 상태인 Access Token과 일치하는지 검증
+                    String activeToken = redisTemplate.opsForValue().get("active_access_token:" + identifier);
+                    if (activeToken == null || !activeToken.equals(token)) {
+                        log.warn("[JwtAuthenticationFilter] 다른 기기에서 로그인되어 무효화된 토큰입니다. (Single Session Policy)");
+                    } else {
+                        UserDetails userDetails = customUserDetailsService.loadUserById(Long.parseLong(identifier));
 
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities());
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities());
 
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    }
                 } else {
                     log.warn("[JwtAuthenticationFilter] 유효하지 않거나 만료된 토큰입니다.");
                 }

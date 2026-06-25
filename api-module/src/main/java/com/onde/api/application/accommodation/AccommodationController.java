@@ -39,9 +39,8 @@ public class AccommodationController {
             @LoginMember Long userId,
             @RequestBody RoomReservationRequest req) {
 
-        if (req.getMemberId() == null) {
-            req.setMemberId(userId);
-        }
+        // 보안 패치: 클라이언트가 전달한 memberId 파라미터는 무시하고, 인증 토큰(세션)의 userId를 강제 세팅 (결제 주체 변조 IDOR 방지)
+        req.setMemberId(userId);
         com.onde.core.entity.reservation.Reservation reservation = reservationService.reserveRoom(req);
         ReservationResponse response = new ReservationResponse(
                 reservation.getId(),
@@ -66,9 +65,8 @@ public class AccommodationController {
             @LoginMember Long userId,
             @RequestBody CarReservationRequest req) {
 
-        if (req.getMemberId() == null) {
-            req.setMemberId(userId);
-        }
+        // 보안 패치: 클라이언트가 전달한 memberId 파라미터는 무시하고, 인증 토큰(세션)의 userId를 강제 세팅 (결제 주체 변조 IDOR 방지)
+        req.setMemberId(userId);
         com.onde.core.entity.reservation.Reservation reservation = reservationService.reserveCar(req);
         ReservationResponse response = new ReservationResponse(
                 reservation.getId(),

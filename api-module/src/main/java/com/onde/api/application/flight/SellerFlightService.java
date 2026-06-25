@@ -7,6 +7,7 @@ import com.onde.api.application.flight.dto.SellerScheduleControlRequest;
 import com.onde.api.application.flight.dto.SellerScheduleControlResponse;
 import com.onde.core.entity.flight.*;
 import com.onde.core.exception.ErrorCode;
+import com.onde.core.exception.ForbiddenException;
 import com.onde.core.exception.NotFoundException;
 import com.onde.core.exception.ValidationException;
 import com.onde.core.repository.FlightBookingRepository;
@@ -152,8 +153,14 @@ public class SellerFlightService {
 
     private FlightRoute resolveOrCreateRoute(Long routeId, String departureAirport, String arrivalAirport, Integer durationMinutes, Long sellerId) {
         if (routeId != null) {
-            return flightRouteRepository.findById(routeId)
+            FlightRoute route = flightRouteRepository.findById(routeId)
                     .orElseThrow(() -> new NotFoundException(ErrorCode.INVALID_INPUT_VALUE));
+            if (!route.getSellerId().equals(sellerId)) {
+                log.warn("🚨 Unauthorized route access attempt. routeId={}, actualSellerId={}, requestedSellerId={}",
+                        routeId, route.getSellerId(), sellerId);
+                throw new ForbiddenException(ErrorCode.FORBIDDEN);
+            }
+            return route;
         }
 
         FlightRoute route = FlightRoute.builder()
@@ -237,6 +244,12 @@ public class SellerFlightService {
         // 1. 스케줄 유효성 검증
         FlightSchedule schedule = flightScheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.FLIGHT_SCHEDULE_NOT_FOUND));
+        
+        if (!schedule.getRoute().getSellerId().equals(sellerId)) {
+            log.warn("🚨 Unauthorized schedule control attempt. scheduleId={}, actualSellerId={}, requestedSellerId={}",
+                    scheduleId, schedule.getRoute().getSellerId(), sellerId);
+            throw new ForbiddenException(ErrorCode.FORBIDDEN);
+        }
 
         // 2. 대상 등급의 재고 비관적 락 조회
         SeatInventory inventory = seatInventoryRepository.findWithLockByFlightScheduleIdAndClassType(scheduleId, seatClass)

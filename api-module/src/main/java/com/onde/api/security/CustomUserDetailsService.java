@@ -25,4 +25,10 @@ public class CustomUserDetailsService implements UserDetailsService {
                 )
                 .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + identifier));
     }
+
+    public UserDetails loadUserById(Long id) throws UsernameNotFoundException {
+        return memberRepository.findById(id)
+                .map(CustomUserDetails::new)
+                .orElseThrow(() -> new UsernameNotFoundException("해당 ID의 사용자를 찾을 수 없습니다: " + id));
+    }
 }

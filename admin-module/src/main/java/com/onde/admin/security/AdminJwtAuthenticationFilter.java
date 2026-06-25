@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final AdminJwtTokenProvider adminJwtTokenProvider;
+    private final com.onde.core.repository.MemberRepository memberRepository;
+    private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -30,32 +32,30 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 2. [우선순위 1] 진짜 JWT 토큰이 넘어왔고 검증이 성공한 경우
         if (token != null && adminJwtTokenProvider.validateToken(token)) {
-            Claims claims = adminJwtTokenProvider.getClaims(token);
-            String email = claims.getSubject();
-            List<String> rolesList = claims.get("roles", List.class);
-            if (rolesList == null) {
-                String singleRole = claims.get("role", String.class);
-                if (singleRole != null) {
-                    rolesList = List.of(singleRole);
-                } else {
-                    rolesList = List.of();
+            try {
+                String identifier = adminJwtTokenProvider.getClaims(token).getSubject();
+                com.onde.core.entity.member.Member member = memberRepository.findById(Long.parseLong(identifier))
+                        .orElse(null);
+
+                if (member != null) {
+                    // [단일 세션 정책] Redis에서 현재 활성 상태인 Access Token과 일치하는지 검증
+                    String activeToken = redisTemplate.opsForValue().get("active_access_token:" + identifier);
+                    if (activeToken == null || !activeToken.equals(token)) {
+                        // 다른 기기에서 로그인됨 -> 무효화
+                    } else {
+                        String role = member.getRole().getSecurityRole();
+                        List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(role));
+
+                        org.springframework.security.core.Authentication authentication = new UsernamePasswordAuthenticationToken(
+                                member.getId(), null, authorities);
+
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    }
                 }
+            } catch (Exception e) {
+                // Parse error or DB error, continue without auth
             }
-
-            List<SimpleGrantedAuthority> authorities = rolesList.stream()
-                    .map(role -> {
-                        String r = role.toUpperCase();
-                        return new SimpleGrantedAuthority(r.startsWith("ROLE_") ? r : "ROLE_" + r);
-                    })
-                    .collect(Collectors.toList());
-
-            UserDetails principal = new User(email, "", authorities);
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(principal, token, authorities);
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
         } 
-
 
         filterChain.doFilter(request, response);
     }

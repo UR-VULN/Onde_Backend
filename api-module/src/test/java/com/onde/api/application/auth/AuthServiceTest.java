@@ -79,7 +79,7 @@ class AuthServiceTest {
         );
 
         assertEquals(ErrorCode.SELLER_PENDING_APPROVAL, exception.getErrorCode());
-        verify(jwtTokenProvider, never()).createAccessToken(any(), any());
+        verify(jwtTokenProvider, never()).createAccessToken(any());
         verify(refreshTokenRepository, never()).save(any());
     }
 

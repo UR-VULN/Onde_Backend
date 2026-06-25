@@ -72,7 +72,7 @@ public class FlightController {
             }
 
             // [정상 흐름]: 실제 비즈니스에서는 예약 상태를 CONFIRMED로 최종 갱신
-            flightService.confirmBooking(bookingCode);
+            flightService.confirmBooking(bookingCode, amount);
             log.info("🎉 [DB SUCCESS] FlightBooking status updated to CONFIRMED for bookingCode={}", bookingCode);
             return ResponseEntity.ok(ApiResponse.success(
                     Map.of("bookingCode", bookingCode, "status", "CONFIRMED", "pgTransactionId", pgTransactionId),

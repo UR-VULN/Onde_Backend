@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.HtmlUtils;
 
 import java.util.List;
 
@@ -41,7 +42,7 @@ public class CommentService {
         Comment comment = Comment.builder()
                 .postId(postId)
                 .memberId(memberId)
-                .content(req.getContent())
+                .content(HtmlUtils.htmlEscape(req.getContent())) // XSS 방지
                 .isSecret(req.getIsSecret() != null ? req.getIsSecret() : false)
                 .build();
 
@@ -108,7 +109,7 @@ public class CommentService {
             throw new ForbiddenException(ErrorCode.POST_NOT_OWNER); // 권한 없음 예외
         }
 
-        comment.updateContent(req.getContent(), req.getIsSecret() != null ? req.getIsSecret() : false);
+        comment.updateContent(HtmlUtils.htmlEscape(req.getContent()), req.getIsSecret() != null ? req.getIsSecret() : false); // XSS 방지
         Comment updatedComment = commentRepository.save(comment);
 
         Member member = memberRepository.findById(memberId)

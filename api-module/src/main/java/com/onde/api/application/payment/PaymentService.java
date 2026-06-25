@@ -60,23 +60,37 @@ public class PaymentService {
      */
     @Transactional
     public PaymentPrepareResponse preparePayment(Long userId, PaymentPrepareRequest req) {
-        // 1. 현재 사용자가 보유한 사용 가능한 실시간 마일리지 잔액 조회
+        BigDecimal verifiedTotalAmount = resolveServerTotalAmount(req);
+
+        if (req.getTotalAmount() != null && req.getTotalAmount().compareTo(verifiedTotalAmount) != 0) {
+            throw new IllegalArgumentException("결제 요청 금액이 서버의 실제 금액과 일치하지 않습니다.");
+        }
+
+        Integer usedMileage = req.getUsedMileage() != null ? req.getUsedMileage() : 0;
+
+        // 1. 음수 검증
+        if (usedMileage < 0) {
+            throw new IllegalArgumentException("사용 마일리지는 0 이상이어야 합니다.");
+        }
+
+        // 2. 현재 사용자가 보유한 사용 가능한 실시간 마일리지 잔액 조회
         int currentMileage = mileageService.getCurrentMileage(userId);
-        if (req.getUsedMileage() != null && req.getUsedMileage() > currentMileage) {
+        if (usedMileage > currentMileage) {
             throw new IllegalArgumentException("사용 가능한 마일리지를 초과했습니다.");
+        }
+
+        // 3. 결제 대상 금액 초과 검증
+        if (BigDecimal.valueOf(usedMileage).compareTo(verifiedTotalAmount) > 0) {
+            throw new IllegalArgumentException("사용 마일리지가 결제 금액을 초과할 수 없습니다.");
         }
 
         // 지갑 잔액 검증 로직 추가
         BigDecimal walletBalance = walletService.getBalance(userId);
-        BigDecimal verifiedTotalAmount = resolveServerTotalAmount(req);
-        Integer usedMileage = req.getUsedMileage() != null ? req.getUsedMileage() : 0;
         BigDecimal pgAmount = verifiedTotalAmount.subtract(BigDecimal.valueOf(usedMileage));
         
         if (walletBalance.compareTo(pgAmount) < 0) {
             throw new IllegalArgumentException("지갑 잔액이 부족합니다.");
         }
-
-        // 2. 마일리지 사용액과 실제 지갑 청구액 계산 (이미 위에서 계산됨)
 
         // 3. 고유한 주문번호 생성 (포맷: ORDER-연도-난수8글자)
         String merchantUid = "ORDER-" + LocalDateTime.now().getYear() + "-"
@@ -254,21 +268,21 @@ public class PaymentService {
 
     private BigDecimal resolveServerTotalAmount(PaymentPrepareRequest req) {
         if (req.getReservationId() == null || req.getReservationType() == null) {
-            return req.getTotalAmount();
+            throw new IllegalArgumentException("예약 정보가 누락되었습니다.");
         }
 
         String type = req.getReservationType().trim().toUpperCase();
         return switch (type) {
             case "ROOM", "CAR" -> reservationRepository.findById(req.getReservationId())
                     .map(Reservation::getTotalPrice)
-                    .orElse(req.getTotalAmount());
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
             case "FLIGHT" -> flightBookingRepository.findById(req.getReservationId())
                     .map(FlightBooking::getTotalPrice)
-                    .orElse(req.getTotalAmount());
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
             case "INSURANCE" -> insurancePolicyRepository.findById(req.getReservationId())
                     .map(InsurancePolicy::getTotalPremium)
-                    .orElse(req.getTotalAmount());
-            default -> req.getTotalAmount();
+                    .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 예약입니다."));
+            default -> throw new IllegalArgumentException("유효하지 않은 예약 타입입니다.");
         };
     }
 

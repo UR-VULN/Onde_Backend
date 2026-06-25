@@ -45,6 +45,7 @@ public enum ErrorCode {
     POST_NOT_OWNER(HttpStatus.FORBIDDEN, "C-005", "본인 게시글만 작업할 수 있습니다."),
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "C-006", "댓글을 찾을 수 없습니다."),
     COMMENT_NOT_OWNER(HttpStatus.FORBIDDEN, "C-007", "본인 댓글만 작업할 수 있습니다."),
+    RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "C-008", "요청하신 리소스를 찾을 수 없습니다."),
 
     // =========================================================================
     // A: Auth/Security 관련 오류
@@ -52,6 +53,8 @@ public enum ErrorCode {
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH-001", "인증에 실패하였습니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "AUTH-002", "해당 API에 접근할 권한이 없습니다."),
     SELLER_PENDING_APPROVAL(HttpStatus.BAD_REQUEST, "AUTH-003", "판매자 계정은 관리자 승인 대기 중입니다. 승인 완료 후 로그인할 수 있습니다."),
+    TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "AUTH-004", "요청 횟수를 초과하였습니다. 잠시 후 다시 시도해주세요."),
+    ACCOUNT_LOCKED(HttpStatus.UNAUTHORIZED, "AUTH-005", "비밀번호 5회 오류로 계정이 30분간 잠금 처리되었습니다."),
 
     // =========================================================================
     // S: Server 관련 오류

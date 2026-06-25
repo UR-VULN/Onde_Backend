@@ -1,6 +1,5 @@
-package com.onde.api.application.auth.dto;
+package com.onde.admin.application.auth.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -8,12 +7,13 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Getter
 @Builder
-@AllArgsConstructor
-public class TokenRefreshResponse {
+public class AdminLoginResponse {
     @JsonIgnore
     private String accessToken;
     @JsonIgnore
     private String refreshToken;
     private String tokenType;
-    private Long expiresIn; // AccessToken의 만료 시간 (초 단위)
+    private Long expiresIn;
+    private Long memberId;
+    private String role;
 }

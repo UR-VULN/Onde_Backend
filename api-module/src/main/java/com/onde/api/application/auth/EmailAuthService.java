@@ -85,19 +85,21 @@ public class EmailAuthService {
         memberRepository.save(guestMember);
 
         // 새로운 USER 권한의 토큰 발급
-        String accessToken = jwtTokenProvider.createAccessToken(guestMember.getEmail(), guestMember.getRole().getSecurityRole());
-        String refreshToken = jwtTokenProvider.createRefreshToken(guestMember.getEmail());
-        refreshTokenRepository.save(new RefreshToken(
-                guestMember.getEmail(),
-                refreshToken,
+        String accessToken = jwtTokenProvider.createAccessToken(String.valueOf(guestMember.getId()));
+        String refreshTokenString = jwtTokenProvider.createRefreshToken(String.valueOf(guestMember.getId()));
+        
+        com.onde.core.entity.auth.RefreshToken refreshTokenEntity = new com.onde.core.entity.auth.RefreshToken(
+                String.valueOf(guestMember.getId()),
+                refreshTokenString,
                 jwtTokenProvider.getRefreshTokenValidTimeInSeconds()
-        ));
+        );
+        refreshTokenRepository.save(refreshTokenEntity);
 
         Map<String, String> tokens = new HashMap<>();
         tokens.put("accessToken", accessToken);
-        tokens.put("refreshToken", refreshToken);
+        tokens.put("refreshToken", refreshTokenString);
         tokens.put("tokenType", "Bearer");
-        tokens.put("expiresIn", "1800");
+        tokens.put("expiresIn", "900");
 
         return tokens;
     }

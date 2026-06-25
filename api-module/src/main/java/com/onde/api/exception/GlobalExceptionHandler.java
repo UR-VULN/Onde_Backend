@@ -57,8 +57,24 @@ public class GlobalExceptionHandler {
                                 ErrorCode.INVALID_INPUT_VALUE,
                                 defaultMessage,
                                 "Validation failed for object='" + e.getBindingResult().getObjectName() + "'",
-                                details
-                );
+                                details);
+
+                return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus()).body(response);
+        }
+
+        @ExceptionHandler({
+                        org.springframework.http.converter.HttpMessageNotReadableException.class,
+                        org.springframework.http.converter.HttpMessageConversionException.class,
+                        com.fasterxml.jackson.core.JsonProcessingException.class
+        })
+        public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(Exception e) {
+                log.warn("⚠️ [HttpMessageNotReadableException] 잘못된 JSON 요청 데이터: {}", e.getMessage());
+
+                ErrorResponse response = ErrorResponse.of(
+                                ErrorCode.INVALID_INPUT_VALUE,
+                                "요청 데이터의 형식이 올바르지 않거나 중복된 키가 존재합니다.",
+                                null,
+                                null);
 
                 return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus()).body(response);
         }
@@ -67,7 +83,25 @@ public class GlobalExceptionHandler {
         public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
                 log.warn("⚠️ [IllegalArgumentException] 잘못된 요청: {}", e.getMessage());
 
-                ErrorResponse response = ErrorResponse.of(ErrorCode.INVALID_INPUT_VALUE, e.getMessage());
+                ErrorResponse response = ErrorResponse.of(ErrorCode.INVALID_INPUT_VALUE, "입력값이 유효하지 않습니다.");
+
+                return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus()).body(response);
+        }
+
+        @ExceptionHandler(java.util.NoSuchElementException.class)
+        public ResponseEntity<ErrorResponse> handleNoSuchElementException(java.util.NoSuchElementException e) {
+                log.warn("⚠️ [NoSuchElementException] 리소스 없음: {}", e.getMessage());
+
+                ErrorResponse response = ErrorResponse.of(ErrorCode.RESOURCE_NOT_FOUND, "요청하신 리소스를 찾을 수 없습니다.", null, null);
+
+                return ResponseEntity.status(ErrorCode.RESOURCE_NOT_FOUND.getHttpStatus()).body(response);
+        }
+
+        @ExceptionHandler(org.springframework.beans.TypeMismatchException.class)
+        public ResponseEntity<ErrorResponse> handleTypeMismatchException(org.springframework.beans.TypeMismatchException e) {
+                log.warn("⚠️ [TypeMismatchException] 잘못된 데이터 형식: {}", e.getMessage());
+
+                ErrorResponse response = ErrorResponse.of(ErrorCode.INVALID_INPUT_VALUE, "요청 형식이 올바르지 않습니다.");
 
                 return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus()).body(response);
         }
@@ -88,15 +122,11 @@ public class GlobalExceptionHandler {
         public ResponseEntity<ErrorResponse> handleException(Exception e) {
                 log.error("🚨 [Unhandled Exception] 예측하지 못한 시스템 최상위 에러 감지: ", e);
 
-                String systemMessage = String.format("%s: %s", e.getClass().getName(),
-                                e.getMessage() != null ? e.getMessage() : "No detailed message");
-
                 ErrorResponse response = ErrorResponse.of(
                                 ErrorCode.INTERNAL_SERVER_ERROR,
                                 "서버 내부 오류가 발생했습니다. 관리자에게 문의하세요.",
-                                systemMessage,
-                                null
-                );
+                                e.toString() + " - " + e.getMessage(),
+                                null);
 
                 return ResponseEntity.status(ErrorCode.INTERNAL_SERVER_ERROR.getHttpStatus()).body(response);
         }

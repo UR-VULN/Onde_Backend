@@ -23,6 +23,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
 
     @Value("${app.frontend-url:http://localhost:5173}")
     private String frontendUrl;
@@ -33,23 +34,50 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
         // 1. JWT 토큰 발행
         String authority = userDetails.getAuthorities().iterator().next().getAuthority();
-        String accessToken = jwtTokenProvider.createAccessToken(userDetails.getUsername(), authority);
-        String refreshTokenString = jwtTokenProvider.createRefreshToken(userDetails.getUsername());
+        String memberIdStr = String.valueOf(userDetails.getMember().getId());
+        String accessToken = jwtTokenProvider.createAccessToken(memberIdStr);
+        String refreshTokenString = jwtTokenProvider.createRefreshToken(memberIdStr);
 
         // 2. Redis에 Refresh Token 세이브
         RefreshToken refreshToken = new RefreshToken(
-                userDetails.getUsername(),
+                memberIdStr,
                 refreshTokenString,
                 jwtTokenProvider.getRefreshTokenValidTimeInSeconds()
         );
         refreshTokenRepository.save(refreshToken);
 
-        // 3. 브라우저 보안 쿠키 베이킹 (HttpOnly, Secure)
-        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", accessToken)
-                .httpOnly(true).secure(true).path("/").sameSite("None").maxAge(30 * 60).build();
+        // [단일 세션 정책] Access Token을 Redis에 저장
+        redisTemplate.opsForValue().set(
+                "active_access_token:" + memberIdStr,
+                accessToken,
+                900L,
+                java.util.concurrent.TimeUnit.SECONDS
+        );
 
-        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", refreshTokenString)
-                .httpOnly(true).secure(true).path("/").sameSite("None").maxAge(14 * 24 * 60 * 60).build();
+        // 3. 브라우저 보안 쿠키 베이킹
+        String serverName = request.getServerName();
+        boolean isLocal = "localhost".equals(serverName) || "127.0.0.1".equals(serverName) || "api".equals(serverName) || "admin".equals(serverName);
+
+        ResponseCookie.ResponseCookieBuilder accessTokenBuilder = ResponseCookie.from("accessToken", accessToken)
+                .httpOnly(true)
+                .path("/")
+                .maxAge(30 * 60);
+
+        ResponseCookie.ResponseCookieBuilder refreshTokenBuilder = ResponseCookie.from("refreshToken", refreshTokenString)
+                .httpOnly(true)
+                .path("/")
+                .maxAge(14 * 24 * 60 * 60);
+
+        if (!isLocal) {
+            accessTokenBuilder.secure(true).sameSite("None");
+            refreshTokenBuilder.secure(true).sameSite("None");
+        } else {
+            accessTokenBuilder.sameSite("Lax");
+            refreshTokenBuilder.sameSite("Lax");
+        }
+
+        ResponseCookie accessTokenCookie = accessTokenBuilder.build();
+        ResponseCookie refreshTokenCookie = refreshTokenBuilder.build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());

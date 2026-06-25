@@ -130,13 +130,13 @@ public class SellerSettlementController {
                 .sellerId(account.getMember().getId())
                 .bankName(account.getBankName())
                 .businessName(account.getBusinessName())
-                .contactPhone(account.getContactPhone())
+                .contactPhone(com.onde.core.util.DataMaskingUtil.maskPhoneNumber(account.getContactPhone()))
                 .businessAddress(account.getBusinessAddress())
                 .accountNumber(settlementService.maskAccountNumber(account.getAccountNumber()))
                 .accountHolder(account.getAccountHolder())
-                .businessNumber(account.getBusinessNumber())
-                .representativeName(account.getRepresentativeName())
-                .openedAt(account.getOpenedAt())
+                .businessNumber(com.onde.core.util.DataMaskingUtil.maskBusinessNumber(account.getBusinessNumber()))
+                .representativeName(com.onde.core.util.DataMaskingUtil.maskName(account.getRepresentativeName()))
+                .openedAt(com.onde.core.util.DataMaskingUtil.maskDate(account.getOpenedAt()))
                 .createdAt(account.getCreatedAt())
                 .build();
     }

@@ -19,16 +19,13 @@ public class AdminJwtTokenProvider {
 
     public AdminJwtTokenProvider(
             @Value("${jwt.secret:defaultSecretKeyWithMoreThan256BitsLengthForHS256Algorithm}") String secretKey,
-            @Value("${jwt.expire-length:3600000}") long validityInMilliseconds) {
+            @Value("${jwt.expire-length:900000}") long validityInMilliseconds) {
         this.key = Keys.hmacShaKeyFor(secretKey.getBytes());
         this.validityInMilliseconds = validityInMilliseconds;
     }
 
-    public String createToken(Long userId, String email, List<String> roles) {
-        Claims claims = Jwts.claims().setSubject(email);
-        claims.put("userId", userId);
-        claims.put("email", email);
-        claims.put("roles", roles);
+    public String createToken(String identifier) {
+        Claims claims = Jwts.claims().setSubject(identifier);
 
         Date now = new Date();
         Date validity = new Date(now.getTime() + validityInMilliseconds);

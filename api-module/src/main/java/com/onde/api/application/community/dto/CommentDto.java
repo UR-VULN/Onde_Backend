@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 public class CommentDto {
     private Long commentId;
     private Long postId;
-    private Long memberId;
     private String authorName;
     private String content;
     private Boolean isSecret;
@@ -22,7 +21,6 @@ public class CommentDto {
         return CommentDto.builder()
                 .commentId(comment.getId())
                 .postId(comment.getPostId())
-                .memberId(comment.getMemberId())
                 .authorName(authorName)
                 .content(displayContent)
                 .isSecret(comment.getIsSecret())

@@ -110,11 +110,17 @@ public class FlightService {
         SeatInventory inventory = seatInventoryRepository.findWithLockByFlightScheduleIdAndClassType(req.getScheduleId(), req.getSeatClass())
                 .orElseThrow(() -> new NotFoundException(ErrorCode.SEAT_INVENTORY_NOT_FOUND));
 
-        // 3. 잔여석 검증
+        // 3. 잔여석 및 가격 검증
         int passengerCount = Math.max(1, req.passengerCount());
         if (inventory.getRemainingSeats() < passengerCount) {
             log.warn("⚠️ Seat sold out for scheduleId={}, classType={}", req.getScheduleId(), req.getSeatClass());
             throw new ValidationException(ErrorCode.SEAT_SOLD_OUT);
+        }
+
+        java.math.BigDecimal expectedPrice = inventory.getBasePrice().multiply(java.math.BigDecimal.valueOf(passengerCount));
+        if (req.getTotalPrice() != null && req.getTotalPrice().compareTo(expectedPrice) != 0) {
+            log.warn("⚠️ Price manipulation detected! Expected: {}, Received: {}", expectedPrice, req.getTotalPrice());
+            throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
         // 4. 잔여석 1 감소 차감
@@ -139,7 +145,7 @@ public class FlightService {
                 .userId(userId)
                 .passenger(passenger)
                 .seatClass(req.getSeatClass())
-                .totalPrice(req.getTotalPrice() != null ? req.getTotalPrice() : inventory.getBasePrice().multiply(java.math.BigDecimal.valueOf(passengerCount)))
+                .totalPrice(expectedPrice)
                 .status(BookingStatus.PENDING_PAYMENT)
                 .reservedUntil(LocalDateTime.now().plusMinutes(10))
                 .build();
@@ -164,9 +170,15 @@ public class FlightService {
      * [Day 9] 예약 결제 확정 로직 (예약 상태를 CONFIRMED로 최종 업데이트)
      */
     @Transactional
-    public void confirmBooking(String bookingCode) {
+    public void confirmBooking(String bookingCode, java.math.BigDecimal paymentAmount) {
         FlightBooking booking = flightBookingRepository.findByBookingCode(bookingCode)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.FLIGHT_SCHEDULE_NOT_FOUND)); // 예외 코드는 기존 정의된 NotFoundException 활용
+
+        if (paymentAmount != null && booking.getTotalPrice().compareTo(paymentAmount) != 0) {
+            log.warn("⚠️ Payment amount mismatch! Expected: {}, Received: {}", booking.getTotalPrice(), paymentAmount);
+            throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
         booking.setStatus(BookingStatus.CONFIRMED);
         flightBookingRepository.save(booking);
     }

@@ -23,6 +23,9 @@ import java.util.Map;
 
 import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
+import com.onde.core.repository.RoomRepository;
+import com.onde.core.exception.ForbiddenException;
+import com.onde.core.exception.ErrorCode;
 
 import jakarta.validation.Valid;
 
@@ -33,6 +36,7 @@ import jakarta.validation.Valid;
 public class SellerAccommodationController {
     private final SellerAccommodationService sellerAccommodationService;
     private final com.onde.core.repository.AccommodationRepository accommodationRepository;
+    private final com.onde.core.repository.RoomRepository roomRepository;
     private final MockS3Uploader s3Uploader;
 
     // 판매자 등록 숙소 신규 등록 API (주소 규격 보정 포함)
@@ -135,16 +139,34 @@ public class SellerAccommodationController {
     // 객실 재고/가격 수정 (특정 객실 대상)
     @PutMapping("/accommodations/rooms/{roomId}/inventory")
     public ResponseEntity<ApiResponse<Void>> updateRoomInventory(
+            @LoginMember Long sellerId,
             @PathVariable Long roomId,
             @RequestBody List<@Valid RoomInventoryUpdateRequest> requests) {
+        verifyRoomOwnership(sellerId, roomId);
         sellerAccommodationService.updateRoomInventories(roomId, requests);
         return ResponseEntity.ok(ApiResponse.success(null, "객실 재고 정보가 성공적으로 수정되었습니다."));
     }
 
     @PutMapping("/inventories/rooms")
     public ResponseEntity<ApiResponse<RoomInventoryBulkUpdateResponse>> updateInventories(
+            @LoginMember Long sellerId,
             @Valid @RequestBody RoomInventoryBulkUpdateRequest request) {
+        verifyRoomOwnership(sellerId, request.roomId());
         RoomInventoryBulkUpdateResponse response = sellerAccommodationService.updateRoomInventoriesBulk(request);
         return ResponseEntity.ok(ApiResponse.success(response, "객실 재고/가격 수정 성공"));
+    }
+
+    private void verifyRoomOwnership(Long sellerId, Long roomId) {
+        roomRepository.findById(roomId)
+                .ifPresentOrElse(
+                        room -> {
+                            if (!room.getAccommodation().getSellerId().equals(sellerId)) {
+                                throw new ForbiddenException(ErrorCode.FORBIDDEN);
+                            }
+                        },
+                        () -> {
+                            throw new IllegalArgumentException("존재하지 않는 객실입니다.");
+                        }
+                );
     }
 }

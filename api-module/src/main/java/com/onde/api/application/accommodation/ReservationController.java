@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/v1/reservations")
@@ -28,10 +29,9 @@ public class ReservationController {
     @PostMapping("/rooms")
     public ResponseEntity<ApiResponse<ReservationResponse>> reserveRoom(
             @LoginMember Long memberId,
-            @RequestBody RoomReservationRequest req) {
-        if (req.getMemberId() == null) {
-            req.setMemberId(memberId);
-        }
+            @RequestBody @Valid RoomReservationRequest req) {
+        // 보안 패치: 클라이언트가 전달한 memberId 파라미터는 무시하고, 인증 토큰(세션)의 memberId를 강제 세팅 (결제 주체 변조 IDOR 방지)
+        req.setMemberId(memberId);
         Reservation reservation = reservationService.reserveRoom(req);
         ReservationResponse response = new ReservationResponse(
                 reservation.getId(),
@@ -54,10 +54,9 @@ public class ReservationController {
     @PostMapping("/cars")
     public ResponseEntity<ApiResponse<CarReservationResponse>> reserveCar(
             @LoginMember Long memberId,
-            @RequestBody CarReservationRequest req) {
-        if (req.getMemberId() == null) {
-            req.setMemberId(memberId);
-        }
+            @RequestBody @Valid CarReservationRequest req) {
+        // 보안 패치: 클라이언트가 전달한 memberId 파라미터는 무시하고, 인증 토큰(세션)의 memberId를 강제 세팅 (결제 주체 변조 IDOR 방지)
+        req.setMemberId(memberId);
         Reservation reservation = reservationService.reserveCar(req);
         String modelName = carRepository.findById(req.getCarId())
                 .map(com.onde.core.entity.accommodation.Car::getModelName)
