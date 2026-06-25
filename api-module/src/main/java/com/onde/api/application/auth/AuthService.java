@@ -45,6 +45,9 @@ public class AuthService {
 
         // 비밀번호 암호화 및 Member 엔티티 생성
         MemberRole role = request.getRole() != null ? request.getRole() : MemberRole.USER;
+        if (role != MemberRole.USER && role != MemberRole.SELLER) {
+            throw new IllegalArgumentException("올바르지 않은 가입 권한입니다.");
+        }
         MemberStatus initialStatus = role == MemberRole.SELLER ? MemberStatus.PENDING : MemberStatus.ACTIVE;
         Member member = Member.builder()
                 .email(request.getEmail())
@@ -107,12 +110,12 @@ public class AuthService {
         }
 
         // 토큰 발급
-        String accessToken = jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().getSecurityRole());
-        String refreshTokenString = jwtTokenProvider.createRefreshToken(member.getEmail());
+        String accessToken = jwtTokenProvider.createAccessToken(member.getId().toString(), member.getRole().getSecurityRole());
+        String refreshTokenString = jwtTokenProvider.createRefreshToken(member.getId().toString());
 
         // Refresh Token Redis 저장 (동일 이메일로 로그인 시 기존 토큰 덮어쓰기됨)
         RefreshToken refreshToken = new RefreshToken(
-                member.getEmail(),
+                member.getId().toString(),
                 refreshTokenString,
                 jwtTokenProvider.getRefreshTokenValidTimeInSeconds()
         );
@@ -150,12 +153,12 @@ public class AuthService {
         }
 
         // 토큰 발급
-        String accessToken = jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().getSecurityRole());
-        String refreshTokenString = jwtTokenProvider.createRefreshToken(member.getEmail());
+        String accessToken = jwtTokenProvider.createAccessToken(member.getId().toString(), member.getRole().getSecurityRole());
+        String refreshTokenString = jwtTokenProvider.createRefreshToken(member.getId().toString());
 
         // Refresh Token Redis 저장
         RefreshToken refreshToken = new RefreshToken(
-                member.getEmail(),
+                member.getId().toString(),
                 refreshTokenString,
                 jwtTokenProvider.getRefreshTokenValidTimeInSeconds()
         );
@@ -190,11 +193,18 @@ public class AuthService {
         }
 
         // 회원 정보 조회 및 새로운 Access Token 발급
-        Member member = memberRepository.findByEmail(identifier)
-                .or(() -> memberRepository.findByProviderId(identifier))
-                .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+        Member member = null;
+        try {
+            Long memberId = Long.parseLong(identifier);
+            member = memberRepository.findById(memberId)
+                    .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+        } catch (NumberFormatException e) {
+            member = memberRepository.findByEmail(identifier)
+                    .or(() -> memberRepository.findByProviderId(identifier))
+                    .orElseThrow(() -> new IllegalArgumentException("회원 정보를 찾을 수 없습니다."));
+        }
 
-        String newAccessToken = jwtTokenProvider.createAccessToken(identifier, member.getRole().getSecurityRole());
+        String newAccessToken = jwtTokenProvider.createAccessToken(member.getId().toString(), member.getRole().getSecurityRole());
 
         return TokenRefreshResponse.builder()
                 .accessToken(newAccessToken)

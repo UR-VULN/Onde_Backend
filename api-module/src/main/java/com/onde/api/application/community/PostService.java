@@ -72,8 +72,8 @@ public class PostService {
         // 3. 게시글 저장
         Post post = Post.builder()
                 .memberId(memberId)
-                .title(req.getTitle())
-                .content(req.getContent())
+                .title(org.springframework.web.util.HtmlUtils.htmlEscape(req.getTitle()))
+                .content(org.springframework.web.util.HtmlUtils.htmlEscape(req.getContent()))
                 .type(req.getType())
                 .status(PostStatus.ACTIVE)
                 .likeCount(0)
@@ -184,8 +184,8 @@ public class PostService {
             throw new ForbiddenException(ErrorCode.POST_NOT_OWNER);
         }
 
-        post.setTitle(req.getTitle());
-        post.setContent(req.getContent());
+        post.setTitle(org.springframework.web.util.HtmlUtils.htmlEscape(req.getTitle()));
+        post.setContent(org.springframework.web.util.HtmlUtils.htmlEscape(req.getContent()));
         if (req.getRating() != null) {
             post.setRating(req.getRating());
         }

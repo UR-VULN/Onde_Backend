@@ -107,6 +107,7 @@ class PostServiceTest {
                 .id(memberId)
                 .email("test@example.com")
                 .name("testUser")
+                .nickname("test")
                 .role(MemberRole.USER)
                 .build();
 

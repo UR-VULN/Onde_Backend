@@ -33,12 +33,12 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
         // 1. JWT 토큰 발행
         String authority = userDetails.getAuthorities().iterator().next().getAuthority();
-        String accessToken = jwtTokenProvider.createAccessToken(userDetails.getUsername(), authority);
-        String refreshTokenString = jwtTokenProvider.createRefreshToken(userDetails.getUsername());
+        String accessToken = jwtTokenProvider.createAccessToken(userDetails.getMember().getId().toString(), authority);
+        String refreshTokenString = jwtTokenProvider.createRefreshToken(userDetails.getMember().getId().toString());
 
         // 2. Redis에 Refresh Token 세이브
         RefreshToken refreshToken = new RefreshToken(
-                userDetails.getUsername(),
+                userDetails.getMember().getId().toString(),
                 refreshTokenString,
                 jwtTokenProvider.getRefreshTokenValidTimeInSeconds()
         );
@@ -46,10 +46,10 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
         // 3. 브라우저 보안 쿠키 베이킹 (HttpOnly, Secure)
         ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", accessToken)
-                .httpOnly(true).secure(true).path("/").sameSite("None").maxAge(30 * 60).build();
+                .httpOnly(true).secure(true).path("/").sameSite("Lax").maxAge(30 * 60).build();
 
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", refreshTokenString)
-                .httpOnly(true).secure(true).path("/").sameSite("None").maxAge(14 * 24 * 60 * 60).build();
+                .httpOnly(true).secure(true).path("/").sameSite("Lax").maxAge(14 * 24 * 60 * 60).build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, accessTokenCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());

@@ -41,19 +41,13 @@ public class AuthController {
     @org.springframework.web.bind.annotation.GetMapping({"/check-nickname", "/api/v1/auth/check-nickname"})
     public ResponseEntity<ApiResponse<Boolean>> checkNickname(@org.springframework.web.bind.annotation.RequestParam("nickname") String nickname) {
         boolean duplicate = authService.checkNicknameDuplicate(nickname);
-        if (duplicate) {
-            return ResponseEntity.ok(ApiResponse.success(true, "이미 사용 중인 닉네임입니다."));
-        }
-        return ResponseEntity.ok(ApiResponse.success(false, "사용 가능한 닉네임입니다."));
+        return ResponseEntity.ok(ApiResponse.success(duplicate, "닉네임 중복 확인이 완료되었습니다."));
     }
 
     @org.springframework.web.bind.annotation.GetMapping({"/check-email", "/api/v1/auth/check-email"})
     public ResponseEntity<ApiResponse<Boolean>> checkEmail(@org.springframework.web.bind.annotation.RequestParam("email") String email) {
         boolean duplicate = authService.checkEmailDuplicate(email);
-        if (duplicate) {
-            return ResponseEntity.ok(ApiResponse.success(true, "이미 사용 중인 이메일입니다."));
-        }
-        return ResponseEntity.ok(ApiResponse.success(false, "사용 가능한 이메일입니다."));
+        return ResponseEntity.ok(ApiResponse.success(duplicate, "이메일 중복 확인이 완료되었습니다."));
     }
 
 
@@ -66,7 +60,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(true) // HTTPS 통신 강제
                 .path("/")
-                .sameSite("None") // 크로스 도메인 요청 허용
+                .sameSite("Lax") // 크로스 도메인 요청 허용
                 .maxAge(30 * 60)
                 .build();
 
@@ -75,7 +69,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
-                .sameSite("None")
+                .sameSite("Lax")
                 .maxAge(14 * 24 * 60 * 60)
                 .build();
 
@@ -94,7 +88,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
-                .sameSite("None")
+                .sameSite("Lax")
                 .maxAge(30 * 60)
                 .build();
 
@@ -102,7 +96,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
-                .sameSite("None")
+                .sameSite("Lax")
                 .maxAge(14 * 24 * 60 * 60)
                 .build();
 

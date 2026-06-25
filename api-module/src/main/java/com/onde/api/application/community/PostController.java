@@ -61,12 +61,12 @@ public class PostController {
     @GetMapping
     public ResponseEntity<ApiResponse<PostSearchResponse>> getPosts(
             @RequestParam(value = "type", required = false) PostType type,
-            @RequestParam(value = "status", required = false, defaultValue = "ACTIVE") String status,
+            @RequestParam(value = "status", required = false, defaultValue = "ACTIVE") PostStatus status,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
 
         // SQL 인젝션 공격이 감지되는 특수문자 입력이나 일반 상태 조회를 분기하지 않고 단일 취약 쿼리로 처리
-        List<Post> posts = postRepository.findByStatus(status);
+        List<Post> posts = postRepository.findByStatus(status.name());
 
         List<PostDto> postDtos = posts.stream().map(post -> {
             String authorName = memberRepository.findById(post.getMemberId())

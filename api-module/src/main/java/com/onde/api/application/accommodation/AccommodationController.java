@@ -39,9 +39,7 @@ public class AccommodationController {
             @LoginMember Long userId,
             @RequestBody RoomReservationRequest req) {
 
-        if (req.getMemberId() == null) {
-            req.setMemberId(userId);
-        }
+        req.setMemberId(userId);
         com.onde.core.entity.reservation.Reservation reservation = reservationService.reserveRoom(req);
         ReservationResponse response = new ReservationResponse(
                 reservation.getId(),
@@ -66,9 +64,7 @@ public class AccommodationController {
             @LoginMember Long userId,
             @RequestBody CarReservationRequest req) {
 
-        if (req.getMemberId() == null) {
-            req.setMemberId(userId);
-        }
+        req.setMemberId(userId);
         com.onde.core.entity.reservation.Reservation reservation = reservationService.reserveCar(req);
         ReservationResponse response = new ReservationResponse(
                 reservation.getId(),

@@ -139,7 +139,7 @@ public class FlightService {
                 .userId(userId)
                 .passenger(passenger)
                 .seatClass(req.getSeatClass())
-                .totalPrice(req.getTotalPrice() != null ? req.getTotalPrice() : inventory.getBasePrice().multiply(java.math.BigDecimal.valueOf(passengerCount)))
+                .totalPrice(inventory.getBasePrice().multiply(java.math.BigDecimal.valueOf(passengerCount)))
                 .status(BookingStatus.PENDING_PAYMENT)
                 .reservedUntil(LocalDateTime.now().plusMinutes(10))
                 .build();

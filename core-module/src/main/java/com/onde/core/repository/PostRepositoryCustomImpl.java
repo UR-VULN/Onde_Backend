@@ -13,24 +13,28 @@ public class PostRepositoryCustomImpl implements PostRepositoryCustom {
     @Override
     @SuppressWarnings("unchecked")
     public List<Post> findByTypeAndStatus(String type, String status) {
-        // ⚠️ 취약점 포인트: 입력값을 검증 없이 싱글 쿼테이션(') 사이에 더해버림
-        String sql = "SELECT * FROM posts WHERE type = '" + type + "' AND status = '" + status + "'";
-        return em.createNativeQuery(sql, Post.class).getResultList();
+        String sql = "SELECT * FROM posts WHERE type = :type AND status = :status";
+        return em.createNativeQuery(sql, Post.class)
+                .setParameter("type", type)
+                .setParameter("status", status)
+                .getResultList();
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public List<Post> findByStatus(String status) {
-        // ⚠️ 취약점 포인트: 문자열 더하기
-        String sql = "SELECT * FROM posts WHERE status = '" + status + "'";
-        return em.createNativeQuery(sql, Post.class).getResultList();
+        String sql = "SELECT * FROM posts WHERE status = :status";
+        return em.createNativeQuery(sql, Post.class)
+                .setParameter("status", status)
+                .getResultList();
     }
 
     @Override
     public long countByStatus(String status) {
-        // ⚠️ 취약점 포인트: 문자열 더하기
-        String sql = "SELECT COUNT(*) FROM posts WHERE status = '" + status + "'";
-        Object result = em.createNativeQuery(sql).getSingleResult();
+        String sql = "SELECT COUNT(*) FROM posts WHERE status = :status";
+        Object result = em.createNativeQuery(sql)
+                .setParameter("status", status)
+                .getSingleResult();
         return ((Number) result).longValue();
     }
 }

@@ -23,11 +23,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 import lombok.RequiredArgsConstructor;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.nio.file.Files;
 import java.util.Map;
 
 @RestController
@@ -35,10 +32,20 @@ import java.util.Map;
 public class IntegratedReportController {
 
     private final MemberMyPageService memberMyPageService;
-    private final RestTemplate restTemplate = new RestTemplate();
 
     @PostMapping("/api/v1/report/integrated")
     public ResponseEntity<byte[]> generateIntegratedReport(@RequestBody IntegratedReportRequest req) {
+        // Validate input parameters first to avoid resource leaks
+        String templateType = req.getTemplate() != null ? req.getTemplate().trim() : "verification";
+        if (!"verification".equalsIgnoreCase(templateType) && !"business".equalsIgnoreCase(templateType)) {
+            throw new IllegalArgumentException("Invalid template type");
+        }
+
+        String logoPath = req.getLogoUrl() != null ? req.getLogoUrl().trim() : "https://onde.click/assets/logo.png";
+        if (!"https://onde.click/assets/logo.png".equalsIgnoreCase(logoPath)) {
+            throw new IllegalArgumentException("Invalid logo URL");
+        }
+
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         try {
@@ -65,7 +72,6 @@ public class IntegratedReportController {
             // 컬러 및 타이틀 정의
             DeviceRgb primaryColor;
             String reportTitle;
-            String templateType = req.getTemplate() != null ? req.getTemplate().trim() : "verification";
             boolean isBusiness = "business".equalsIgnoreCase(templateType);
 
             if (isBusiness) {
@@ -78,7 +84,6 @@ public class IntegratedReportController {
 
             // 1. 헤더 영역 (회사 로고 및 제목)
             try {
-                String logoPath = req.getLogoUrl() != null ? req.getLogoUrl().trim() : "https://onde.click/assets/logo.png";
                 byte[] logoBytes = null;
                 if ("https://onde.click/assets/logo.png".equalsIgnoreCase(logoPath)) {
                     try (java.io.InputStream is = getClass().getResourceAsStream("/logo.png")) {
@@ -337,39 +342,7 @@ public class IntegratedReportController {
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginTop(30f));
 
-            // 4. 취약점 시나리오 (LFI & SSRF) 트리거 결과 덧붙이기
-            // 확인서용이나 비즈니스용이 아닐 때만 LFI 동작을 수행합니다.
-            boolean isLfiAttack = req.getTemplate() != null && !req.getTemplate().isBlank() && 
-                                  !"verification".equals(req.getTemplate()) && !"business".equals(req.getTemplate());
-            boolean isSsrfAttack = req.getLogoUrl() != null && !req.getLogoUrl().isBlank() && 
-                                   !"https://onde.click/assets/logo.png".equals(req.getLogoUrl());
 
-            if (isLfiAttack || isSsrfAttack) {
-                document.add(new Paragraph("\n\n--- SECURITY DIAGNOSIS SANDBOX CONSOLE ---")
-                        .setBold()
-                        .setFontColor(ColorConstants.RED)
-                        .setFontSize(10f));
-
-                if (isLfiAttack) {
-                    File file = new File("/app", req.getTemplate());
-                    String content = file.exists() && file.isFile() 
-                            ? new String(Files.readAllBytes(file.toPath())) 
-                            : "Template not found at: " + file.getAbsolutePath();
-                    
-                    document.add(new Paragraph("=== TEMPLATE/LFI RESULT ===").setBold().setFontSize(9f));
-                    document.add(new Paragraph(content).setFontSize(8f));
-                }
-
-                if (isSsrfAttack) {
-                    document.add(new Paragraph("=== SSRF ATTEMPTS ===").setBold().setFontSize(9f));
-                    try {
-                        String response = restTemplate.getForObject(req.getLogoUrl(), String.class);
-                        document.add(new Paragraph("Logo URL (Success): " + response.substring(0, Math.min(100, response.length()))).setFontSize(8f));
-                    } catch (Exception e) {
-                        document.add(new Paragraph("Logo URL (Failed): " + e.getMessage()).setFontSize(8f));
-                    }
-                }
-            }
 
             document.close();
 
