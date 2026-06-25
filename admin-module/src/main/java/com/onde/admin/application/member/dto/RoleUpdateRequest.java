@@ -18,4 +18,11 @@ public class RoleUpdateRequest {
         }
         return newRole;
     }
+
+    public void validateSafeRole() {
+        MemberRole targetRole = resolvePrimaryRole();
+        if (targetRole == MemberRole.SUPER_ADMIN) {
+            throw new IllegalArgumentException("보안 경고: API를 통해 최고 관리자(SUPER_ADMIN) 권한을 부여할 수 없습니다.");
+        }
+    }
 }

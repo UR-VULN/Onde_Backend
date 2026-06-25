@@ -2,102 +2,52 @@ package com.onde.api.exception;
 
 import com.onde.core.exception.BusinessException;
 import com.onde.core.exception.ErrorCode;
-import com.onde.core.support.ErrorDetail;
 import com.onde.core.support.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
-@RestControllerAdvice
+@RestControllerAdvice(basePackages = "com.onde.api")
 public class GlobalExceptionHandler {
 
-        /**
-         * 1. 비즈니스 요구사항에 정의된 커스텀 예외 처리
-         * ErrorResponse.of의 4개 인자 스펙에 완벽 대응
-         */
         @ExceptionHandler(BusinessException.class)
         public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
                 log.error("🔒 [BusinessException] 발생: {} | Message: {}", e.getErrorCode().getCode(), e.getMessage(), e);
-
                 ErrorCode errorCode = e.getErrorCode();
                 String userMessage = e.getMessage() != null ? e.getMessage() : errorCode.getMessage();
-
-                ErrorResponse response = ErrorResponse.of(errorCode, userMessage, userMessage, null);
-
-                return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
+                return ResponseEntity.status(errorCode.getHttpStatus())
+                        .body(ErrorResponse.of(errorCode, userMessage, null, null));
         }
 
-        /**
-         * 2. @Valid, @Validated 변수 검증(Validation) 실패 예외 처리
-         */
         @ExceptionHandler(MethodArgumentNotValidException.class)
         public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException e) {
-                log.warn("⚠️ [ValidationException] 데이터 검증 실패: {}", e.getMessage(), e);
-
-                List<ErrorDetail> details = e.getBindingResult().getFieldErrors().stream()
-                                .map(fieldError -> new ErrorDetail(
-                                                fieldError.getField(),
-                                                fieldError.getRejectedValue() == null ? "null"
-                                                                : fieldError.getRejectedValue().toString(),
-                                                fieldError.getDefaultMessage()))
-                                .collect(Collectors.toList());
-
+                log.warn("⚠️ [ValidationException] 데이터 검증 실패");
                 String defaultMessage = "입력값이 올바르지 않습니다.";
                 if (!e.getBindingResult().getAllErrors().isEmpty()) {
                         defaultMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
                 }
-
-                ErrorResponse response = ErrorResponse.of(
-                                ErrorCode.INVALID_INPUT_VALUE,
-                                defaultMessage,
-                                "Validation failed for object='" + e.getBindingResult().getObjectName() + "'",
-                                details
-                );
-
-                return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus()).body(response);
+                return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus())
+                        .body(ErrorResponse.of(ErrorCode.INVALID_INPUT_VALUE, defaultMessage, null, null));
         }
 
-        @ExceptionHandler(IllegalArgumentException.class)
-        public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
-                log.warn("⚠️ [IllegalArgumentException] 잘못된 요청: {}", e.getMessage());
-
-                ErrorResponse response = ErrorResponse.of(ErrorCode.INVALID_INPUT_VALUE, e.getMessage());
-
-                return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus()).body(response);
+        @ExceptionHandler(HttpMessageNotReadableException.class)
+        public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
+                log.warn("⚠️ [HttpMessageNotReadableException] 잘못된 요청 바디 형식");
+                return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus())
+                        .body(ErrorResponse.of(ErrorCode.INVALID_INPUT_VALUE, "잘못된 요청 형식입니다. 입력값을 확인해주세요.", null, null));
         }
 
-        @ExceptionHandler(AccessDeniedException.class)
-        public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException e) {
-                log.warn("🚫 [AccessDeniedException] 권한 없는 요청: {}", e.getMessage());
-
-                ErrorResponse response = ErrorResponse.of(ErrorCode.FORBIDDEN, e.getMessage());
-
-                return ResponseEntity.status(ErrorCode.FORBIDDEN.getHttpStatus()).body(response);
-        }
-
-        /**
-         * 3. 시스템 최상위 예외 (500 Internal Server Error 방어선)
-         */
         @ExceptionHandler(Exception.class)
         public ResponseEntity<ErrorResponse> handleException(Exception e) {
                 log.error("🚨 [Unhandled Exception] 예측하지 못한 시스템 최상위 에러 감지: ", e);
-
-                String systemMessage = String.format("%s: %s", e.getClass().getName(),
-                                e.getMessage() != null ? e.getMessage() : "No detailed message");
-
-                ErrorResponse response = ErrorResponse.of(
-                                ErrorCode.INTERNAL_SERVER_ERROR,
-                                "서버 내부 오류가 발생했습니다. 관리자에게 문의하세요.",
-                                systemMessage,
-                                null
-                );
-
-                return ResponseEntity.status(ErrorCode.INTERNAL_SERVER_ERROR.getHttpStatus()).body(response);
+                // 내부 클래스 이름 조합 로직(String.format...) 완전 삭제 및 null 처리
+                return ResponseEntity.status(ErrorCode.INTERNAL_SERVER_ERROR.getHttpStatus())
+                        .body(ErrorResponse.of(ErrorCode.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다. 관리자에게 문의하세요.", null, null));
         }
 }

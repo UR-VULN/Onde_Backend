@@ -76,6 +76,10 @@ public class AdminMemberService {
         if (newRole == null) {
             throw new IllegalArgumentException("변경할 권한이 필요합니다.");
         }
+
+        if (newRole == MemberRole.SUPER_ADMIN) {
+            throw new IllegalArgumentException("보안 경고: 비정상적인 권한 탈취 시도가 감지되었습니다.");
+        }
         
         Member member = memberRepository.findById(targetMemberId)
                 .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));

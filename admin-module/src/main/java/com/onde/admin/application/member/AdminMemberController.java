@@ -67,6 +67,7 @@ public class AdminMemberController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> updateRole(@PathVariable Long id,
                                              @RequestBody RoleUpdateRequest request,
                                              Principal principal) {
+        request.validateSafeRole();
         Long currentAdminId = getAdminIdFromPrincipal(principal);
         MemberRole appliedRole = adminMemberService.updateMemberRole(id, currentAdminId, request.resolvePrimaryRole());
         Member member = memberRepository.findById(id).orElseThrow();

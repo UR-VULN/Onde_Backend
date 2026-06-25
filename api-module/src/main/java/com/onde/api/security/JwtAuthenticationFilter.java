@@ -51,12 +51,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 } else {
-                    log.warn("[JwtAuthenticationFilter] 유효하지 않거나 만료된 토큰입니다.");
-                }
+                    SecurityContextHolder.clearContext();
+                    log.warn("[JwtAuthenticationFilter] 유효하지 않거나 만료된 토큰으로 접근 시도 차단됨.");                }
             } 
             // 테스트 헬퍼(우회 로직) 전체 삭제 완료
 
         } catch (Exception e) {
+            SecurityContextHolder.clearContext();
             log.warn("[JwtAuthenticationFilter] JWT 필터 처리 중 에러 발생: {}", e.getMessage());
         }
 

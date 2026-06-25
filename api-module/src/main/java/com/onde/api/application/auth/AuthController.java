@@ -66,7 +66,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(true) // HTTPS 통신 강제
                 .path("/")
-                .sameSite("None") // 크로스 도메인 요청 허용
+                .sameSite("Lax") // 크로스 도메인 요청 허용
                 .maxAge(30 * 60)
                 .build();
 
@@ -75,7 +75,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
-                .sameSite("None")
+                .sameSite("Lax")
                 .maxAge(14 * 24 * 60 * 60)
                 .build();
 
@@ -94,7 +94,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
-                .sameSite("None")
+                .sameSite("Lax")
                 .maxAge(30 * 60)
                 .build();
 
@@ -102,7 +102,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
-                .sameSite("None")
+                .sameSite("Lax")
                 .maxAge(14 * 24 * 60 * 60)
                 .build();
 

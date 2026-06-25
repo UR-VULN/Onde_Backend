@@ -1,9 +1,14 @@
 package com.onde.core.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
+@Slf4j
 @Component
 public class JwtTokenProvider {
 
@@ -70,10 +76,20 @@ public class JwtTokenProvider {
     // 토큰의 유효성 및 만료일자 확인
     public boolean validateToken(String token) {
         try {
+            // parseClaimsJws는 토큰이 서명되지 않았거나(alg=none), 서명이 다르면 즉시 예외를 발생시킵니다.
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
-        } catch (Exception e) {
-            return false;
+        } catch (SignatureException e) {
+            log.error("[보안 경고] 잘못된 JWT 서명입니다. 위조 시도 가능성: {}", e.getMessage());
+        } catch (MalformedJwtException e) {
+            log.error("[보안 경고] 손상된 JWT 토큰입니다: {}", e.getMessage());
+        } catch (ExpiredJwtException e) {
+            log.warn("[인증 정보] 만료된 JWT 토큰입니다: {}", e.getMessage());
+        } catch (UnsupportedJwtException e) {
+            log.error("[보안 경고] 지원하지 않는 JWT 토큰 형식입니다 (alg=none 의심): {}", e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.error("[보안 경고] JWT 클레임이 비어있습니다: {}", e.getMessage());
         }
+        return false;
     }
 }
