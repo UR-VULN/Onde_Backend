@@ -11,6 +11,7 @@ public enum ErrorCode {
     // =========================================================================
     MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "M-001", "회원 정보를 찾을 수 없습니다."),
     NICKNAME_DUPLICATION(HttpStatus.BAD_REQUEST, "M-002", "이미 사용 중인 닉네임입니다."),
+    MEMBER_ALREADY_BANNED(HttpStatus.CONFLICT, "M-003", "이미 블랙리스트 처리된 회원입니다."),
 
     // =========================================================================
     // F: Flight (항공) 관련 오류

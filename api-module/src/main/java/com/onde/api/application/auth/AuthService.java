@@ -12,6 +12,7 @@ import com.onde.core.exception.UnauthorizedException;
 import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.RefreshTokenRepository;
 import com.onde.core.security.JwtTokenProvider;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final StringRedisTemplate stringRedisTemplate;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -131,10 +133,21 @@ public class AuthService {
 
     @Transactional
     public LoginResponse adminLogin(LoginRequest request) {
+        String redisKey = "login_attempts:admin:" + request.getEmail();
+        String attemptsStr = stringRedisTemplate.opsForValue().get(redisKey);
+        
+        if (attemptsStr != null && Integer.parseInt(attemptsStr) >= 5) {
+            throw new IllegalArgumentException("관리자 인증 실패 5회 초과로 30분간 계정이 잠깁니다.");
+        }
+
         Member member = memberRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UnauthorizedException(ErrorCode.UNAUTHORIZED));
 
         if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
+            stringRedisTemplate.opsForValue().increment(redisKey);
+            if (attemptsStr == null) {
+                stringRedisTemplate.expire(redisKey, 30, java.util.concurrent.TimeUnit.MINUTES);
+            }
             throw new UnauthorizedException(ErrorCode.UNAUTHORIZED);
         }
 
@@ -148,6 +161,9 @@ public class AuthService {
         if (member.getStatus() == MemberStatus.BANNED) {
             throw new ForbiddenException(ErrorCode.FORBIDDEN);
         }
+
+        // 로그인 성공 시 실패 기록 초기화
+        stringRedisTemplate.delete(redisKey);
 
         // 토큰 발급
         String accessToken = jwtTokenProvider.createAccessToken(member.getEmail(), member.getRole().getSecurityRole());
@@ -202,4 +218,26 @@ public class AuthService {
                 .expiresIn(1800L) // 30분
                 .build();
     }
+
+    @Transactional
+    public void logout(String email, String accessToken) {
+        // 1. Refresh Token Redis 저장소에서 토큰 삭제
+        refreshTokenRepository.deleteById(email);
+
+        // 2. Access Token 유효시간 계산 후 Redis 블랙리스트 등록
+        if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
+            java.util.Date expiration = jwtTokenProvider.getExpirationDate(accessToken);
+            long remainTime = expiration.getTime() - System.currentTimeMillis();
+            if (remainTime > 0) {
+                stringRedisTemplate.opsForValue().set(
+                        "BL:" + accessToken,
+                        "logout",
+                        remainTime,
+                        java.util.concurrent.TimeUnit.MILLISECONDS
+                );
+            }
+        }
+    }
 }
+
+

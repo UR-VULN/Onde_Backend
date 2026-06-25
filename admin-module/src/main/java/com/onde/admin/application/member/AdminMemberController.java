@@ -11,6 +11,7 @@ import com.onde.core.entity.member.MemberStatus;
 import com.onde.core.repository.MemberRepository;
 import com.onde.core.support.ApiResponse;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -51,7 +52,7 @@ public class AdminMemberController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> blacklistMember(
             @PathVariable Long id,
-            @RequestBody(required = false) BlacklistRequest request) {
+            @Valid @RequestBody(required = false) BlacklistRequest request) {
         
         adminMemberService.blacklistMember(id, request != null ? request.getReason() : null);
 
@@ -63,7 +64,7 @@ public class AdminMemberController {
     }
 
     @PatchMapping("/roles/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'SELLER_ADMIN', 'USER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> updateRole(@PathVariable Long id,
                                              @RequestBody RoleUpdateRequest request,
                                              Principal principal) {

@@ -73,27 +73,7 @@ public class AdminSettlementService {
         return settlement;
     }
 
-    /**
-     * 영업 관리자 정산 승인
-     */
-    @Transactional
-    public Settlement approveSettlement(Long settlementId, String comment) {
-        Settlement settlement = settlementRepository.findById(settlementId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 정산 건이 존재하지 않습니다."));
 
-        if (settlement.getStatus() != SettlementStatus.REQUESTED
-                && settlement.getStatus() != SettlementStatus.APPROVED_1ST) {
-            throw new IllegalStateException("정산 요청 또는 1차 승인 상태에서만 승인할 수 있습니다.");
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-        settlement.setStatus(SettlementStatus.COMPLETED);
-        settlement.setApprovedAt(now);
-        if (settlement.getFinalizedAt() == null) {
-            settlement.setFinalizedAt(now);
-        }
-        return settlement;
-    }
 
     @Transactional
     public Settlement rejectSettlement(Long settlementId, String comment) {

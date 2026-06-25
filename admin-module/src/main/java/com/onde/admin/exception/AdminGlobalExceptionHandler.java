@@ -29,8 +29,8 @@ public class AdminGlobalExceptionHandler {
         log.warn("Admin ValidationException: {}", e.getMessage(), e);
         String defaultMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
         return ResponseEntity
-                .status(ErrorCode.INVALID_COORDINATE.getHttpStatus())
-                .body(ErrorResponse.of(ErrorCode.INVALID_COORDINATE, defaultMessage));
+                .status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus())
+                .body(ErrorResponse.of(ErrorCode.INVALID_INPUT_VALUE, defaultMessage, defaultMessage, null));
     }
 
     @ExceptionHandler(AccessDeniedException.class)

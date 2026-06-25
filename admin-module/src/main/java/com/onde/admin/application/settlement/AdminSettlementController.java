@@ -118,23 +118,6 @@ public class AdminSettlementController {
         return ResponseEntity.ok(ApiResponse.success(data, "1차 승인 처리되었습니다."));
     }
 
-    @PostMapping("/{settlementId}/approve")
-    @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> approve(
-            @PathVariable("settlementId") Long settlementId,
-            @RequestBody(required = false) Map<String, String> body) {
-        Settlement updated = adminSettlementService.approveSettlement(
-                settlementId,
-                body != null ? body.get("comment") : null);
-
-        Map<String, Object> data = new HashMap<>();
-        data.put("settlementId", updated.getId());
-        data.put("status", updated.getStatus());
-        data.put("approvedAt", updated.getApprovedAt());
-
-        return ResponseEntity.ok(ApiResponse.success(data, "정산 승인 완료"));
-    }
-
     @PostMapping("/{settlementId}/reject")
     @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> reject(
