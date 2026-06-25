@@ -59,12 +59,20 @@ public class JwtTokenProvider {
 
     // 토큰의 subject(email 혹은 providerId)를 꺼내는 메서드
     public String getSubject(String token) {
+        return extractClaims(token).getSubject();
+    }
+
+    // 토큰의 만료 시간을 꺼내는 메서드
+    public Date getExpirationDate(String token) {
+        return extractClaims(token).getExpiration();
+    }
+
+    private Claims extractClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
+                .getBody();
     }
 
     // 토큰의 유효성 및 만료일자 확인
@@ -76,4 +84,4 @@ public class JwtTokenProvider {
             return false;
         }
     }
-}
+}

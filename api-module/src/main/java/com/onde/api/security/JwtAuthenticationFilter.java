@@ -24,6 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
+    private final org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -38,9 +39,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 token = resolveTokenFromCookie(request, "accessToken");
             }
 
-            // 3. 토큰 검증 및 인증 처리
+            // 3. 토큰 검증 및 블랙리스트 여부 확인 후 인증 처리
             if (token != null) {
-                boolean isValid = jwtTokenProvider.validateToken(token);
+                boolean isBlacklisted = Boolean.TRUE.equals(stringRedisTemplate.hasKey("BL:" + token));
+                boolean isValid = !isBlacklisted && jwtTokenProvider.validateToken(token);
 
                 if (isValid) {
                     String identifier = jwtTokenProvider.getSubject(token);
@@ -51,9 +53,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 } else {
-                    log.warn("[JwtAuthenticationFilter] 유효하지 않거나 만료된 토큰입니다.");
+                    if (isBlacklisted) {
+                        log.warn("[JwtAuthenticationFilter] 로그아웃된(블랙리스트) 토큰으로 접근이 시도되었습니다.");
+                    } else {
+                        log.warn("[JwtAuthenticationFilter] 유효하지 않거나 만료된 토큰입니다.");
+                    }
                 }
             } 
+
             // 테스트 헬퍼(우회 로직) 전체 삭제 완료
 
         } catch (Exception e) {

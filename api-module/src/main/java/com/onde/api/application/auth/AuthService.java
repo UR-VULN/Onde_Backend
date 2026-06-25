@@ -302,4 +302,25 @@ public class AuthService {
             }
         }
     }
+
+    @Transactional
+    public void logout(String email, String accessToken) {
+        // 1. Refresh Token Redis 저장소에서 토큰 삭제
+        refreshTokenRepository.deleteById(email);
+
+        // 2. Access Token 유효시간 계산 후 Redis 블랙리스트 등록
+        if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
+            java.util.Date expiration = jwtTokenProvider.getExpirationDate(accessToken);
+            long remainTime = expiration.getTime() - System.currentTimeMillis();
+            if (remainTime > 0) {
+                stringRedisTemplate.opsForValue().set(
+                        "BL:" + accessToken,
+                        "logout",
+                        remainTime,
+                        java.util.concurrent.TimeUnit.MILLISECONDS
+                );
+            }
+        }
+    }
 }
+

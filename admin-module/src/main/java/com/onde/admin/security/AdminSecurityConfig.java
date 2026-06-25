@@ -24,6 +24,7 @@ public class AdminSecurityConfig {
     private final AdminJwtTokenProvider adminJwtTokenProvider;
     private final AdminAuthenticationEntryPoint adminAuthenticationEntryPoint;
     private final AdminAccessDeniedHandler adminAccessDeniedHandler;
+    private final org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
 
     @Value("${management.health.allowed-ip}")
     private String allowedIp;
@@ -78,7 +79,8 @@ public class AdminSecurityConfig {
             )
             
             // 4. 커스텀하게 통합한 AdminJwtAuthenticationFilter를 시큐리티 필터 흐름 앞에 주입
-            .addFilterBefore(new AdminJwtAuthenticationFilter(adminJwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(new AdminJwtAuthenticationFilter(adminJwtTokenProvider, stringRedisTemplate), UsernamePasswordAuthenticationFilter.class);
+
 
         return http.build();
     }
