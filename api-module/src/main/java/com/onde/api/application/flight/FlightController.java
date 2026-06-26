@@ -14,7 +14,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.Map;
+import com.onde.api.application.flight.dto.FlightPaymentConfirmRequest;
+import com.onde.core.validation.ValidationLimits;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
+import org.springframework.validation.annotation.Validated;
 
+@Validated
 @Slf4j
 @RestController
 @RequestMapping("/api/v1")
@@ -25,7 +31,7 @@ public class FlightController {
     private final DistributedLockExecutor distributedLockExecutor;
 
     @GetMapping("/flights/search")
-    public ResponseEntity<ApiResponse<FlightSearchResponse>> searchFlights(@ModelAttribute FlightSearchRequest req) {
+    public ResponseEntity<ApiResponse<FlightSearchResponse>> searchFlights(@Valid @ModelAttribute FlightSearchRequest req) {
         FlightSearchResponse response = flightService.searchFlights(req);
         return ResponseEntity.ok(ApiResponse.success(response, "항공편 검색 성공"));
     }
@@ -35,7 +41,7 @@ public class FlightController {
      */
     @PostMapping("/reservations/flights")
     public ResponseEntity<ApiResponse<FlightBookingResponse>> bookSeat(
-            @RequestBody FlightBookingRequest req,
+            @Valid @RequestBody FlightBookingRequest req,
             @LoginMember Long userId) {
         String lockKey = "flight:lock:" + req.getScheduleId() + ":" + req.getSeatClass().name();
 
@@ -54,11 +60,11 @@ public class FlightController {
      */
     @PostMapping("/reservations/flights/{booking_code}/confirm")
     public ResponseEntity<ApiResponse<Map<String, Object>>> confirmPayment(
-            @PathVariable("booking_code") String bookingCode,
-            @RequestBody Map<String, Object> paymentPayload) {
+            @PathVariable("booking_code") @Size(max = ValidationLimits.BOOKING_CODE_MAX) String bookingCode,
+            @Valid @RequestBody FlightPaymentConfirmRequest paymentPayload) {
         log.info("💳 Payment confirmation request received for bookingCode: {}", bookingCode);
-        String pgTransactionId = (String) paymentPayload.getOrDefault("pgTransactionId", "PG-TX-DEFAULT-12345");
-        BigDecimal amount = new BigDecimal(paymentPayload.getOrDefault("paymentAmount", "0").toString());
+        String pgTransactionId = paymentPayload.getPgTransactionId();
+        BigDecimal amount = paymentPayload.getPaymentAmount();
 
         // 1. 외부 결제 승인 가상 성공 (Log 기록)
         log.info("💰 [PAYMENT SUCCESS] Payment approved. pgTransactionId={}, amount={}", pgTransactionId, amount);

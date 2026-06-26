@@ -11,6 +11,7 @@ import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.ReservationRepository;
 import com.onde.core.repository.RoomRepository;
 import com.onde.core.repository.SeatInventoryRepository;
+import com.onde.core.security.PassportFieldCodec;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -46,6 +47,9 @@ class AdminBookingServiceReservationTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private PassportFieldCodec passportFieldCodec;
 
     @InjectMocks
     private AdminBookingService adminBookingService;

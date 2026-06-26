@@ -58,4 +58,11 @@ public class ErrorResponse {
             List<ErrorDetail> details) {
         return new ErrorResponse(customUserMessage, errorCode.getCode(), systemMessage, details);
     }
+
+    /**
+     * 클라이언트 응답용 — 오류 코드·시스템 메시지·입력값(rejectedValue)을 노출하지 않습니다.
+     */
+    public static ErrorResponse client(String message) {
+        return new ErrorResponse(message, null, null, null);
+    }
 }

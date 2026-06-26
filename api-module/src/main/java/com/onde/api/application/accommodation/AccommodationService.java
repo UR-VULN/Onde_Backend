@@ -5,7 +5,6 @@ import com.onde.api.application.accommodation.dto.AccommodationSearchRequest;
 import com.onde.api.application.accommodation.dto.AccommodationSearchResponse;
 import com.onde.core.entity.accommodation.Accommodation;
 import com.onde.core.entity.accommodation.ApprovalStatus;
-import com.onde.core.entity.accommodation.Inventory;
 import com.onde.core.entity.accommodation.Room;
 import com.onde.core.entity.reservation.ReservationTarget;
 import com.onde.core.exception.ErrorCode;
@@ -32,8 +31,6 @@ public class AccommodationService {
     private final AccommodationRepository accommodationRepository;
     private final RoomRepository roomRepository;
     private final InventoryRepository inventoryRepository;
-    private final com.onde.core.repository.ReservationRepository reservationRepository;
-    private final com.onde.core.repository.CarRepository carRepository;
 
     public AccommodationSearchResponse searchAccommodations(AccommodationSearchRequest request) {
         Long days = null;

@@ -36,6 +36,11 @@ public enum ErrorCode {
     INVENTORY_NOT_AVAILABLE(HttpStatus.CONFLICT, "R-005", "해당 기간에 예약 가능한 재고가 없습니다."),
 
     // =========================================================================
+    // P: Payment (결제) 관련 오류
+    // =========================================================================
+    PAYMENT_NOT_OWNER(HttpStatus.FORBIDDEN, "P-001", "본인 결제 건만 처리할 수 있습니다."),
+
+    // =========================================================================
     // C: Community (커뮤니티/공통) 관련 오류
     // =========================================================================
     INVALID_COORDINATE(HttpStatus.BAD_REQUEST, "C-001", "위경도 좌표는 소수점 4자리 이상의 정밀도를 지녀야 합니다."),
@@ -52,6 +57,11 @@ public enum ErrorCode {
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH-001", "인증에 실패하였습니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "AUTH-002", "해당 API에 접근할 권한이 없습니다."),
     SELLER_PENDING_APPROVAL(HttpStatus.BAD_REQUEST, "AUTH-003", "판매자 계정은 관리자 승인 대기 중입니다. 승인 완료 후 로그인할 수 있습니다."),
+    PASSWORD_REUSE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "AUTH-004", "최근 사용한 비밀번호는 재사용할 수 없습니다."),
+    LOGIN_LOCKED(HttpStatus.LOCKED, "AUTH-005", "로그인 시도 횟수를 초과했습니다. 잠시 후 다시 시도해 주세요."),
+    SIGNUP_ROLE_NOT_ALLOWED(HttpStatus.FORBIDDEN, "AUTH-006", "회원가입으로 허용되지 않는 권한입니다."),
+    SENSITIVE_REVEAL_PASSWORD_MISMATCH(HttpStatus.UNAUTHORIZED, "AUTH-007", "비밀번호가 일치하지 않습니다."),
+    LOGIN_CREDENTIALS_INVALID(HttpStatus.UNAUTHORIZED, "AUTH-008", "이메일 또는 비밀번호가 올바르지 않습니다."),
 
     // =========================================================================
     // S: Server 관련 오류

@@ -9,11 +9,15 @@ import com.onde.api.security.LoginMember;
 import com.onde.core.entity.reservation.Reservation;
 import com.onde.core.repository.CarRepository;
 import com.onde.core.support.ApiResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+@Validated
 @RestController
 @RequestMapping("/api/v1/reservations")
 @RequiredArgsConstructor
@@ -28,11 +32,8 @@ public class ReservationController {
     @PostMapping("/rooms")
     public ResponseEntity<ApiResponse<ReservationResponse>> reserveRoom(
             @LoginMember Long memberId,
-            @RequestBody RoomReservationRequest req) {
-        if (req.getMemberId() == null) {
-            req.setMemberId(memberId);
-        }
-        Reservation reservation = reservationService.reserveRoom(req);
+            @Valid @RequestBody RoomReservationRequest req) {
+        Reservation reservation = reservationService.reserveRoom(memberId, req);
         ReservationResponse response = new ReservationResponse(
                 reservation.getId(),
                 reservation.getTargetType(),
@@ -54,11 +55,8 @@ public class ReservationController {
     @PostMapping("/cars")
     public ResponseEntity<ApiResponse<CarReservationResponse>> reserveCar(
             @LoginMember Long memberId,
-            @RequestBody CarReservationRequest req) {
-        if (req.getMemberId() == null) {
-            req.setMemberId(memberId);
-        }
-        Reservation reservation = reservationService.reserveCar(req);
+            @Valid @RequestBody CarReservationRequest req) {
+        Reservation reservation = reservationService.reserveCar(memberId, req);
         String modelName = carRepository.findById(req.getCarId())
                 .map(com.onde.core.entity.accommodation.Car::getModelName)
                 .orElse(null);
@@ -84,7 +82,7 @@ public class ReservationController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<ReservationCancelResponse>> cancelReservation(
             @LoginMember Long memberId,
-            @PathVariable("id") Long id) {
+            @PathVariable("id") @Min(1) Long id) {
         
         Reservation reservation = reservationService.cancelReservation(id, memberId);
         ReservationCancelResponse response = new ReservationCancelResponse(

@@ -1,5 +1,6 @@
 package com.onde.api.security;
 
+import com.onde.api.application.auth.support.AuthSessionValidator;
 import com.onde.core.security.JwtTokenProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -24,43 +25,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
+    private final AuthSessionValidator authSessionValidator;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
         try {
-            // 1. 헤더에서 토큰 추출
             String token = resolveTokenFromHeader(request);
-
-            // 2. 쿠키에서 토큰 추출 (헤더에 없을 경우)
             if (token == null) {
                 token = resolveTokenFromCookie(request, "accessToken");
             }
 
-            // 3. 토큰 검증 및 인증 처리
-            if (token != null) {
-                boolean isValid = jwtTokenProvider.validateToken(token);
+            if (token != null && authSessionValidator.isAccessTokenAllowed(token, request)) {
+                String identifier = jwtTokenProvider.getSubject(token);
+                UserDetails userDetails = customUserDetailsService.loadUserByUsername(identifier);
 
-                if (isValid) {
-                    String identifier = jwtTokenProvider.getSubject(token);
-                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(identifier);
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        userDetails, null, userDetails.getAuthorities());
 
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities());
-
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                } else {
-                    log.warn("[JwtAuthenticationFilter] 유효하지 않거나 만료된 토큰입니다.");
-                }
-            } 
-            // 테스트 헬퍼(우회 로직) 전체 삭제 완료
-
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            } else if (token != null) {
+                log.warn("[JwtAuthenticationFilter] 차단·만료·세션 불일치 토큰입니다.");
+            }
         } catch (Exception e) {
             log.warn("[JwtAuthenticationFilter] JWT 필터 처리 중 에러 발생: {}", e.getMessage());
         }
 
-        // 다음 필터로 이동
         filterChain.doFilter(request, response);
     }
 

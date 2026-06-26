@@ -4,6 +4,7 @@ import com.onde.admin.application.auth.dto.PasswordChangeRequest;
 import com.onde.core.entity.member.Member;
 import com.onde.core.repository.MemberRepository;
 import com.onde.core.support.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,7 +24,7 @@ public class AdminAuthController {
     @PostMapping("/password-change")
     public ResponseEntity<ApiResponse<Void>> changePassword(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody PasswordChangeRequest request) {
+            @Valid @RequestBody PasswordChangeRequest request) {
         
         // 시큐리티 컨텍스트에서 현재 로그인한 관리자의 이메일을 가져와 ID 조회
         Member admin = memberRepository.findByEmail(userDetails.getUsername())

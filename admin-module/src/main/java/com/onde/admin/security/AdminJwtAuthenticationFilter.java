@@ -32,15 +32,7 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
         if (token != null && adminJwtTokenProvider.validateToken(token)) {
             Claims claims = adminJwtTokenProvider.getClaims(token);
             String email = claims.getSubject();
-            List<String> rolesList = claims.get("roles", List.class);
-            if (rolesList == null) {
-                String singleRole = claims.get("role", String.class);
-                if (singleRole != null) {
-                    rolesList = List.of(singleRole);
-                } else {
-                    rolesList = List.of();
-                }
-            }
+            List<String> rolesList = extractRoles(claims);
 
             List<SimpleGrantedAuthority> authorities = rolesList.stream()
                     .map(role -> {
@@ -66,5 +58,21 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
             return bearerToken.substring(7);
         }
         return null;
+    }
+
+    private List<String> extractRoles(Claims claims) {
+        Object rolesObject = claims.get("roles");
+        if (rolesObject instanceof List<?> rawRoles) {
+            return rawRoles.stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .collect(Collectors.toList());
+        }
+
+        String singleRole = claims.get("role", String.class);
+        if (singleRole != null) {
+            return List.of(singleRole);
+        }
+        return List.of();
     }
 }

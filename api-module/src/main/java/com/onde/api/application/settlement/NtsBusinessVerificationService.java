@@ -4,10 +4,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
+import com.onde.core.security.SafeUrlValidator;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +19,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -25,6 +30,9 @@ public class NtsBusinessVerificationService {
 
     @Value("${nts.api.url:https://api.odcloud.kr/api/nts-businessman/v1/validate}")
     private String apiUrl;
+
+    @Value("${nts.api.allowed-hosts:api.odcloud.kr}")
+    private String allowedApiHosts;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -64,18 +72,21 @@ public class NtsBusinessVerificationService {
         HttpEntity<Map<String, List<Map<String, Object>>>> request = new HttpEntity<>(body, headers);
 
         try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    request,
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
             Map<String, Object> responseBody = response.getBody();
 
             if (responseBody != null && responseBody.containsKey("data")) {
-                List<Map<String, Object>> dataList = (List<Map<String, Object>>) responseBody.get("data");
-                if (dataList != null && !dataList.isEmpty()) {
+                List<Map<String, Object>> dataList = toMapList(responseBody.get("data"));
+                if (!dataList.isEmpty()) {
                     Map<String, Object> item = dataList.get(0);
                     String valid = String.valueOf(item.getOrDefault("valid", ""));
                     String message = String.valueOf(item.getOrDefault("valid_msg", ""));
-                    Map<String, Object> status = item.get("status") instanceof Map
-                            ? (Map<String, Object>) item.get("status")
-                            : Collections.emptyMap();
+                    Map<String, Object> status = toStringObjectMap(item.get("status"));
                     String businessStatusCode = String.valueOf(status.getOrDefault("b_stt_cd", ""));
                     if ("01".equals(valid)) {
                         if ("02".equals(businessStatusCode)) {
@@ -118,9 +129,38 @@ public class NtsBusinessVerificationService {
     }
 
     private String buildValidateUrl() {
+        assertSafeApiUrl();
         String delimiter = apiUrl.contains("?") ? "&" : "?";
         String encodedKey = URLEncoder.encode(serviceKey.trim(), StandardCharsets.UTF_8);
         return apiUrl + delimiter + "serviceKey=" + encodedKey + "&returnType=JSON";
+    }
+
+    private void assertSafeApiUrl() {
+        Set<String> allowedHosts = SafeUrlValidator.parseAllowedHosts(allowedApiHosts);
+        SafeUrlValidator.assertAllowedHttpUrl(apiUrl, allowedHosts);
+    }
+
+    private static List<Map<String, Object>> toMapList(Object value) {
+        if (!(value instanceof List<?> rawList)) {
+            return List.of();
+        }
+        return rawList.stream()
+                .filter(Map.class::isInstance)
+                .map(entry -> toStringObjectMap(entry))
+                .toList();
+    }
+
+    private static Map<String, Object> toStringObjectMap(Object value) {
+        if (!(value instanceof Map<?, ?> rawMap)) {
+            return Map.of();
+        }
+        Map<String, Object> result = new HashMap<>();
+        rawMap.forEach((key, entryValue) -> {
+            if (key instanceof String stringKey) {
+                result.put(stringKey, entryValue);
+            }
+        });
+        return result;
     }
 
     public record BusinessVerificationResult(boolean verified, String message, String businessStatusCode) {

@@ -1,6 +1,9 @@
 package com.onde.api.application.settlement;
 
 import com.onde.core.support.ApiResponse;
+import com.onde.core.validation.ValidationLimits;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
 import lombok.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +25,8 @@ public class SellerAccountController {
      * @return 검증 성공 여부 결과 (true/false)
      */
     @PostMapping("/verify-business")
-    public ResponseEntity<ApiResponse<VerifyBusinessResponse>> verifyBusiness(@RequestBody VerifyBusinessRequest request) {
+    public ResponseEntity<ApiResponse<VerifyBusinessResponse>> verifyBusiness(
+            @Valid @RequestBody VerifyBusinessRequest request) {
         NtsBusinessVerificationService.BusinessVerificationResult result =
                 ntsBusinessVerificationService.verifyBusiness(
                         request.getBusinessNumber(),
@@ -45,9 +49,18 @@ public class SellerAccountController {
     @AllArgsConstructor
     @Builder
     public static class VerifyBusinessRequest {
-        private String businessNumber;      // 사업자등록번호
-        private String representativeName;   // 대표자성명
-        private String openDate;             // 개업일자 (YYYYMMDD)
+
+        @NotBlank(message = "사업자등록번호는 필수입니다.")
+        @Pattern(regexp = "^\\d{10}$", message = "사업자등록번호는 10자리 숫자여야 합니다.")
+        private String businessNumber;
+
+        @NotBlank(message = "대표자명은 필수입니다.")
+        @Size(max = ValidationLimits.NAME_MAX, message = "대표자명은 100자 이하여야 합니다.")
+        private String representativeName;
+
+        @NotBlank(message = "개업일자는 필수입니다.")
+        @Pattern(regexp = "^\\d{8}$", message = "개업일자는 YYYYMMDD 형식이어야 합니다.")
+        private String openDate;
     }
 
     /**

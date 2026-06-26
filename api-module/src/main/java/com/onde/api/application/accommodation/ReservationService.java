@@ -1,5 +1,6 @@
 package com.onde.api.application.accommodation;
 
+import com.onde.api.application.auth.support.MemberIdBindingValidator;
 import com.onde.api.application.accommodation.dto.RoomReservationRequest;
 import com.onde.api.application.accommodation.dto.CarReservationRequest;
 import com.onde.api.application.notification.NotificationService;
@@ -25,7 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -54,7 +54,9 @@ public class ReservationService {
     }
 
     @Transactional
-    public Reservation reserveRoom(RoomReservationRequest request) {
+    public Reservation reserveRoom(Long memberId, RoomReservationRequest request) {
+        MemberIdBindingValidator.rejectForgedMemberId(memberId, request.getMemberId());
+
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new NotFoundException(ErrorCode.ROOM_NOT_FOUND));
 
@@ -90,7 +92,7 @@ public class ReservationService {
         totalPrice = totalPrice.divide(BigDecimal.valueOf(10), 0, RoundingMode.FLOOR).multiply(BigDecimal.valueOf(10));
 
         Reservation reservation = new Reservation();
-        reservation.setUserId(request.getMemberId());
+        reservation.setUserId(memberId);
         reservation.setTargetType(ReservationTarget.ROOM);
         reservation.setTargetId(request.getRoomId());
         reservation.setCheckIn(request.getCheckInDate().atTime(15, 0));
@@ -102,7 +104,9 @@ public class ReservationService {
     }
 
     @Transactional
-    public Reservation reserveCar(CarReservationRequest request) {
+    public Reservation reserveCar(Long memberId, CarReservationRequest request) {
+        MemberIdBindingValidator.rejectForgedMemberId(memberId, request.getMemberId());
+
         carRepository.findById(request.getCarId())
                 .orElseThrow(() -> new NotFoundException(ErrorCode.CAR_NOT_FOUND));
 
@@ -131,7 +135,7 @@ public class ReservationService {
         totalPrice = totalPrice.divide(BigDecimal.valueOf(10), 0, RoundingMode.FLOOR).multiply(BigDecimal.valueOf(10));
 
         Reservation reservation = new Reservation();
-        reservation.setUserId(request.getMemberId());
+        reservation.setUserId(memberId);
         reservation.setTargetType(ReservationTarget.CAR);
         reservation.setTargetId(request.getCarId());
         reservation.setCheckIn(request.getStartDate().atStartOfDay());

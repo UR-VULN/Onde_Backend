@@ -1,103 +1,88 @@
 package com.onde.api.exception;
 
 import com.onde.core.exception.BusinessException;
-import com.onde.core.exception.ErrorCode;
-import com.onde.core.support.ErrorDetail;
+import com.onde.core.exception.RestExceptionHandlerSupport;
 import com.onde.core.support.ErrorResponse;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import java.util.List;
-import java.util.stream.Collectors;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-        /**
-         * 1. 비즈니스 요구사항에 정의된 커스텀 예외 처리
-         * ErrorResponse.of의 4개 인자 스펙에 완벽 대응
-         */
-        @ExceptionHandler(BusinessException.class)
-        public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
-                log.error("🔒 [BusinessException] 발생: {} | Message: {}", e.getErrorCode().getCode(), e.getMessage(), e);
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
+        log.warn("[BusinessException] {}", e.getMessage(), e);
+        return RestExceptionHandlerSupport.business(e);
+    }
 
-                ErrorCode errorCode = e.getErrorCode();
-                String userMessage = e.getMessage() != null ? e.getMessage() : errorCode.getMessage();
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException e) {
+        log.warn("[ValidationException] {}", e.getMessage());
+        return RestExceptionHandlerSupport.validation(e);
+    }
 
-                ErrorResponse response = ErrorResponse.of(errorCode, userMessage, userMessage, null);
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<ErrorResponse> handleBindException(BindException e) {
+        log.warn("[BindException] {}", e.getMessage());
+        return RestExceptionHandlerSupport.bind(e);
+    }
 
-                return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
-        }
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException e) {
+        log.warn("[ConstraintViolationException] {}", e.getMessage());
+        return RestExceptionHandlerSupport.constraintViolation(e);
+    }
 
-        /**
-         * 2. @Valid, @Validated 변수 검증(Validation) 실패 예외 처리
-         */
-        @ExceptionHandler(MethodArgumentNotValidException.class)
-        public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException e) {
-                log.warn("⚠️ [ValidationException] 데이터 검증 실패: {}", e.getMessage(), e);
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException e) {
+        log.warn("[HttpMessageNotReadableException] {}", e.getMessage());
+        return RestExceptionHandlerSupport.notReadable(e);
+    }
 
-                List<ErrorDetail> details = e.getBindingResult().getFieldErrors().stream()
-                                .map(fieldError -> new ErrorDetail(
-                                                fieldError.getField(),
-                                                fieldError.getRejectedValue() == null ? "null"
-                                                                : fieldError.getRejectedValue().toString(),
-                                                fieldError.getDefaultMessage()))
-                                .collect(Collectors.toList());
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        log.warn("[MethodArgumentTypeMismatchException] param={}", e.getName());
+        return RestExceptionHandlerSupport.typeMismatch(e);
+    }
 
-                String defaultMessage = "입력값이 올바르지 않습니다.";
-                if (!e.getBindingResult().getAllErrors().isEmpty()) {
-                        defaultMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
-                }
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingParameter(MissingServletRequestParameterException e) {
+        log.warn("[MissingServletRequestParameterException] param={}", e.getParameterName());
+        return RestExceptionHandlerSupport.missingParameter(e);
+    }
 
-                ErrorResponse response = ErrorResponse.of(
-                                ErrorCode.INVALID_INPUT_VALUE,
-                                defaultMessage,
-                                "Validation failed for object='" + e.getBindingResult().getObjectName() + "'",
-                                details
-                );
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException e) {
+        log.warn("[MaxUploadSizeExceededException] {}", e.getMessage());
+        return RestExceptionHandlerSupport.uploadSizeExceeded(e);
+    }
 
-                return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus()).body(response);
-        }
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
+        log.warn("[IllegalArgumentException] {}", e.getMessage());
+        return RestExceptionHandlerSupport.illegalArgument(e);
+    }
 
-        @ExceptionHandler(IllegalArgumentException.class)
-        public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
-                log.warn("⚠️ [IllegalArgumentException] 잘못된 요청: {}", e.getMessage());
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException e) {
+        log.warn("[AccessDeniedException] {}", e.getMessage());
+        return RestExceptionHandlerSupport.accessDenied(e);
+    }
 
-                ErrorResponse response = ErrorResponse.of(ErrorCode.INVALID_INPUT_VALUE, e.getMessage());
-
-                return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getHttpStatus()).body(response);
-        }
-
-        @ExceptionHandler(AccessDeniedException.class)
-        public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException e) {
-                log.warn("🚫 [AccessDeniedException] 권한 없는 요청: {}", e.getMessage());
-
-                ErrorResponse response = ErrorResponse.of(ErrorCode.FORBIDDEN, e.getMessage());
-
-                return ResponseEntity.status(ErrorCode.FORBIDDEN.getHttpStatus()).body(response);
-        }
-
-        /**
-         * 3. 시스템 최상위 예외 (500 Internal Server Error 방어선)
-         */
-        @ExceptionHandler(Exception.class)
-        public ResponseEntity<ErrorResponse> handleException(Exception e) {
-                log.error("🚨 [Unhandled Exception] 예측하지 못한 시스템 최상위 에러 감지: ", e);
-
-                String systemMessage = String.format("%s: %s", e.getClass().getName(),
-                                e.getMessage() != null ? e.getMessage() : "No detailed message");
-
-                ErrorResponse response = ErrorResponse.of(
-                                ErrorCode.INTERNAL_SERVER_ERROR,
-                                "서버 내부 오류가 발생했습니다. 관리자에게 문의하세요.",
-                                systemMessage,
-                                null
-                );
-
-                return ResponseEntity.status(ErrorCode.INTERNAL_SERVER_ERROR.getHttpStatus()).body(response);
-        }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleException(Exception e) {
+        log.error("[Unhandled Exception]", e);
+        return RestExceptionHandlerSupport.internalServerError();
+    }
 }

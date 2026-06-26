@@ -5,19 +5,16 @@ import com.onde.api.application.lbs.dto.PropertyRegisterRequest;
 import com.onde.api.application.lbs.dto.PropertyRegisterResponse;
 import com.onde.api.application.lbs.dto.PropertySearchResponse;
 import com.onde.core.entity.lbs.Property;
-import com.onde.core.entity.member.Member;
 import com.onde.core.exception.ErrorCode;
 import com.onde.core.exception.NotFoundException;
 import com.onde.core.exception.ValidationException;
 import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.PropertyRepository;
 import com.onde.core.repository.AccommodationRepository;
-import com.onde.core.repository.RoomRepository;
 import com.onde.core.repository.InventoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -28,7 +25,6 @@ public class PropertyService {
     private final PropertyRepository propertyRepository;
     private final MemberRepository memberRepository;
     private final AccommodationRepository accommodationRepository;
-    private final RoomRepository roomRepository;
     private final InventoryRepository inventoryRepository;
 
     @Transactional

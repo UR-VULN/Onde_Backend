@@ -4,53 +4,39 @@ import com.onde.api.application.community.dto.PostCreateRequest;
 import com.onde.api.application.community.dto.PostCreateResponse;
 import com.onde.api.application.community.dto.PostDeleteResponse;
 import com.onde.api.application.community.dto.PostSearchResponse;
-import com.onde.api.application.community.dto.PostDto;
 import com.onde.api.security.LoginMember;
 import com.onde.core.entity.community.PostStatus;
 import com.onde.core.entity.community.PostType;
 import com.onde.core.support.ApiResponse;
+import com.onde.core.validation.ValidationLimits;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.util.List;
 
-import com.onde.core.entity.community.Post;
-import com.onde.core.repository.MemberRepository;
-import com.onde.core.repository.PostRepository;
-
-import com.onde.core.repository.PostImageRepository;
-import com.onde.core.entity.community.PostImage;
-
+@Validated
 @RestController
 @RequestMapping("/api/v1/posts")
 @RequiredArgsConstructor
 public class PostController {
 
     private final PostService postService;
-    private final PostRepository postRepository;
-    private final MemberRepository memberRepository;
-    private final PostImageRepository postImageRepository;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<PostCreateResponse>> createPost(
-            @RequestParam("title") String title,
-            @RequestParam("content") String content,
-            @RequestParam("type") PostType type,
-            @RequestParam(value = "rating", required = false, defaultValue = "5") Integer rating,
+            @Valid @ModelAttribute PostCreateRequest req,
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
             @LoginMember Long memberId) {
-
-        PostCreateRequest req = PostCreateRequest.builder()
-                .title(title)
-                .content(content)
-                .type(type)
-                .rating(rating)
-                .build();
 
         PostCreateResponse response = postService.createPost(req, images, memberId);
         return ResponseEntity
@@ -61,38 +47,18 @@ public class PostController {
     @GetMapping
     public ResponseEntity<ApiResponse<PostSearchResponse>> getPosts(
             @RequestParam(value = "type", required = false) PostType type,
-            @RequestParam(value = "status", required = false, defaultValue = "ACTIVE") String status,
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "20") int size) {
+            @RequestParam(value = "status", required = false, defaultValue = "ACTIVE") PostStatus status,
+            @RequestParam(value = "page", defaultValue = "0") @Min(ValidationLimits.PAGE_MIN) int page,
+            @RequestParam(value = "size", defaultValue = "20") @Min(ValidationLimits.PAGE_SIZE_MIN) @Max(ValidationLimits.PAGE_SIZE_MAX) int size) {
 
-        // SQL 인젝션 공격이 감지되는 특수문자 입력이나 일반 상태 조회를 분기하지 않고 단일 취약 쿼리로 처리
-        List<Post> posts = postRepository.findByStatus(status);
-
-        List<PostDto> postDtos = posts.stream().map(post -> {
-            String authorName = memberRepository.findById(post.getMemberId())
-                    .map(m -> {
-                        String nickname = m.getNickname();
-                        return (nickname != null && !nickname.isEmpty()) ? nickname : "User-" + post.getMemberId();
-                    })
-                    .orElse("탈퇴한 회원");
-            
-            List<PostImage> postImages = postImageRepository.findByPostIdOrderBySortOrderAsc(post.getId());
-            String thumbnailUrl = postImages.isEmpty() ? null : postImages.get(0).getImageUrl();
-            
-            return PostDto.of(post, thumbnailUrl, authorName);
-        }).toList();
-
-        PostSearchResponse response = PostSearchResponse.builder()
-                .posts(postDtos)
-                .totalCount((long) posts.size())
-                .build();
+        Pageable pageable = PageRequest.of(page, size);
+        PostSearchResponse response = postService.getPosts(type, status, pageable);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-
     @DeleteMapping("/{postId}")
     public ResponseEntity<ApiResponse<PostDeleteResponse>> deletePost(
-            @PathVariable("postId") Long postId,
+            @PathVariable("postId") @Min(1) Long postId,
             @LoginMember Long memberId) {
 
         PostDeleteResponse response = postService.deletePost(postId, memberId);
@@ -101,20 +67,10 @@ public class PostController {
 
     @PutMapping(value = "/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<PostCreateResponse>> updatePost(
-            @PathVariable("postId") Long postId,
-            @RequestParam("title") String title,
-            @RequestParam("content") String content,
-            @RequestParam("type") PostType type,
-            @RequestParam(value = "rating", required = false, defaultValue = "5") Integer rating,
+            @PathVariable("postId") @Min(1) Long postId,
+            @Valid @ModelAttribute PostCreateRequest req,
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
             @LoginMember Long memberId) {
-
-        PostCreateRequest req = PostCreateRequest.builder()
-                .title(title)
-                .content(content)
-                .type(type)
-                .rating(rating)
-                .build();
 
         PostCreateResponse response = postService.updatePost(postId, req, images, memberId);
         return ResponseEntity.ok(ApiResponse.success(response, "게시글이 수정되었습니다."));

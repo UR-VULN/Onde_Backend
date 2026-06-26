@@ -2,22 +2,21 @@ package com.onde.api.security;
 
 import com.onde.api.security.oauth2.CustomOAuth2UserService;
 import com.onde.api.security.oauth2.OAuth2AuthenticationSuccessHandler;
+import com.onde.core.config.CorsConfigurationSupport;
+import com.onde.core.config.CorsOriginProperties;
+import com.onde.core.security.AllowedHttpMethodFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import lombok.RequiredArgsConstructor;
-import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -33,6 +32,8 @@ public class SecurityConfig {
     // 소셜 로그인 관련 컴포넌트
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+    private final AllowedHttpMethodFilter allowedHttpMethodFilter;
+    private final CorsOriginProperties corsOriginProperties;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -54,13 +55,18 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // ALL (누구나 접근 가능한 공개 경로)
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/actuator/**").denyAll()
                         .requestMatchers("/api/v1/health").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers("/api/v1/report/integrated", "/api/v1/test/**").permitAll()
+                        .requestMatchers("/api/v1/test/**").permitAll()
                         .requestMatchers("/api/v1/flights/search").permitAll()
                         .requestMatchers("/api/v1/insurance/calculate", "/api/v1/insurances/calculate").permitAll()
                         .requestMatchers("/api/v1/inventory/**", "/api/inventory/**").permitAll()
-                        .requestMatchers("/api/v1/accommodations/**", "/api/v1/cars/**", "/api/v1/rental_cars/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/accommodations/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/accommodations/reservations/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/cars/**", "/api/v1/rental_cars/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/cars/reservations", "/api/v1/rental_cars/reservations").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/reservations/**").authenticated()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/properties", "/api/v1/property").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/v1/posts", "/api/v1/posts/*/comments").permitAll()
 
@@ -82,31 +88,14 @@ public class SecurityConfig {
 
                 // 5. 스프링 빈 컨테이너가 안전하게 관리하는 필터를 UsernamePasswordAuthenticationFilter 앞에 배치
                 // (new 키워드로 수동 생성하면 의존성 주입이 다 깨지므로 팀원 방식이 100% 맞습니다)
+                .addFilterBefore(allowedHttpMethodFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * 프론트엔드(React, Vite 등) 연동을 위한 CORS 설정 구성 (우리 코드 이식 완료)
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-
-        configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:5173",
-                "http://localhost:3000",
-                "https://onde.click",
-                "https://www.onde.click",
-                "https://admin.onde.click"
-        ));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
+        return CorsConfigurationSupport.create(corsOriginProperties);
     }
 }

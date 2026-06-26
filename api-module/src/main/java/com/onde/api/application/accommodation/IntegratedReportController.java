@@ -13,9 +13,13 @@ import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.borders.SolidBorder;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
+import com.onde.api.application.accommodation.dto.IntegratedReportRequest;
+import com.onde.api.application.accommodation.dto.ReportTemplateType;
 import com.onde.api.application.member.MemberMyPageService;
 import com.onde.api.application.member.dto.MyPageResponseDtos.*;
-import org.springframework.data.domain.Pageable;
+import com.onde.core.repository.MemberRepository;
+import jakarta.validation.Valid;
+import com.onde.api.security.LoginMember;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -23,28 +27,28 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.nio.file.Files;
-import java.util.Map;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 public class IntegratedReportController {
 
     private final MemberMyPageService memberMyPageService;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final MemberRepository memberRepository;
 
     @PostMapping("/api/v1/report/integrated")
-    public ResponseEntity<byte[]> generateIntegratedReport(@RequestBody IntegratedReportRequest req) {
+    public ResponseEntity<byte[]> generateIntegratedReport(
+            @LoginMember Long memberId,
+            @Valid @RequestBody(required = false) IntegratedReportRequest req) {
+        ReportTemplateType templateType = ReportTemplateType.from(req != null ? req.getTemplate() : null);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-        try {
-            PdfWriter writer = new PdfWriter(baos);
-            PdfDocument pdfDoc = new PdfDocument(writer);
-            Document document = new Document(pdfDoc);
+        try (PdfWriter writer = new PdfWriter(baos);
+             PdfDocument pdfDoc = new PdfDocument(writer);
+             Document document = new Document(pdfDoc)) {
             document.setMargins(45, 45, 45, 45);
 
             // GmarketSansBold.otf 폰트 로드하여 CJK(한국어) 지원 확보
@@ -65,8 +69,7 @@ public class IntegratedReportController {
             // 컬러 및 타이틀 정의
             DeviceRgb primaryColor;
             String reportTitle;
-            String templateType = req.getTemplate() != null ? req.getTemplate().trim() : "verification";
-            boolean isBusiness = "business".equalsIgnoreCase(templateType);
+            boolean isBusiness = templateType.isBusiness();
 
             if (isBusiness) {
                 primaryColor = new DeviceRgb(31, 41, 55); // 비즈니스용 다크 그레이/블랙
@@ -76,27 +79,17 @@ public class IntegratedReportController {
                 reportTitle = "INTEGRATED RESERVATION REPORT";
             }
 
-            // 1. 헤더 영역 (회사 로고 및 제목)
+            // 1. 헤더 영역 (회사 로고 및 제목) — classpath 번들 리소스만 사용
             try {
-                String logoPath = req.getLogoUrl() != null ? req.getLogoUrl().trim() : "https://onde.click/assets/logo.png";
-                byte[] logoBytes = null;
-                if ("https://onde.click/assets/logo.png".equalsIgnoreCase(logoPath)) {
-                    try (java.io.InputStream is = getClass().getResourceAsStream("/logo.png")) {
-                        if (is != null) {
-                            logoBytes = is.readAllBytes();
-                        }
-                    }
-                }
-                
-                Image logoImg;
+                byte[] logoBytes = BrandLogoLoader.loadLogoBytes(getClass());
                 if (logoBytes != null) {
-                    logoImg = new Image(com.itextpdf.io.image.ImageDataFactory.create(logoBytes));
+                    Image logoImg = new Image(ImageDataFactory.create(logoBytes));
+                    logoImg.setWidth(75f);
+                    logoImg.setMarginBottom(8f);
+                    document.add(logoImg);
                 } else {
-                    logoImg = new Image(com.itextpdf.io.image.ImageDataFactory.create(logoPath));
+                    throw new IllegalStateException("Bundled logo resource is missing.");
                 }
-                logoImg.setWidth(75f);
-                logoImg.setMarginBottom(8f);
-                document.add(logoImg);
             } catch (Exception e) {
                 document.add(new Paragraph("ONDE Travel")
                         .setFontSize(12f)
@@ -110,14 +103,12 @@ public class IntegratedReportController {
                     .setFontColor(new DeviceRgb(31, 41, 55))
                     .setMarginBottom(15f));
 
-            // 사용자 정보 가져오기
-            Long memberId = req.getMemberId() != null ? req.getMemberId() : 1L;
+            // JWT 인증 사용자 본인 데이터만 리포트에 포함 (요청 body memberId는 사용하지 않음)
             String customerEmail = "N/A";
             try {
-                MemberInfoResponse memberInfo = memberMyPageService.getMyInfo(memberId);
-                if (memberInfo != null) {
-                    customerEmail = memberInfo.getEmail() != null ? memberInfo.getEmail() : "N/A";
-                }
+                customerEmail = memberRepository.findById(memberId)
+                        .map(member -> member.getEmail() != null ? member.getEmail() : "N/A")
+                        .orElse("N/A");
             } catch (Exception e) {
                 // Ignore
             }
@@ -280,9 +271,7 @@ public class IntegratedReportController {
                 if (insurances != null && insurances.getContent() != null && !insurances.getContent().isEmpty()) {
                     hasData = true;
                     for (MyPageInsurancePolicyResponse i : insurances.getContent()) {
-                        String policyCode = i.getPolicyCode() != null ? i.getPolicyCode() : "N/A";
                         String prodName = i.getProductName() != null ? i.getProductName() : "N/A";
-                        String insuredName = i.getInsuredName() != null ? i.getInsuredName() : "N/A";
                         String startDate = i.getStartDate() != null ? i.getStartDate() : "N/A";
                         String endDate = i.getEndDate() != null ? i.getEndDate() : "N/A";
                         double price = i.getTotalPremium() != null ? i.getTotalPremium().doubleValue() : 0.0;
@@ -337,49 +326,14 @@ public class IntegratedReportController {
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginTop(30f));
 
-            // 4. 취약점 시나리오 (LFI & SSRF) 트리거 결과 덧붙이기
-            // 확인서용이나 비즈니스용이 아닐 때만 LFI 동작을 수행합니다.
-            boolean isLfiAttack = req.getTemplate() != null && !req.getTemplate().isBlank() && 
-                                  !"verification".equals(req.getTemplate()) && !"business".equals(req.getTemplate());
-            boolean isSsrfAttack = req.getLogoUrl() != null && !req.getLogoUrl().isBlank() && 
-                                   !"https://onde.click/assets/logo.png".equals(req.getLogoUrl());
-
-            if (isLfiAttack || isSsrfAttack) {
-                document.add(new Paragraph("\n\n--- SECURITY DIAGNOSIS SANDBOX CONSOLE ---")
-                        .setBold()
-                        .setFontColor(ColorConstants.RED)
-                        .setFontSize(10f));
-
-                if (isLfiAttack) {
-                    File file = new File("/app", req.getTemplate());
-                    String content = file.exists() && file.isFile() 
-                            ? new String(Files.readAllBytes(file.toPath())) 
-                            : "Template not found at: " + file.getAbsolutePath();
-                    
-                    document.add(new Paragraph("=== TEMPLATE/LFI RESULT ===").setBold().setFontSize(9f));
-                    document.add(new Paragraph(content).setFontSize(8f));
-                }
-
-                if (isSsrfAttack) {
-                    document.add(new Paragraph("=== SSRF ATTEMPTS ===").setBold().setFontSize(9f));
-                    try {
-                        String response = restTemplate.getForObject(req.getLogoUrl(), String.class);
-                        document.add(new Paragraph("Logo URL (Success): " + response.substring(0, Math.min(100, response.length()))).setFontSize(8f));
-                    } catch (Exception e) {
-                        document.add(new Paragraph("Logo URL (Failed): " + e.getMessage()).setFontSize(8f));
-                    }
-                }
-            }
-
-            document.close();
-
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDispositionFormData("attachment", "onde_settlement_report.pdf");
             return new ResponseEntity<>(baos.toByteArray(), headers, HttpStatus.OK);
 
         } catch (Exception e) {
-            return ResponseEntity.status(500).body(("Generation failed: " + e.getMessage()).getBytes());
+            log.error("Integrated report PDF generation failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -414,19 +368,4 @@ public class IntegratedReportController {
         }
         table.addCell(cell);
     }
-
-
-}
-
-class IntegratedReportRequest {
-    private Long memberId;
-    private String template;
-    private String logoUrl;
-
-    public Long getMemberId() { return memberId; }
-    public void setMemberId(Long memberId) { this.memberId = memberId; }
-    public String getTemplate() { return template; }
-    public void setTemplate(String template) { this.template = template; }
-    public String getLogoUrl() { return logoUrl; }
-    public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }
 }

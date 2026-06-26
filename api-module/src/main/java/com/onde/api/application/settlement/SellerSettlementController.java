@@ -9,11 +9,16 @@ import com.onde.core.entity.settlement.Settlement;
 import com.onde.core.repository.PaymentRepository;
 import com.onde.core.repository.SettlementRepository;
 import com.onde.core.support.ApiResponse;
+import com.onde.core.validation.ValidationLimits;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +30,7 @@ import java.util.stream.Collectors;
  * 판매자(Seller) 관점에서의 정산 및 정산 계좌 관련 API를 처리하는 통합 컨트롤러 클래스입니다.
  * 스프링 시큐리티 기반의 인가(@PreAuthorize) 제어 하에 작동합니다.
  */
+@Validated
 @RestController
 @RequestMapping("/api/v1/seller/settlements")
 @RequiredArgsConstructor
@@ -40,8 +46,8 @@ public class SellerSettlementController {
     @GetMapping
     public ResponseEntity<ApiResponse<Map<String, Object>>> getMySettlements(
             @LoginMember Long sellerId,
-            @RequestParam(name = "page", defaultValue = "0") int page,
-            @RequestParam(name = "size", defaultValue = "12") int size) {
+            @RequestParam(name = "page", defaultValue = "0") @Min(ValidationLimits.PAGE_MIN) int page,
+            @RequestParam(name = "size", defaultValue = "12") @Min(ValidationLimits.PAGE_SIZE_MIN) @Max(ValidationLimits.PAGE_SIZE_MAX) int size) {
 
         Page<Settlement> result = settlementRepository.findBySellerId(sellerId, PageRequest.of(page, size));
 
@@ -93,7 +99,7 @@ public class SellerSettlementController {
     @PutMapping("/accounts")
     public ResponseEntity<ApiResponse<SellerAccountResponse>> registerOrUpdateAccount(
             @LoginMember Long sellerId,
-            @RequestBody SellerAccountRequest request) {
+            @Valid @RequestBody SellerAccountRequest request) {
 
         SellerAccount account = settlementService.registerOrUpdateAccount(sellerId, request);
         SellerAccountResponse response = toSellerAccountResponse(account);

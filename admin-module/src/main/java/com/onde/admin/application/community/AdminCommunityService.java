@@ -12,7 +12,6 @@ import com.onde.core.exception.ErrorCode;
 import com.onde.core.exception.NotFoundException;
 import com.onde.core.repository.FcmTokenRepository;
 import com.onde.core.repository.PostRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

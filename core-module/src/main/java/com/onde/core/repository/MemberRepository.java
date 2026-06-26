@@ -10,6 +10,8 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
     
     // 이메일로 회원 정보 단건 조회 (로그인 시 사용)
     Optional<Member> findByEmail(String email);
+
+    Optional<Member> findByAuthSubjectId(String authSubjectId);
     
     // 이메일 중복 가입 방지용 확인
     boolean existsByEmail(String email);
@@ -26,4 +28,4 @@ public interface MemberRepository extends JpaRepository<Member, Long>, MemberRep
 
     @org.springframework.data.jpa.repository.Query("SELECT COUNT(m) FROM Member m WHERE m.createdAt >= :start AND m.createdAt < :end")
     long countByCreatedAtBetween(@org.springframework.data.repository.query.Param("start") java.time.LocalDateTime start, @org.springframework.data.repository.query.Param("end") java.time.LocalDateTime end);
-}
+}

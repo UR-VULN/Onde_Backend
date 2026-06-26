@@ -49,6 +49,10 @@ class PostServiceTest {
     @Spy
     private Executor imageUploadExecutor = ForkJoinPool.commonPool(); // 테스트 환경용 비동기 스레드 풀 연동
 
+    private static byte[] minimalJpeg() {
+        return new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xD9};
+    }
+
     @InjectMocks
     private PostService postService;
 
@@ -87,8 +91,8 @@ class PostServiceTest {
                 .build();
 
         List<MultipartFile> images = List.of(
-                new MockMultipartFile("img1", "1.jpg", "image/jpeg", "image1".getBytes()),
-                new MockMultipartFile("img2", "2.jpg", "image/jpeg", "image2".getBytes())
+                new MockMultipartFile("img1", "1.jpg", "image/jpeg", minimalJpeg()),
+                new MockMultipartFile("img2", "2.jpg", "image/jpeg", minimalJpeg())
         );
 
         Post mockPost = Post.builder()
@@ -107,6 +111,7 @@ class PostServiceTest {
                 .id(memberId)
                 .email("test@example.com")
                 .name("testUser")
+                .nickname("test")
                 .role(MemberRole.USER)
                 .build();
 
@@ -123,6 +128,61 @@ class PostServiceTest {
         assertThat(response.getAuthorName()).isEqualTo("test");
         assertThat(response.getImageUrls()).hasSize(2);
         assertThat(response.getImageUrls().get(0)).startsWith("https://cdn.example.com/posts/");
+    }
+
+    @Test
+    @DisplayName("닉네임이 없는 회원은 익명으로 표시된다.")
+    void createPost_anonymousAuthorWhenNicknameMissing() {
+        Long memberId = 1L;
+        PostCreateRequest req = PostCreateRequest.builder()
+                .title("도쿄 여행")
+                .content("정말 좋았어요")
+                .type(PostType.REVIEW)
+                .build();
+
+        Post mockPost = Post.builder()
+                .id(100L)
+                .memberId(memberId)
+                .title(req.getTitle())
+                .content(req.getContent())
+                .type(req.getType())
+                .status(PostStatus.ACTIVE)
+                .likeCount(0)
+                .commentCount(0)
+                .rating(5)
+                .build();
+
+        Member mockMember = Member.builder()
+                .id(memberId)
+                .email("test@example.com")
+                .name("testUser")
+                .nickname(null)
+                .role(MemberRole.USER)
+                .build();
+
+        Mockito.when(memberRepository.findById(memberId)).thenReturn(Optional.of(mockMember));
+        Mockito.when(postRepository.save(Mockito.any(Post.class))).thenReturn(mockPost);
+
+        PostCreateResponse response = postService.createPost(req, List.of(), memberId);
+
+        assertThat(response.getAuthorName()).isEqualTo("익명");
+    }
+
+    @Test
+    @DisplayName("악성 HTML 파일 업로드 시 ValidationException이 발생한다")
+    void createPost_rejectsMaliciousHtml() {
+        PostCreateRequest req = PostCreateRequest.builder()
+                .title("악성 업로드")
+                .content("테스트")
+                .type(PostType.REVIEW)
+                .build();
+
+        List<MultipartFile> images = List.of(
+                new MockMultipartFile("img1", "evil.html", "text/html", "<script>alert(1)</script>".getBytes())
+        );
+
+        assertThatThrownBy(() -> postService.createPost(req, images, 1L))
+                .isInstanceOf(ValidationException.class);
     }
 
     @Test

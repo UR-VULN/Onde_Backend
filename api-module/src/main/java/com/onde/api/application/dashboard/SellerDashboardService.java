@@ -1,6 +1,7 @@
 package com.onde.api.application.dashboard;
 
 import com.onde.api.application.dashboard.dto.DashboardResponse;
+import com.onde.api.application.dashboard.dto.SellerDashboardRevealResponse;
 import com.onde.core.entity.accommodation.Accommodation;
 import com.onde.core.entity.accommodation.Room;
 import com.onde.core.entity.accommodation.Car;
@@ -16,6 +17,8 @@ import com.onde.core.entity.settlement.Settlement;
 import com.onde.core.entity.settlement.SettlementStatus;
 import com.onde.core.entity.settlement.SellerAccount;
 import com.onde.core.repository.*;
+import com.onde.core.security.PersonalDataMasker;
+import com.onde.core.util.AesUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +44,7 @@ public class SellerDashboardService {
     private final MemberRepository memberRepository;
     private final SettlementRepository settlementRepository;
     private final PaymentRepository paymentRepository;
+    private final AesUtil aesUtil;
 
     public DashboardResponse getDashboardInfo(Member member) {
         Long sellerId = member.getId();
@@ -104,6 +108,7 @@ public class SellerDashboardService {
                 
                 String customerName = memberRepository.findById(res.getUserId())
                         .map(Member::getName)
+                        .map(PersonalDataMasker::maskName)
                         .orElse("회원");
 
                 allReservations.add(DashboardResponse.RecentReservationDto.builder()
@@ -136,6 +141,7 @@ public class SellerDashboardService {
                 
                 String customerName = memberRepository.findById(res.getUserId())
                         .map(Member::getName)
+                        .map(PersonalDataMasker::maskName)
                         .orElse("회원");
 
                 allReservations.add(DashboardResponse.RecentReservationDto.builder()
@@ -163,6 +169,7 @@ public class SellerDashboardService {
             
             String customerName = memberRepository.findById(fb.getUserId())
                     .map(Member::getName)
+                    .map(PersonalDataMasker::maskName)
                     .orElse("회원");
 
             allReservations.add(DashboardResponse.RecentReservationDto.builder()
@@ -184,9 +191,12 @@ public class SellerDashboardService {
 
         long totalRevenue = stayRevenue + carRevenue + flightRevenue;
 
+        String plainAccountNumber = resolvePlainAccountNumber(sellerAccount);
+
         return DashboardResponse.of(
                 member, 
                 sellerAccount,
+                plainAccountNumber,
                 accommodationCount,
                 carCount,
                 flightRouteCount,
@@ -197,5 +207,31 @@ public class SellerDashboardService {
                 recentList
         );
 
+    }
+
+    private String resolvePlainAccountNumber(SellerAccount sellerAccount) {
+        if (sellerAccount == null || sellerAccount.getAccountNumber() == null
+                || sellerAccount.getAccountNumber().isBlank()) {
+            return null;
+        }
+        String stored = sellerAccount.getAccountNumber().trim();
+        try {
+            String decrypted = aesUtil.decrypt(stored);
+            if (decrypted != null && !decrypted.isBlank()) {
+                return decrypted;
+            }
+        } catch (RuntimeException ignored) {
+            // DB에 평문으로 저장된 레거시 데이터
+        }
+        return stored;
+    }
+
+    public SellerDashboardRevealResponse getDashboardReveal(Member member) {
+        SellerAccount sellerAccount = sellerAccountRepository.findByMemberId(member.getId()).orElse(null);
+        return SellerDashboardRevealResponse.builder()
+                .email(member.getEmail())
+                .bankName(sellerAccount != null ? sellerAccount.getBankName() : null)
+                .accountNumber(resolvePlainAccountNumber(sellerAccount))
+                .build();
     }
 }

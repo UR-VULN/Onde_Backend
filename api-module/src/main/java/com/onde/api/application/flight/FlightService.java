@@ -5,6 +5,7 @@ import com.onde.api.application.flight.dto.FlightBookingResponse;
 import com.onde.api.application.flight.dto.FlightSearchRequest;
 import com.onde.api.application.flight.dto.FlightSearchResponse;
 import com.onde.core.entity.flight.*;
+import com.onde.core.security.PassportFieldCodec;
 import com.onde.core.exception.ErrorCode;
 import com.onde.core.exception.NotFoundException;
 import com.onde.core.exception.ValidationException;
@@ -16,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -32,6 +34,7 @@ public class FlightService {
     private final FlightScheduleRepository flightScheduleRepository;
     private final SeatInventoryRepository seatInventoryRepository;
     private final FlightBookingRepository flightBookingRepository;
+    private final PassportFieldCodec passportFieldCodec;
 
     @Cacheable(value = "flightSearch", key = "#a0", unless = "#result == null")
     public FlightSearchResponse searchFlights(FlightSearchRequest req) {
@@ -117,6 +120,11 @@ public class FlightService {
             throw new ValidationException(ErrorCode.SEAT_SOLD_OUT);
         }
 
+        BigDecimal serverTotalPrice = inventory.getBasePrice().multiply(BigDecimal.valueOf(passengerCount));
+        if (req.getTotalPrice() != null && req.getTotalPrice().compareTo(serverTotalPrice) != 0) {
+            throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
         // 4. 잔여석 1 감소 차감
         inventory.setRemainingSeats(inventory.getRemainingSeats() - passengerCount);
         seatInventoryRepository.save(inventory);
@@ -129,7 +137,7 @@ public class FlightService {
         // 6. 예약 객체 생성 및 영속화 (10분 선점 기한 바인딩)
         Passenger passenger = Passenger.builder()
                 .passengerName(req.getPassengerName())
-                .passengerPassport(req.getPassengerPassport())
+                .passengerPassport(passportFieldCodec.encryptForStorage(req.getPassengerPassport()))
                 .passengerBirthdate(req.getPassengerBirthdate())
                 .build();
 
@@ -139,7 +147,7 @@ public class FlightService {
                 .userId(userId)
                 .passenger(passenger)
                 .seatClass(req.getSeatClass())
-                .totalPrice(req.getTotalPrice() != null ? req.getTotalPrice() : inventory.getBasePrice().multiply(java.math.BigDecimal.valueOf(passengerCount)))
+                .totalPrice(serverTotalPrice)
                 .status(BookingStatus.PENDING_PAYMENT)
                 .reservedUntil(LocalDateTime.now().plusMinutes(10))
                 .build();

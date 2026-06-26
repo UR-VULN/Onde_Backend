@@ -91,6 +91,7 @@ class NtsBusinessVerificationServiceTest {
         NtsBusinessVerificationService service = new NtsBusinessVerificationService();
         ReflectionTestUtils.setField(service, "serviceKey", "test-key");
         ReflectionTestUtils.setField(service, "apiUrl", "http://127.0.0.1:" + server.getAddress().getPort() + "/validate");
+        ReflectionTestUtils.setField(service, "allowedApiHosts", "127.0.0.1");
         return service;
     }
 

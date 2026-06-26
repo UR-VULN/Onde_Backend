@@ -3,7 +3,6 @@ package com.onde.admin.application.settlement;
 import com.onde.core.entity.settlement.SellerAccount;
 import com.onde.core.repository.SellerAccountRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AdminSellerAccountService {
     private final SellerAccountRepository sellerAccountRepository;
-    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public void approveAccount(Long settlementId) {

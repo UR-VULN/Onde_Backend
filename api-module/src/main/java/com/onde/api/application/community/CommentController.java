@@ -4,13 +4,17 @@ import com.onde.api.application.community.dto.CommentDto;
 import com.onde.api.application.community.dto.CommentRequest;
 import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Validated
 @RestController
 @RequestMapping("/api/v1/posts")
 @RequiredArgsConstructor
@@ -20,8 +24,8 @@ public class CommentController {
 
     @PostMapping("/{postId}/comments")
     public ResponseEntity<ApiResponse<CommentDto>> createComment(
-            @PathVariable("postId") Long postId,
-            @RequestBody CommentRequest req,
+            @PathVariable("postId") @Min(1) Long postId,
+            @Valid @RequestBody CommentRequest req,
             @LoginMember Long memberId) {
 
         CommentDto response = commentService.createComment(postId, req, memberId);
@@ -32,7 +36,7 @@ public class CommentController {
 
     @GetMapping("/{postId}/comments")
     public ResponseEntity<ApiResponse<List<CommentDto>>> getComments(
-            @PathVariable("postId") Long postId,
+            @PathVariable("postId") @Min(1) Long postId,
             @LoginMember(required = false) Long memberId) {
 
         List<CommentDto> response = commentService.getComments(postId, memberId);
@@ -41,8 +45,8 @@ public class CommentController {
 
     @PutMapping("/comments/{commentId}")
     public ResponseEntity<ApiResponse<CommentDto>> updateComment(
-            @PathVariable("commentId") Long commentId,
-            @RequestBody CommentRequest req,
+            @PathVariable("commentId") @Min(1) Long commentId,
+            @Valid @RequestBody CommentRequest req,
             @LoginMember Long memberId) {
 
         CommentDto response = commentService.updateComment(commentId, req, memberId);
@@ -51,7 +55,7 @@ public class CommentController {
 
     @DeleteMapping("/comments/{commentId}")
     public ResponseEntity<ApiResponse<Void>> deleteComment(
-            @PathVariable("commentId") Long commentId,
+            @PathVariable("commentId") @Min(1) Long commentId,
             @LoginMember Long memberId) {
 
         commentService.deleteComment(commentId, memberId);

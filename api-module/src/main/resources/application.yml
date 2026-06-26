@@ -24,6 +24,7 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
   mail:
     host: smtp.gmail.com
     port: 587
@@ -39,6 +40,10 @@ spring:
 server:
   port: 8080
   forward-headers-strategy: framework
+  error:
+    whitelabel:
+      enabled: false
+  server-header: ""
 
 jwt:
   secret: ${JWT_SECRET}
@@ -54,17 +59,21 @@ aws:
 
 management:
   endpoints:
+    enabled-by-default: false
     web:
-      base-path: /api/v1  
+      base-path: /api/v1
+      discovery:
+        enabled: false
       exposure:
         include: health
   endpoint:
     health:
+      enabled: true
       probes:
-        enabled: true  
+        enabled: true
       group:
         liveness:
-          include: livenessState 
+          include: livenessState
   health:
     defaults:
       enabled: false    

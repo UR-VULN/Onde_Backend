@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface PostRepository extends JpaRepository<Post, Long>, PostRepositoryCustom {
+public interface PostRepository extends JpaRepository<Post, Long> {
 
     // 타입 필터 + ACTIVE 상태만 페이징 조회
     @Query(value = "SELECT p FROM Post p WHERE p.type = :type AND p.status = :status")

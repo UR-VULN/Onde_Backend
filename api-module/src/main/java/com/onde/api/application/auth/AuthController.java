@@ -1,45 +1,48 @@
 package com.onde.api.application.auth;
 
-import com.onde.api.application.auth.dto.LoginRequest;
-import com.onde.api.application.auth.dto.LoginResponse;
-import com.onde.api.application.auth.dto.SignupRequest;
-import com.onde.api.application.auth.dto.SignupResponse;
-import com.onde.api.application.auth.dto.TokenRefreshRequest;
-import com.onde.api.application.auth.dto.TokenRefreshResponse;
-import com.onde.core.entity.member.MemberRole;
-import com.onde.core.entity.member.MemberStatus;
+import com.onde.api.application.auth.dto.*;
+import com.onde.api.application.auth.support.AuthCookieSupport;
 import com.onde.core.support.ApiResponse;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import com.onde.core.validation.ValidationLimits;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
+@Validated
 @RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthCookieSupport authCookieSupport;
 
     @PostMapping("/api/v1/auth/signup")
     public ResponseEntity<ApiResponse<SignupResponse>> signup(@Valid @RequestBody SignupRequest request) {
         SignupResponse result = authService.signup(request);
-        String message = result.getRole() == MemberRole.SELLER && result.getStatus() == MemberStatus.PENDING
-                 ? "판매자 회원가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다."
-                 : "회원가입이 완료되었습니다.";
+        String message = result.getRole() == com.onde.core.entity.member.MemberRole.SELLER
+                && result.getStatus() == com.onde.core.entity.member.MemberStatus.PENDING
+                ? "판매자 회원가입이 완료되었습니다. 관리자 승인 후 로그인할 수 있습니다."
+                : "회원가입이 완료되었습니다.";
         return ResponseEntity
-                 .status(HttpStatus.CREATED)
-                 .body(ApiResponse.success(result, message));
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.success(result, message));
     }
 
-    @org.springframework.web.bind.annotation.GetMapping({"/check-nickname", "/api/v1/auth/check-nickname"})
-    public ResponseEntity<ApiResponse<Boolean>> checkNickname(@org.springframework.web.bind.annotation.RequestParam("nickname") String nickname) {
+    @GetMapping({"/check-nickname", "/api/v1/auth/check-nickname"})
+    public ResponseEntity<ApiResponse<Boolean>> checkNickname(
+            @RequestParam("nickname")
+            @NotBlank(message = "닉네임은 필수입니다.")
+            @Size(min = ValidationLimits.NICKNAME_MIN, max = ValidationLimits.NICKNAME_MAX, message = "닉네임은 2~30자여야 합니다.")
+            String nickname) {
         boolean duplicate = authService.checkNicknameDuplicate(nickname);
         if (duplicate) {
             return ResponseEntity.ok(ApiResponse.success(true, "이미 사용 중인 닉네임입니다."));
@@ -47,8 +50,13 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(false, "사용 가능한 닉네임입니다."));
     }
 
-    @org.springframework.web.bind.annotation.GetMapping({"/check-email", "/api/v1/auth/check-email"})
-    public ResponseEntity<ApiResponse<Boolean>> checkEmail(@org.springframework.web.bind.annotation.RequestParam("email") String email) {
+    @GetMapping({"/check-email", "/api/v1/auth/check-email"})
+    public ResponseEntity<ApiResponse<Boolean>> checkEmail(
+            @RequestParam("email")
+            @NotBlank(message = "이메일은 필수입니다.")
+            @Email(message = "올바른 이메일 형식이 아닙니다.")
+            @Size(max = ValidationLimits.EMAIL_MAX, message = "이메일은 320자 이하여야 합니다.")
+            String email) {
         boolean duplicate = authService.checkEmailDuplicate(email);
         if (duplicate) {
             return ResponseEntity.ok(ApiResponse.success(true, "이미 사용 중인 이메일입니다."));
@@ -56,96 +64,67 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(false, "사용 가능한 이메일입니다."));
     }
 
-
     @PostMapping("/api/v1/auth/login")
-    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
-        LoginResponse loginResponse = authService.login(request);
-
-        // Access Token 쿠키 설정 (30분)
-        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", loginResponse.getAccessToken())
-                .httpOnly(true)
-                .secure(true) // HTTPS 통신 강제
-                .path("/")
-                .sameSite("None") // 크로스 도메인 요청 허용
-                .maxAge(30 * 60)
-                .build();
-
-        // Refresh Token 쿠키 설정 (14일)
-        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", loginResponse.getRefreshToken())
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .sameSite("None")
-                .maxAge(14 * 24 * 60 * 60)
-                .build();
-
-        // 바디(Body)에도 프론트엔드가 필요한 정보(회원 ID, 권한 등)를 담아서 응답
+    public ResponseEntity<ApiResponse<LoginResponse>> login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest servletRequest) {
+        AuthSessionResult session = authService.login(request, servletRequest);
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
-                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
-                .body(ApiResponse.success(loginResponse, "로그인에 성공하였습니다."));
+                .header(HttpHeaders.SET_COOKIE, authCookieSupport.accessTokenCookie(session.getAccessToken()).toString())
+                .header(HttpHeaders.SET_COOKIE, authCookieSupport.refreshTokenCookie(session.getRefreshToken()).toString())
+                .body(ApiResponse.success(session.getProfile(), "로그인에 성공하였습니다."));
     }
 
     @PostMapping("/api/v1/auth/admin/login")
-    public ResponseEntity<ApiResponse<LoginResponse>> adminLogin(@Valid @RequestBody LoginRequest request) {
-        LoginResponse loginResponse = authService.adminLogin(request);
-
-        ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", loginResponse.getAccessToken())
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .sameSite("None")
-                .maxAge(30 * 60)
-                .build();
-
-        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", loginResponse.getRefreshToken())
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .sameSite("None")
-                .maxAge(14 * 24 * 60 * 60)
-                .build();
-
+    public ResponseEntity<ApiResponse<LoginResponse>> adminLogin(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest servletRequest) {
+        AuthSessionResult session = authService.adminLogin(request, servletRequest);
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, accessTokenCookie.toString())
-                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
-                .body(ApiResponse.success(loginResponse, "관리자 로그인에 성공하였습니다."));
+                .header(HttpHeaders.SET_COOKIE, authCookieSupport.accessTokenCookie(session.getAccessToken()).toString())
+                .header(HttpHeaders.SET_COOKIE, authCookieSupport.refreshTokenCookie(session.getRefreshToken()).toString())
+                .body(ApiResponse.success(session.getProfile(), "관리자 로그인에 성공하였습니다."));
     }
 
-    @PostMapping(value = "/api/v1/auth/refresh", headers = HttpHeaders.AUTHORIZATION)
-    public ResponseEntity<ApiResponse<TokenRefreshResponse>> refreshWithAuthorizationHeader(
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
-        String refreshToken = extractBearerToken(authorization);
-        if (refreshToken == null || refreshToken.isBlank()) {
-            throw new IllegalArgumentException("Refresh Token은 필수입니다.");
-        }
-
-        TokenRefreshResponse response = authService.refresh(refreshToken);
-        return ResponseEntity.ok(ApiResponse.success(response, "Access Token이 재발급되었습니다."));
+    @PostMapping("/api/v1/auth/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(HttpServletRequest request) {
+        String accessToken = resolveTokenFromCookie(request, "accessToken");
+        String refreshToken = resolveTokenFromCookie(request, "refreshToken");
+        authService.logout(accessToken, refreshToken);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, authCookieSupport.clearAccessTokenCookie().toString())
+                .header(HttpHeaders.SET_COOKIE, authCookieSupport.clearRefreshTokenCookie().toString())
+                .body(ApiResponse.success(null, "로그아웃되었습니다."));
     }
 
     @PostMapping("/api/v1/auth/refresh")
-    public ResponseEntity<ApiResponse<TokenRefreshResponse>> refresh(
-            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
-            @RequestBody(required = false) TokenRefreshRequest request) {
-        String refreshToken = null;
-        if (authorization != null && authorization.startsWith("Bearer ")) {
-            refreshToken = extractBearerToken(authorization);
-        } else if (request != null) {
-            refreshToken = request.getRefreshToken();
-        }
+    public ResponseEntity<ApiResponse<TokenRefreshResponse>> refresh(HttpServletRequest servletRequest) {
+        String refreshToken = resolveTokenFromCookie(servletRequest, "refreshToken");
+        return buildRefreshResponse(refreshToken, servletRequest);
+    }
+
+    private ResponseEntity<ApiResponse<TokenRefreshResponse>> buildRefreshResponse(
+            String refreshToken,
+            HttpServletRequest servletRequest) {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new IllegalArgumentException("Refresh Token은 필수입니다.");
         }
-
-        TokenRefreshResponse response = authService.refresh(refreshToken);
-        return ResponseEntity.ok(ApiResponse.success(response, "Access Token이 재발급되었습니다."));
+        RefreshSessionResult session = authService.refresh(refreshToken, servletRequest);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, authCookieSupport.accessTokenCookie(session.getAccessToken()).toString())
+                .body(ApiResponse.success(session.getProfile(), "Access Token이 재발급되었습니다."));
     }
 
-    private String extractBearerToken(String authorization) {
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
+    private String resolveTokenFromCookie(HttpServletRequest request, String cookieName) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
             return null;
         }
-        return authorization.substring(7);
+        for (Cookie cookie : cookies) {
+            if (cookieName.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 }

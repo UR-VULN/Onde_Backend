@@ -1,12 +1,17 @@
 package com.onde.api.application.accommodation;
 
+import com.onde.api.application.accommodation.support.SellerPropertyOwnershipService;
+import com.onde.api.security.LoginMember;
 import com.onde.core.entity.accommodation.Inventory;
 import com.onde.core.entity.reservation.ReservationTarget;
 import com.onde.core.repository.InventoryRepository;
 import com.onde.core.support.ApiResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
 import lombok.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -18,12 +23,14 @@ import java.util.*;
 /**
  * 판매자용 숙소/렌터카 일별 재고 및 가격 제어를 담당하는 컨트롤러입니다.
  */
+@Validated
 @RestController
 @RequestMapping("/api/v1/seller/inventory")
 @RequiredArgsConstructor
 public class SellerInventoryController {
 
     private final InventoryRepository inventoryRepository;
+    private final SellerPropertyOwnershipService sellerPropertyOwnershipService;
 
     /**
      * 특정 상품(숙소 객실 또는 차량)의 월별 재고 및 가격 달력 데이터를 조회합니다.
@@ -34,8 +41,17 @@ public class SellerInventoryController {
      */
     @GetMapping("/calendar")
     public ResponseEntity<ApiResponse<Map<String, CalendarDayInfo>>> getCalendar(
-            @RequestParam("propertyKey") String propertyKey,
-            @RequestParam("month") String monthStr) {
+            @LoginMember Long sellerId,
+            @RequestParam("propertyKey")
+            @NotBlank(message = "propertyKey는 필수입니다.")
+            @Pattern(regexp = "^(stay|car)-\\d+$", message = "propertyKey 형식이 올바르지 않습니다.")
+            String propertyKey,
+            @RequestParam("month")
+            @NotBlank(message = "month는 필수입니다.")
+            @Pattern(regexp = "^\\d{4}-\\d{2}$", message = "month는 YYYY-MM 형식이어야 합니다.")
+            String monthStr) {
+
+        sellerPropertyOwnershipService.assertSellerOwnsProperty(sellerId, propertyKey);
 
         // propertyKey를 파싱하여 대상 타입(ROOM/CAR)과 식별자(ID) 추출 (예: stay-1 -> ROOM, 1)
         ReservationTarget targetType = parseTargetType(propertyKey);
@@ -89,7 +105,11 @@ public class SellerInventoryController {
      */
     @PatchMapping("/calendar")
     @Transactional
-    public ResponseEntity<ApiResponse<Void>> updateCalendar(@RequestBody CalendarUpdateRequest request) {
+    public ResponseEntity<ApiResponse<Void>> updateCalendar(
+            @LoginMember Long sellerId,
+            @Valid @RequestBody CalendarUpdateRequest request) {
+        sellerPropertyOwnershipService.assertSellerOwnsProperty(sellerId, request.getPropertyKey());
+
         ReservationTarget targetType = parseTargetType(request.getPropertyKey());
         Long targetId = parseTargetId(request.getPropertyKey());
 
@@ -173,10 +193,25 @@ public class SellerInventoryController {
     @AllArgsConstructor
     @Builder
     public static class CalendarUpdateRequest {
-        private String propertyKey; // 예: stay-1
-        private String month;       // 예: "2026-05" (미지정 시 기본 2026-05로 바인딩)
-        private Integer day;        // 일자 (1 ~ 31)
-        private Integer stock;      // 변경할 재고 수량
-        private Long price;         // 변경할 가격
+
+        @NotBlank(message = "propertyKey는 필수입니다.")
+        @Pattern(regexp = "^(stay|car)-\\d+$", message = "propertyKey 형식이 올바르지 않습니다.")
+        private String propertyKey;
+
+        @Pattern(regexp = "^\\d{4}-\\d{2}$", message = "month는 YYYY-MM 형식이어야 합니다.")
+        private String month;
+
+        @NotNull(message = "day는 필수입니다.")
+        @Min(value = 1, message = "day는 1~31 사이여야 합니다.")
+        @Max(value = 31, message = "day는 1~31 사이여야 합니다.")
+        private Integer day;
+
+        @Min(value = 0, message = "재고는 0 이상이어야 합니다.")
+        @Max(value = 9999, message = "재고가 허용 범위를 초과합니다.")
+        private Integer stock;
+
+        @Min(value = 0, message = "가격은 0원 이상이어야 합니다.")
+        @Max(value = 999999999, message = "가격이 허용 범위를 초과합니다.")
+        private Long price;
     }
 }

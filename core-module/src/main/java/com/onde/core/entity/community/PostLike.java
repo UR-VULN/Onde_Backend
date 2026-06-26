@@ -1,6 +1,5 @@
 package com.onde.core.entity.community;
 
-import com.onde.core.entity.member.Member;
 import jakarta.persistence.*;
 import lombok.*;
 

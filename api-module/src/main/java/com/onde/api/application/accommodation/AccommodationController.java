@@ -6,12 +6,15 @@ import com.onde.api.application.accommodation.dto.RoomReservationRequest;
 import com.onde.api.application.accommodation.dto.CarReservationRequest;
 import com.onde.api.application.accommodation.dto.ReservationResponse;
 import com.onde.core.support.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import com.onde.api.security.LoginMember;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+@Validated
 @RestController
 @RequestMapping("/api/v1/accommodations") // 👈 프로젝트 공통 표준 v1 및 도메인 네임 스페이스로 통합
 @RequiredArgsConstructor
@@ -25,7 +28,7 @@ public class AccommodationController {
      */
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<AccommodationSearchResponse>> search(
-            AccommodationSearchRequest request) {
+            @Valid @ModelAttribute AccommodationSearchRequest request) {
 
         AccommodationSearchResponse response = accommodationService.searchAccommodations(request);
         return ResponseEntity.ok(ApiResponse.success(response, "숙소 조회가 완료되었습니다."));
@@ -37,12 +40,9 @@ public class AccommodationController {
     @PostMapping("/reservations/rooms")
     public ResponseEntity<ApiResponse<ReservationResponse>> reserveRoom(
             @LoginMember Long userId,
-            @RequestBody RoomReservationRequest req) {
+            @Valid @RequestBody RoomReservationRequest req) {
 
-        if (req.getMemberId() == null) {
-            req.setMemberId(userId);
-        }
-        com.onde.core.entity.reservation.Reservation reservation = reservationService.reserveRoom(req);
+        com.onde.core.entity.reservation.Reservation reservation = reservationService.reserveRoom(userId, req);
         ReservationResponse response = new ReservationResponse(
                 reservation.getId(),
                 reservation.getTargetType(),
@@ -64,12 +64,9 @@ public class AccommodationController {
     @PostMapping("/reservations/cars")
     public ResponseEntity<ApiResponse<ReservationResponse>> reserveCar(
             @LoginMember Long userId,
-            @RequestBody CarReservationRequest req) {
+            @Valid @RequestBody CarReservationRequest req) {
 
-        if (req.getMemberId() == null) {
-            req.setMemberId(userId);
-        }
-        com.onde.core.entity.reservation.Reservation reservation = reservationService.reserveCar(req);
+        com.onde.core.entity.reservation.Reservation reservation = reservationService.reserveCar(userId, req);
         ReservationResponse response = new ReservationResponse(
                 reservation.getId(),
                 reservation.getTargetType(),

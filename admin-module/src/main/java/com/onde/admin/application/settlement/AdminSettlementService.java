@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -139,8 +138,9 @@ public class AdminSettlementService {
      */
     @Transactional(readOnly = true)
     public List<PaymentRepository.SettlementDetailProjection> getSettlementDetails(Long settlementId) {
-        Settlement settlement = settlementRepository.findById(settlementId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 정산 건이 존재하지 않습니다."));
+        if (!settlementRepository.existsById(settlementId)) {
+            throw new IllegalArgumentException("해당 정산 건이 존재하지 않습니다.");
+        }
 
         return paymentRepository.findSettlementDetails(settlementId);
     }

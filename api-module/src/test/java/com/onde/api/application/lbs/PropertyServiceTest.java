@@ -3,8 +3,6 @@ package com.onde.api.application.lbs;
 import com.onde.api.application.lbs.dto.PropertyRegisterRequest;
 import com.onde.api.application.lbs.dto.PropertyRegisterResponse;
 import com.onde.core.entity.lbs.Property;
-import com.onde.core.entity.member.Member;
-import com.onde.core.entity.member.MemberRole;
 import com.onde.core.exception.ValidationException;
 import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.PropertyRepository;
@@ -15,8 +13,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import java.time.LocalDateTime;
-import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

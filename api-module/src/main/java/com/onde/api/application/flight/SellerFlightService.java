@@ -235,7 +235,7 @@ public class SellerFlightService {
         java.math.BigDecimal newPrice = req.getEffectiveNewPrice();
 
         // 1. 스케줄 유효성 검증
-        FlightSchedule schedule = flightScheduleRepository.findById(scheduleId)
+        flightScheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.FLIGHT_SCHEDULE_NOT_FOUND));
 
         // 2. 대상 등급의 재고 비관적 락 조회

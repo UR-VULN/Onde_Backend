@@ -4,14 +4,18 @@ import com.onde.api.application.payment.dto.request.*;
 import com.onde.api.application.payment.dto.response.*;
 import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
  * 결제 관련 API 요청을 처리하는 컨트롤러 클래스입니다.
  * 결제 사전 등록/검증, 사후 검증 및 완료, 결제 취소(환불) 기능을 제공합니다.
  */
+@Validated
 @RestController
 @RequestMapping("/api/v1/payments")
 @RequiredArgsConstructor
@@ -30,7 +34,7 @@ public class PaymentController {
     @PostMapping("/prepare")
     public ResponseEntity<ApiResponse<PaymentPrepareResponse>> preparePayment(
             @LoginMember Long userId,
-            @RequestBody PaymentPrepareRequest body) {
+            @Valid @RequestBody PaymentPrepareRequest body) {
 
         PaymentPrepareResponse result = paymentService.preparePayment(userId, body);
         return ResponseEntity.ok(ApiResponse.success(result, "결제 사전 검증 완료. merchantUid로 결제를 진행하세요."));
@@ -47,7 +51,7 @@ public class PaymentController {
     @PostMapping("/validate")
     public ResponseEntity<ApiResponse<PaymentValidateResponse>> validatePayment(
             @LoginMember Long userId,
-            @RequestBody PaymentValidateRequest body) {
+            @Valid @RequestBody PaymentValidateRequest body) {
 
         PaymentValidateResponse result = paymentService.validatePayment(userId, body);
         return ResponseEntity.ok(ApiResponse.success(result, "결제가 최종 승인되었습니다."));
@@ -64,8 +68,8 @@ public class PaymentController {
     @PostMapping("/{paymentId}/cancel")
     public ResponseEntity<ApiResponse<PaymentCancelResponse>> cancelPayment(
             @LoginMember Long userId,
-            @PathVariable("paymentId") Long paymentId,
-            @RequestBody PaymentCancelRequest body) {
+            @PathVariable("paymentId") @Min(1) Long paymentId,
+            @Valid @RequestBody PaymentCancelRequest body) {
 
         PaymentCancelResponse result = paymentService.cancelPayment(userId, paymentId, body);
         return ResponseEntity.ok(ApiResponse.success(result, "결제가 취소되었습니다."));

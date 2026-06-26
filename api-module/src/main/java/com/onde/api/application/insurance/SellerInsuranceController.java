@@ -4,6 +4,7 @@ import com.onde.api.application.insurance.dto.SellerInsuranceRegisterRequest;
 import com.onde.api.application.insurance.dto.SellerInsuranceRegisterResponse;
 import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +19,7 @@ public class SellerInsuranceController {
 
     @PostMapping({"/insurances", "/insurance"})
     public ResponseEntity<ApiResponse<SellerInsuranceRegisterResponse>> proposeInsuranceProduct(
-            @RequestBody SellerInsuranceRegisterRequest req,
+            @Valid @RequestBody SellerInsuranceRegisterRequest req,
             @LoginMember Long actualSellerId) {
 
         SellerInsuranceRegisterResponse response = sellerInsuranceService.proposeInsuranceProduct(req, actualSellerId);

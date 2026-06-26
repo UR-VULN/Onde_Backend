@@ -3,6 +3,7 @@ package com.onde.api.application.dashboard.dto;
 import com.onde.core.entity.member.Member;
 import com.onde.core.entity.settlement.AccountStatus;
 import com.onde.core.entity.settlement.SellerAccount;
+import com.onde.core.security.PersonalDataMasker;
 import lombok.Builder;
 import lombok.Getter;
 import java.util.List;
@@ -44,6 +45,7 @@ public class DashboardResponse {
     public static DashboardResponse of(
             Member member, 
             SellerAccount sellerAccount,
+            String plainAccountNumber,
             long accommodationCount,
             long carCount,
             long flightRouteCount,
@@ -54,10 +56,12 @@ public class DashboardResponse {
             List<RecentReservationDto> recentReservations) {
             
         return DashboardResponse.builder()
-                .email(member.getEmail())
+                .email(PersonalDataMasker.maskEmail(member.getEmail()))
                 .accountStatus(sellerAccount != null ? sellerAccount.getStatus() : null)
-                .bankName(sellerAccount != null ? sellerAccount.getBankName() : null)
-                .accountNumber(sellerAccount != null ? sellerAccount.getAccountNumber() : null)
+                .bankName(sellerAccount != null ? PersonalDataMasker.maskBankName(sellerAccount.getBankName()) : null)
+                .accountNumber(plainAccountNumber != null
+                        ? PersonalDataMasker.maskAccountNumber(plainAccountNumber)
+                        : null)
                 .accommodationCount(accommodationCount)
                 .carCount(carCount)
                 .flightRouteCount(flightRouteCount)

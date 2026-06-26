@@ -1,6 +1,12 @@
 package com.onde.api.application.accommodation;
 
+import com.onde.api.application.accommodation.dto.SellerCarInventoryUpdateRequest;
+import com.onde.api.application.accommodation.dto.SellerCarMultipartForm;
+import com.onde.core.validation.MultipartInputValidator;
+import com.onde.api.application.accommodation.dto.SellerCarRegisterRequest;
 import com.onde.api.security.LoginMember;
+import jakarta.validation.Valid;
+import org.springframework.validation.annotation.Validated;
 import com.onde.core.entity.accommodation.Car;
 import com.onde.core.entity.accommodation.Inventory;
 import com.onde.core.entity.reservation.ReservationTarget;
@@ -18,6 +24,7 @@ import java.util.Map;
 
 import org.springframework.web.multipart.MultipartFile;
 
+@Validated
 @RestController
 @RequestMapping("/api/v1/seller")
 @RequiredArgsConstructor
@@ -57,44 +64,36 @@ public class SellerCarController {
     @PostMapping(value = "/cars", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<Long>> registerCarMultipart(
             @RequestParam(required = false) MultipartFile thumbnail,
-            @RequestParam String licensePlate,
-            @RequestParam String modelName,
-            @RequestParam String carType,
-            @RequestParam(required = false) String dailyPrice,
-            @RequestParam(required = false) String location,
+            @Valid @ModelAttribute SellerCarMultipartForm form,
             @LoginMember Long sellerId) {
-        if (licensePlate == null || licensePlate.isBlank()) {
-            throw new IllegalArgumentException("licensePlate은 필수입니다.");
-        }
-        if (carRepository.existsByLicensePlate(licensePlate)) {
+        MultipartInputValidator.validateOptionalImage(thumbnail);
+
+        if (carRepository.existsByLicensePlate(form.getLicensePlate())) {
             throw new IllegalArgumentException("이미 등록된 차량 번호입니다.");
         }
 
         Car car = new Car();
         car.setSellerId(sellerId);
-        car.setModelName(modelName);
-        car.setCarType(carType);
-        car.setLicensePlate(licensePlate);
-        car.setLocation(location == null || location.isBlank() ? "제주" : location);
+        car.setModelName(form.getModelName());
+        car.setCarType(form.getCarType());
+        car.setLicensePlate(form.getLicensePlate());
+        car.setLocation(form.getLocation() == null || form.getLocation().isBlank() ? "제주" : form.getLocation());
         car.setApprovalStatus(com.onde.core.entity.accommodation.ApprovalStatus.PENDING);
         if (thumbnail != null && !thumbnail.isEmpty()) {
             car.setThumbnailUrl(s3Uploader.upload(thumbnail, "cars"));
         }
         Car saved = carRepository.save(car);
 
+        String dailyPrice = form.getDailyPrice();
         if (dailyPrice != null && !dailyPrice.isBlank()) {
-            try {
-                BigDecimal priceVal = new BigDecimal(dailyPrice);
-                Inventory inventory = new Inventory();
-                inventory.setTargetType(ReservationTarget.CAR);
-                inventory.setTargetId(saved.getId());
-                inventory.setDate(LocalDate.now());
-                inventory.setBasePrice(priceVal);
-                inventory.setStock(1);
-                inventoryRepository.save(inventory);
-            } catch (Exception e) {
-                // ignore
-            }
+            BigDecimal priceVal = new BigDecimal(dailyPrice);
+            Inventory inventory = new Inventory();
+            inventory.setTargetType(ReservationTarget.CAR);
+            inventory.setTargetId(saved.getId());
+            inventory.setDate(LocalDate.now());
+            inventory.setBasePrice(priceVal);
+            inventory.setStock(1);
+            inventoryRepository.save(inventory);
         }
 
         return ResponseEntity.ok(ApiResponse.success(saved.getId(), "렌터카 등록 신청이 완료되었습니다."));
@@ -102,37 +101,31 @@ public class SellerCarController {
 
     @PostMapping("/cars")
     public ResponseEntity<ApiResponse<Long>> registerCar(
-            @RequestBody Map<String, Object> request,
+            @Valid @RequestBody SellerCarRegisterRequest request,
             @LoginMember Long sellerId) {
-        String licensePlate = stringValue(request.getOrDefault("licensePlate", request.get("licencePlate")));
-        if (licensePlate == null || licensePlate.isBlank()) {
-            throw new IllegalArgumentException("licensePlate은 필수입니다.");
-        }
-        if (carRepository.existsByLicensePlate(licensePlate)) {
+        if (carRepository.existsByLicensePlate(request.getLicensePlate())) {
             throw new IllegalArgumentException("이미 등록된 차량 번호입니다.");
         }
 
         Car car = new Car();
         car.setSellerId(sellerId);
-        car.setModelName(stringValue(request.get("modelName")));
-        car.setCarType(stringValue(request.get("carType")));
-        car.setLicensePlate(licensePlate);
+        car.setModelName(request.getModelName());
+        car.setCarType(request.getCarType());
+        car.setLicensePlate(request.getLicensePlate());
         car.setApprovalStatus(com.onde.core.entity.accommodation.ApprovalStatus.PENDING);
-        
-        Object thumbnailUrl = request.get("thumbnailUrl");
-        if (thumbnailUrl != null) {
-            car.setThumbnailUrl(stringValue(thumbnailUrl));
+
+        if (request.getThumbnailUrl() != null) {
+            car.setThumbnailUrl(request.getThumbnailUrl());
         }
-        
+
         Car saved = carRepository.save(car);
 
-        Object dailyPrice = request.get("dailyPrice");
-        if (dailyPrice != null) {
+        if (request.getDailyPrice() != null) {
             Inventory inventory = new Inventory();
             inventory.setTargetType(ReservationTarget.CAR);
             inventory.setTargetId(saved.getId());
             inventory.setDate(LocalDate.now());
-            inventory.setBasePrice(toBigDecimal(dailyPrice));
+            inventory.setBasePrice(BigDecimal.valueOf(request.getDailyPrice()));
             inventory.setStock(1);
             inventoryRepository.save(inventory);
         }
@@ -142,9 +135,9 @@ public class SellerCarController {
 
     @PutMapping("/inventories/cars")
     public ResponseEntity<ApiResponse<Void>> updateCarInventory(
-            @RequestBody Map<String, Object> request,
+            @Valid @RequestBody SellerCarInventoryUpdateRequest request,
             @LoginMember Long sellerId) {
-        Long carId = Long.valueOf(String.valueOf(request.get("carId")));
+        Long carId = request.getCarId();
         Car car = carRepository.findById(carId)
                 .orElseThrow(() -> new IllegalArgumentException("carId가 존재하지 않습니다."));
         if (!car.getSellerId().equals(sellerId)) {
@@ -162,24 +155,13 @@ public class SellerCarController {
                     created.setStock(0);
                     return created;
                 });
-        if (request.get("dailyPrice") != null) {
-            inventory.setBasePrice(toBigDecimal(request.get("dailyPrice")));
+        if (request.getDailyPrice() != null) {
+            inventory.setBasePrice(request.getDailyPrice());
         }
-        if (request.get("availableCount") != null) {
-            inventory.setStock(Integer.valueOf(String.valueOf(request.get("availableCount"))));
+        if (request.getAvailableCount() != null) {
+            inventory.setStock(request.getAvailableCount());
         }
         inventoryRepository.save(inventory);
         return ResponseEntity.ok(ApiResponse.success(null, "렌터카 재고 및 가격이 수정되었습니다."));
-    }
-
-    private String stringValue(Object value) {
-        return value == null ? null : String.valueOf(value);
-    }
-
-    private BigDecimal toBigDecimal(Object value) {
-        if (value instanceof Number number) {
-            return BigDecimal.valueOf(number.doubleValue());
-        }
-        return new BigDecimal(String.valueOf(value));
     }
 }

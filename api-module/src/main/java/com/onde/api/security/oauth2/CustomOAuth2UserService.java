@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.HashMap;
 import java.util.UUID;
 
 @Service
@@ -45,8 +46,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             providerId = String.valueOf(attributes.get("sub")); // Google uses "sub"
             provider = AuthProvider.GOOGLE;
         } else if ("kakao".equals(registrationId)) {
-            Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
-            Map<String, Object> properties = (Map<String, Object>) attributes.get("properties");
+            Map<String, Object> kakaoAccount = toStringObjectMap(attributes.get("kakao_account"));
+            Map<String, Object> properties = toStringObjectMap(attributes.get("properties"));
             
             // 카카오에서 email 제공 동의를 받지 않으면 null일 수 있음
             if (kakaoAccount != null && kakaoAccount.containsKey("email")) {
@@ -74,6 +75,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     MemberRole role = (finalEmail != null && !finalEmail.trim().isEmpty()) ? MemberRole.USER : MemberRole.GUEST;
                     
                     Member newMember = Member.builder()
+                            .authSubjectId(UUID.randomUUID().toString())
                             .email(finalEmail)
                             .providerId(finalProviderId)
                             .password(dummyPassword)
@@ -82,9 +84,23 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                             .status(MemberStatus.ACTIVE)
                             .provider(finalProvider)
                             .build();
+                    newMember.markPasswordUpdatedNow();
                     return memberRepository.save(newMember);
                 });
 
         return new CustomUserDetails(member, attributes);
+    }
+
+    private static Map<String, Object> toStringObjectMap(Object value) {
+        if (!(value instanceof Map<?, ?> rawMap)) {
+            return Map.of();
+        }
+        Map<String, Object> result = new HashMap<>();
+        rawMap.forEach((key, entryValue) -> {
+            if (key instanceof String stringKey) {
+                result.put(stringKey, entryValue);
+            }
+        });
+        return result;
     }
 }

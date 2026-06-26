@@ -25,6 +25,8 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class CommentService {
 
+    private static final String ANONYMOUS_AUTHOR = "익명";
+
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
@@ -62,12 +64,7 @@ public class CommentService {
             }
         }
 
-        String authorName = member.getNickname();
-        if (authorName == null || authorName.isEmpty()) {
-            authorName = "User-" + memberId;
-        }
-
-        return CommentDto.of(savedComment, authorName, savedComment.getContent());
+        return CommentDto.of(savedComment, resolveAuthorName(member), savedComment.getContent(), true);
     }
 
     public List<CommentDto> getComments(Long postId, Long memberId) {
@@ -78,24 +75,21 @@ public class CommentService {
 
         return comments.stream().map(comment -> {
             String authorName = memberRepository.findById(comment.getMemberId())
-                    .map(m -> {
-                        String nickname = m.getNickname();
-                        return (nickname != null && !nickname.isEmpty()) ? nickname : "User-" + comment.getMemberId();
-                    })
+                    .map(this::resolveAuthorName)
                     .orElse("탈퇴한 회원");
 
             String displayContent = comment.getContent();
+            boolean isMine = memberId != null && comment.getMemberId().equals(memberId);
 
             // 비밀댓글 열람 권한 검증: 비밀글인 경우 댓글 작성자 본인 혹은 원본 게시글 작성자만 볼 수 있음
             if (comment.getIsSecret()) {
-                boolean hasPermission = memberId != null && 
-                        (comment.getMemberId().equals(memberId) || post.getMemberId().equals(memberId));
+                boolean hasPermission = isMine || (memberId != null && post.getMemberId().equals(memberId));
                 if (!hasPermission) {
                     displayContent = "비밀 댓글입니다.";
                 }
             }
 
-            return CommentDto.of(comment, authorName, displayContent);
+            return CommentDto.of(comment, authorName, displayContent, isMine);
         }).toList();
     }
 
@@ -113,12 +107,8 @@ public class CommentService {
 
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
-        String authorName = member.getNickname();
-        if (authorName == null || authorName.isEmpty()) {
-            authorName = "User-" + memberId;
-        }
 
-        return CommentDto.of(updatedComment, authorName, updatedComment.getContent());
+        return CommentDto.of(updatedComment, resolveAuthorName(member), updatedComment.getContent(), true);
     }
 
     @Transactional
@@ -137,5 +127,13 @@ public class CommentService {
 
         post.decrementCommentCount();
         postRepository.save(post);
+    }
+
+    private String resolveAuthorName(Member member) {
+        String nickname = member.getNickname();
+        if (nickname != null && !nickname.isBlank()) {
+            return nickname;
+        }
+        return ANONYMOUS_AUTHOR;
     }
 }

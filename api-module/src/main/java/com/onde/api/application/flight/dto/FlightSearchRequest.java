@@ -1,12 +1,10 @@
 package com.onde.api.application.flight.dto;
 
-import com.onde.core.entity.flight.SeatClass;
+import com.onde.core.validation.ValidationLimits;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
 import lombok.*;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -17,49 +15,71 @@ import java.util.stream.Collectors;
 @EqualsAndHashCode
 public class FlightSearchRequest {
 
-    private String origin;         // PDF spec: ICN
-    private String destination;    // PDF spec: NRT
-    private String departDate;     // PDF spec: 2026-06-01
-    private Integer adults;        // PDF spec: 1+
+    @Size(max = 10, message = "출발지 형식이 올바르지 않습니다.")
+    private String origin;
 
-    private String tripType;       // ONE_WAY, ROUND_TRIP, MULTI_CITY
-    private String departures;     // ICN,NRT
-    private String arrivals;       // SFO,ICN
-    private String dates;          // 2026-07-01,2026-07-10
-    private String seatClass;      // FIRST, BUSINESS, ECONOMY (Optional)
+    @Size(max = 10, message = "도착지 형식이 올바르지 않습니다.")
+    private String destination;
+
+    @Size(max = 10, message = "출발일 형식이 올바르지 않습니다.")
+    private String departDate;
+
+    @Min(value = 1, message = "성인 승객 수는 1명 이상이어야 합니다.")
+    @Max(value = ValidationLimits.PASSENGER_MAX, message = "성인 승객 수는 9명 이하여야 합니다.")
+    private Integer adults;
+
+    @Size(max = 20, message = "tripType 형식이 올바르지 않습니다.")
+    private String tripType;
+
+    @Size(max = 200, message = "departures 형식이 올바르지 않습니다.")
+    private String departures;
+
+    @Size(max = 200, message = "arrivals 형식이 올바르지 않습니다.")
+    private String arrivals;
+
+    @Size(max = 200, message = "dates 형식이 올바르지 않습니다.")
+    private String dates;
+
+    @Size(max = 20, message = "seatClass 형식이 올바르지 않습니다.")
+    private String seatClass;
+
     @Builder.Default
-    private Integer passengerCount = 1; // (Optional)
+    @Min(value = 1, message = "승객 수는 1명 이상이어야 합니다.")
+    @Max(value = ValidationLimits.PASSENGER_MAX, message = "승객 수는 9명 이하여야 합니다.")
+    private Integer passengerCount = 1;
 
-    public List<String> getDepartureList() {
+    // --- 기존 파싱 로직 유지 ---
+
+    public java.util.List<String> getDepartureList() {
         String value = hasText(departures) ? departures : origin;
         if (!hasText(value)) {
             throw new IllegalArgumentException("origin is required");
         }
-        return Arrays.stream(value.split(","))
+        return java.util.Arrays.stream(value.split(","))
                 .map(String::trim)
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    public List<String> getArrivalList() {
+    public java.util.List<String> getArrivalList() {
         String value = hasText(arrivals) ? arrivals : destination;
         if (!hasText(value)) {
             throw new IllegalArgumentException("destination is required");
         }
-        return Arrays.stream(value.split(","))
+        return java.util.Arrays.stream(value.split(","))
                 .map(String::trim)
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    public List<LocalDate> getDateList() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    public java.util.List<java.time.LocalDate> getDateList() {
+        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
         String value = hasText(dates) ? dates : departDate;
         if (!hasText(value)) {
             throw new IllegalArgumentException("departDate is required");
         }
-        return Arrays.stream(value.split(","))
+        return java.util.Arrays.stream(value.split(","))
                 .map(String::trim)
-                .map(d -> LocalDate.parse(d, formatter))
-                .collect(Collectors.toList());
+                .map(d -> java.time.LocalDate.parse(d, formatter))
+                .toList();
     }
 
     public Integer getPassengerCount() {
@@ -72,11 +92,11 @@ public class FlightSearchRequest {
         return 1;
     }
 
-    public SeatClass getParsedSeatClass() {
+    public com.onde.core.entity.flight.SeatClass getParsedSeatClass() {
         if (seatClass == null || seatClass.isBlank()) {
             return null;
         }
-        return SeatClass.valueOf(seatClass.trim().toUpperCase());
+        return com.onde.core.entity.flight.SeatClass.valueOf(seatClass.trim().toUpperCase());
     }
 
     private boolean hasText(String value) {

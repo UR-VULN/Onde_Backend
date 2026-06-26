@@ -7,13 +7,18 @@ import com.onde.api.application.flight.dto.SellerScheduleControlRequest;
 import com.onde.api.application.flight.dto.SellerScheduleControlResponse;
 import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+@Validated
 @RestController
 @RequiredArgsConstructor
 public class SellerFlightController {
@@ -22,7 +27,7 @@ public class SellerFlightController {
 
     @PostMapping("/api/v1/seller/flights")
     public ResponseEntity<ApiResponse<SellerFlightRegisterResponse>> registerBulkSchedules(
-            @RequestBody SellerFlightRegisterRequest req,
+            @Valid @RequestBody SellerFlightRegisterRequest req,
             @LoginMember Long actualSellerId) {
         
         SellerFlightRegisterResponse response = sellerFlightService.registerBulkSchedules(req, actualSellerId);
@@ -35,9 +40,9 @@ public class SellerFlightController {
 
     @GetMapping({"/api/v1/seller/schedules/calendar", "/api/v1/seller/flights/calendar"})
     public ResponseEntity<ApiResponse<List<SellerCalendarResponse>>> getCalendarSchedules(
-            @RequestParam(value = "routeId", required = false) Long routeId,
-            @RequestParam("year") Integer year,
-            @RequestParam("month") Integer month,
+            @RequestParam(value = "routeId", required = false) @Min(1) Long routeId,
+            @RequestParam("year") @Min(2000) @Max(2100) Integer year,
+            @RequestParam("month") @Min(1) @Max(12) Integer month,
             @LoginMember Long actualSellerId) {
 
         List<SellerCalendarResponse> response = sellerFlightService.getCalendarSchedules(routeId, year, month, actualSellerId);
@@ -46,8 +51,8 @@ public class SellerFlightController {
 
     @PatchMapping({"/api/v1/seller/schedules/{scheduleId}/control", "/api/v1/seller/flights/schedules/{scheduleId}/control"}) // 다중 엔드포인트 오타 완전 수용
     public ResponseEntity<ApiResponse<SellerScheduleControlResponse>> controlSchedule(
-            @PathVariable("scheduleId") Long scheduleId,
-            @RequestBody SellerScheduleControlRequest req,
+            @PathVariable("scheduleId") @Min(1) Long scheduleId,
+            @Valid @RequestBody SellerScheduleControlRequest req,
             @LoginMember Long actualSellerId) {
 
         SellerScheduleControlResponse response = sellerFlightService.controlSchedule(scheduleId, req, actualSellerId);

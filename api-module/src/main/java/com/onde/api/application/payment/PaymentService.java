@@ -17,6 +17,8 @@ import com.onde.core.repository.FlightBookingRepository;
 import com.onde.core.repository.InsurancePolicyRepository;
 import com.onde.core.repository.PaymentRepository;
 import com.onde.core.repository.ReservationRepository;
+import com.onde.core.exception.ErrorCode;
+import com.onde.core.exception.ForbiddenException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -119,6 +121,10 @@ public class PaymentService {
         // 1. 사전에 등록했던 PENDING 상태의 결제 정보 조회
         Payment payment = paymentRepository.findByMerchantUid(req.getMerchantUid())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 주문번호입니다."));
+
+        if (payment.getUserId() == null || !payment.getUserId().equals(userId)) {
+            throw new ForbiddenException(ErrorCode.PAYMENT_NOT_OWNER);
+        }
 
         // 2. 금액 위변조 여부 검증 (사전에 약속된 청구금액과 실제 결제 금액 비교)
         if (payment.getPgAmount().compareTo(req.getPgAmount()) != 0) {

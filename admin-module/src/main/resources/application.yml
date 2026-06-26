@@ -19,6 +19,7 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
   mail:
     host: smtp.gmail.com
     port: 587
@@ -33,6 +34,11 @@ spring:
 
 server:
   port: 8081
+  forward-headers-strategy: framework
+  error:
+    whitelabel:
+      enabled: false
+  server-header: ""
 
 jwt:
   secret: ${JWT_SECRET}
@@ -48,17 +54,21 @@ aws:
 
 management:
   endpoints:
+    enabled-by-default: false
     web:
-      base-path: /api/v1/admin   
+      base-path: /api/v1/admin
+      discovery:
+        enabled: false
       exposure:
         include: health
   endpoint:
     health:
-      show-details: always 
+      enabled: true
+      show-details: always
       probes:
-        enabled: true       
+        enabled: true
       group:
         readiness:
-          include: readinessState, mariadb 
+          include: readinessState, mariadb
   health:
     allowed-ip: ${HEALTH_CHECK_ALLOWED_IP}

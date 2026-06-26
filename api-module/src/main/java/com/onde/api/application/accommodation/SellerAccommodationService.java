@@ -40,9 +40,9 @@ public class SellerAccommodationService {
      * @return 등록 완료된 숙소 ID
      */
     @Transactional
-    public Long registerAccommodation(SellerAccommodationRegisterRequest request) {
+    public Long registerAccommodation(Long sellerId, SellerAccommodationRegisterRequest request) {
         Accommodation accommodation = new Accommodation();
-        accommodation.setSellerId(request.getSellerId());
+        accommodation.setSellerId(sellerId);
         accommodation.setName(request.getName());
         accommodation.setDescription(request.getDescription());
         accommodation.setCategory(request.getCategory());
@@ -79,7 +79,7 @@ public class SellerAccommodationService {
         // Save map property marker if latitude & longitude are present
         if (request.getLatitude() != null && request.getLongitude() != null) {
             Property property = Property.builder()
-                    .sellerId(request.getSellerId())
+                    .sellerId(sellerId)
                     .addressName(request.getName())
                     .latitude(request.getLatitude())
                     .longitude(request.getLongitude())

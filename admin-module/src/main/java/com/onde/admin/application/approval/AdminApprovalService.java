@@ -51,9 +51,10 @@ public class AdminApprovalService {
         List<AdminPendingApprovalsResponse.PendingInsuranceDto> insurances = new ArrayList<>();
         // ※ 만약 숙소와 렌터카도 대시보드 DTO에 추가해야 한다면 여기에 List 선언 후 아래 분기문에서 적재 가능
 
-        boolean isGlobal = category == null || category.trim().isBlank();
-        boolean loadFlight = isGlobal || category.trim().equalsIgnoreCase("FLIGHT");
-        boolean loadInsurance = isGlobal || category.trim().equalsIgnoreCase("INSURANCE");
+        String normalizedCategory = category == null ? "" : category.trim();
+        boolean isGlobal = normalizedCategory.isBlank();
+        boolean loadFlight = isGlobal || "FLIGHT".equalsIgnoreCase(normalizedCategory);
+        boolean loadInsurance = isGlobal || "INSURANCE".equalsIgnoreCase(normalizedCategory);
 
         // 1. 항공 스케줄 대기 목록 로드
         if (loadFlight) {

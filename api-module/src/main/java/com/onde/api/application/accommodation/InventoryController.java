@@ -3,9 +3,13 @@ package com.onde.api.application.accommodation;
 import com.onde.core.entity.accommodation.Inventory;
 import com.onde.core.entity.reservation.ReservationTarget;
 import com.onde.core.repository.InventoryRepository;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -16,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+@Validated
 @RestController
 @RequestMapping({"/api/v1/inventory", "/api/inventory"})
 @RequiredArgsConstructor
@@ -23,19 +28,15 @@ public class InventoryController {
     private final ReservationService reservationService;
     private final InventoryRepository inventoryRepository;
 
-    /**
-     * 비동기 재고 상태 조회 API
-     * 특정 기간 내에 해당 상품이 품절(재고 부족)인지 실시간으로 확인합니다.
-     */
     @GetMapping("/check")
     public ResponseEntity<Map<String, Object>> checkAvailability(
-            @RequestParam ReservationTarget targetType,
-            @RequestParam Long targetId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        
+            @RequestParam @NotNull ReservationTarget targetType,
+            @RequestParam @NotNull @Min(1) Long targetId,
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
         boolean isAvailable = reservationService.checkAvailability(targetType, targetId, startDate, endDate);
-        
+
         return ResponseEntity.ok(Map.of(
             "targetId", targetId,
             "isAvailable", isAvailable,
@@ -43,14 +44,11 @@ public class InventoryController {
         ));
     }
 
-    /**
-     * 비로그인/일반사용자용 특정 상품의 월별 재고 및 가격 달력 데이터를 조회합니다.
-     */
     @GetMapping("/calendar")
     public ResponseEntity<Map<String, Object>> getCalendar(
-            @RequestParam ReservationTarget targetType,
-            @RequestParam Long targetId,
-            @RequestParam String month) {
+            @RequestParam @NotNull ReservationTarget targetType,
+            @RequestParam @NotNull @Min(1) Long targetId,
+            @RequestParam @NotNull @Pattern(regexp = "^\\d{4}-\\d{2}$", message = "month는 YYYY-MM 형식이어야 합니다.") String month) {
 
         YearMonth ym = YearMonth.parse(month, DateTimeFormatter.ofPattern("yyyy-MM"));
         LocalDate startDate = ym.atDay(1);
@@ -91,4 +89,3 @@ public class InventoryController {
         ));
     }
 }
-

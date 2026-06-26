@@ -7,14 +7,13 @@ import com.onde.core.entity.community.PostImage;
 import com.onde.core.entity.community.PostStatus;
 import com.onde.core.entity.community.PostType;
 import com.onde.core.entity.member.Member;
+import com.onde.core.validation.MultipartInputValidator;
 import com.onde.core.exception.ErrorCode;
 import com.onde.core.exception.ForbiddenException;
 import com.onde.core.exception.NotFoundException;
-import com.onde.core.exception.ValidationException;
 import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.PostImageRepository;
 import com.onde.core.repository.PostRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
@@ -22,7 +21,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -32,6 +30,8 @@ import java.util.concurrent.Executor;
 @Service
 @Transactional(readOnly = true)
 public class PostService {
+
+    private static final String ANONYMOUS_AUTHOR = "익명";
 
     private final PostRepository postRepository;
     private final PostImageRepository postImageRepository;
@@ -55,19 +55,13 @@ public class PostService {
 
     @Transactional
     public PostCreateResponse createPost(PostCreateRequest req, List<MultipartFile> images, Long memberId) {
-        // 1. 이미지 최대 3장 검증
-        if (images != null && images.size() > 3) {
-            throw new ValidationException(ErrorCode.IMAGE_LIMIT_EXCEEDED);
-        }
+        MultipartInputValidator.validateImageFiles(images);
 
         // 2. 작성자 회원 검증 (논리 FK)
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
 
-        String authorName = member.getNickname();
-        if (authorName == null || authorName.isEmpty()) {
-            authorName = "User-" + memberId;
-        }
+        String authorName = resolveAuthorName(member);
 
         // 3. 게시글 저장
         Post post = Post.builder()
@@ -120,10 +114,7 @@ public class PostService {
             String thumbnailUrl = postImages.isEmpty() ? null : postImages.get(0).getImageUrl();
 
             String authorName = memberRepository.findById(post.getMemberId())
-                    .map(m -> {
-                        String nickname = m.getNickname();
-                        return (nickname != null && !nickname.isEmpty()) ? nickname : "User-" + post.getMemberId();
-                    })
+                    .map(this::resolveAuthorName)
                     .orElse("탈퇴한 회원");
 
             return PostDto.of(post, thumbnailUrl, authorName);
@@ -133,10 +124,6 @@ public class PostService {
                 .posts(postDtos)
                 .totalCount(postPage.getTotalElements())
                 .build();
-    }
-
-    public List<Post> getVulnerablePostsByStatus(String status) {
-        return postRepository.findByStatus(status);
     }
 
     @Transactional
@@ -184,6 +171,8 @@ public class PostService {
             throw new ForbiddenException(ErrorCode.POST_NOT_OWNER);
         }
 
+        MultipartInputValidator.validateImageFiles(images);
+
         post.setTitle(req.getTitle());
         post.setContent(req.getContent());
         if (req.getRating() != null) {
@@ -194,9 +183,6 @@ public class PostService {
         }
 
         if (images != null && !images.isEmpty()) {
-            if (images.size() > 3) {
-                throw new ValidationException(ErrorCode.IMAGE_LIMIT_EXCEEDED);
-            }
             postImageRepository.deleteByPostId(post.getId());
 
             List<String> imageUrls = uploadImagesParallel(images);
@@ -217,11 +203,16 @@ public class PostService {
 
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
-        String authorName = member.getNickname();
-        if (authorName == null || authorName.isEmpty()) {
-            authorName = "User-" + memberId;
-        }
+        String authorName = resolveAuthorName(member);
 
         return PostCreateResponse.of(post, imageUrls, authorName);
+    }
+
+    private String resolveAuthorName(Member member) {
+        String nickname = member.getNickname();
+        if (nickname != null && !nickname.isBlank()) {
+            return nickname;
+        }
+        return ANONYMOUS_AUTHOR;
     }
 }

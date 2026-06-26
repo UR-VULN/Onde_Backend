@@ -34,3 +34,47 @@ nts:
     # 공공데이터포털에서 발급받은 서비스 키 입력
     service-key: ${NTS_SERVICE_KEY:}
     url: ${NTS_API_URL:https://api.odcloud.kr/api/nts-businessman/v1/validate}
+    allowed-hosts: ${NTS_API_ALLOWED_HOSTS:api.odcloud.kr}
+
+# CORS — 운영 기본: 실서비스 도메인만. localhost는 local/dev 프로필에서만 추가됩니다.
+onde:
+  cors:
+    allow-localhost: false
+    production-origin-patterns:
+      - https://*.onde.click
+    local-origins:
+      - http://localhost:5173
+      - http://localhost:3000
+  auth:
+    cookie:
+      secure: true
+      same-site: None
+  security:
+    login:
+      max-failed-attempts: 5
+      lock-minutes: 30
+
+app:
+  frontend-url: https://onde.click
+
+security:
+  diagnosis:
+    sandbox:
+      enabled: ${SECURITY_DIAGNOSIS_SANDBOX_ENABLED:false}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local | dev
+
+onde:
+  cors:
+    allow-localhost: true
+  auth:
+    cookie:
+      secure: false
+      same-site: Lax
+
+app:
+  frontend-url: http://localhost:5173

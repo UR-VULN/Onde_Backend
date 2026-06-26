@@ -2,6 +2,8 @@ package com.onde.admin.application.auth;
 
 import com.onde.core.entity.member.Member;
 import com.onde.core.repository.MemberRepository;
+import com.onde.core.security.PasswordLifecycleService;
+import com.onde.core.validation.PasswordPolicyLevel;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,6 +16,7 @@ public class AdminAuthService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate redisTemplate;
+    private final PasswordLifecycleService passwordLifecycleService;
 
     @Transactional
     public void changePassword(Long adminId, String rawPassword, String newRawPassword) {
@@ -24,8 +27,8 @@ public class AdminAuthService {
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
         }
 
-        admin.updatePassword(passwordEncoder.encode(newRawPassword));
-        
+        passwordLifecycleService.changePassword(admin, newRawPassword, PasswordPolicyLevel.ADMIN);
+
         // 보안을 위해 기존 Refresh Token 삭제
         String redisKey = "RT:" + admin.getEmail();
         redisTemplate.delete(redisKey);

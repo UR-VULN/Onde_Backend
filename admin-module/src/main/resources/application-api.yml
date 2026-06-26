@@ -34,3 +34,22 @@ nts:
     # 공공데이터포털에서 발급받은 서비스 키 입력
     service-key: ${NTS_SERVICE_KEY:}
     url: ${NTS_API_URL:https://api.odcloud.kr/api/nts-businessman/v1/validate}
+
+onde:
+  cors:
+    allow-localhost: false
+    production-origin-patterns:
+      - https://*.onde.click
+    local-origins:
+      - http://localhost:5173
+      - http://localhost:3000
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local | dev
+
+onde:
+  cors:
+    allow-localhost: true

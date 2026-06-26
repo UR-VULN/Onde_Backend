@@ -1,5 +1,6 @@
 package com.onde.api.application.member;
 
+import com.onde.api.application.member.dto.MemberProfileRevealResponse;
 import com.onde.api.application.member.dto.MemberProfileResponse;
 import com.onde.api.application.member.dto.MyPageResponseDtos.*;
 import com.onde.api.application.member.dto.ProfileUpdateRequestDto;
@@ -11,11 +12,12 @@ import com.onde.core.entity.insurance.InsurancePolicy;
 import com.onde.core.entity.insurance.InsurancePolicyStatus;
 import com.onde.core.repository.FlightBookingRepository;
 import com.onde.core.repository.InsurancePolicyRepository;
+import com.onde.core.security.PasswordLifecycleService;
+import com.onde.core.security.PersonalDataMasker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,7 +38,7 @@ public class MemberMyPageService {
     private final com.onde.core.repository.MemberRepository memberRepository;
     private final com.onde.core.repository.PaymentRepository paymentRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordLifecycleService passwordLifecycleService;
 
     public MyPageListResponse<MyPageFlightBookingResponse> getMyFlightBookings(Long userId, String status, Pageable pageable) {
         Page<FlightBooking> pageResult;
@@ -69,7 +71,9 @@ public class MemberMyPageService {
                         .departureTime(fb.getFlightSchedule() != null && fb.getFlightSchedule().getDepartureTime() != null ? fb.getFlightSchedule().getDepartureTime().toLocalDate().toString() : null)
                         .arrivalTime(fb.getFlightSchedule() != null && fb.getFlightSchedule().getArrivalTime() != null ? fb.getFlightSchedule().getArrivalTime().toLocalDate().toString() : null)
                         .seatClass(fb.getSeatClass())
-                        .passengerName(fb.getPassenger() != null ? fb.getPassenger().getPassengerName() : null)
+                        .passengerName(fb.getPassenger() != null
+                                ? PersonalDataMasker.maskName(fb.getPassenger().getPassengerName())
+                                : null)
                         .totalPrice(paymentRepository.findFirstByReservationIdAndReservationTypeOrderByIdDesc(fb.getId(), "FLIGHT")
                                 .map(com.onde.core.entity.payment.Payment::getPgAmount)
                                 .orElse(fb.getTotalPrice()))
@@ -111,7 +115,7 @@ public class MemberMyPageService {
                         .policyId(ip.getId())
                         .policyCode(ip.getPolicyCode())
                         .productName(ip.getInsuranceProduct() != null ? ip.getInsuranceProduct().getProductName() : null)
-                        .insuredName(ip.getInsuredName())
+                        .insuredName(PersonalDataMasker.maskName(ip.getInsuredName()))
                         .startDate(ip.getStartDate() != null ? ip.getStartDate().toString() : null)
                         .endDate(ip.getEndDate() != null ? ip.getEndDate().toString() : null)
                         .coverageLevel(ip.getCoverageLevel())
@@ -242,8 +246,8 @@ public class MemberMyPageService {
 
         return MemberInfoResponse.builder()
                 .memberId(member.getId())
-                .email(member.getEmail())
-                .name(member.getName())
+                .email(PersonalDataMasker.maskEmail(member.getEmail()))
+                .name(PersonalDataMasker.maskName(member.getName()))
                 .role(member.getRole() != null ? member.getRole().name() : null)
                 .provider(member.getProvider() != null ? member.getProvider().name() : null)
                 .status(member.getStatus() != null ? member.getStatus().name() : null)
@@ -281,10 +285,21 @@ public class MemberMyPageService {
                 .orElseThrow(() -> new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.MEMBER_NOT_FOUND));
 
         return MemberProfileResponse.builder()
+                .email(PersonalDataMasker.maskEmail(member.getEmail()))
+                .name(PersonalDataMasker.maskName(member.getName()))
+                .phoneNumber(PersonalDataMasker.maskPhone(member.getPhoneNumber()))
+                .nickname(member.getNickname())
+                .build();
+    }
+
+    public MemberProfileRevealResponse getProfileReveal(Long userId) {
+        com.onde.core.entity.member.Member member = memberRepository.findById(userId)
+                .orElseThrow(() -> new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.MEMBER_NOT_FOUND));
+
+        return MemberProfileRevealResponse.builder()
                 .email(member.getEmail())
                 .name(member.getName())
                 .phoneNumber(member.getPhoneNumber())
-                .nickname(member.getNickname())
                 .build();
     }
 
@@ -300,12 +315,17 @@ public class MemberMyPageService {
             }
         }
 
-        // 기본 정보 업데이트
-        member.updateProfile(requestDto.getName(), requestDto.getPhoneNumber(), requestDto.getNickname());
+        // 기본 정보 업데이트 (이름·연락처는 변경 값이 있을 때만 반영)
+        String updatedName = hasText(requestDto.getName()) ? requestDto.getName() : member.getName();
+        String updatedPhone = hasText(requestDto.getPhoneNumber()) ? requestDto.getPhoneNumber() : member.getPhoneNumber();
+        member.updateProfile(updatedName, updatedPhone, requestDto.getNickname());
 
         // 비밀번호 변경 요청이 있는 경우에만 처리
         if (requestDto.getNewPassword() != null && !requestDto.getNewPassword().isBlank()) {
-            member.updatePassword(passwordEncoder.encode(requestDto.getNewPassword()));
+            passwordLifecycleService.changePassword(
+                    member,
+                    requestDto.getNewPassword(),
+                    passwordLifecycleService.resolveLevel(member.getRole()));
         }
     }
 
@@ -314,9 +334,9 @@ public class MemberMyPageService {
                 .orElseThrow(() -> new com.onde.core.exception.BusinessException(com.onde.core.exception.ErrorCode.MEMBER_NOT_FOUND));
 
         return SellerProfileResponse.builder()
-                .email(member.getEmail())
-                .name(member.getName())
-                .phoneNumber(member.getPhoneNumber())
+                .email(PersonalDataMasker.maskEmail(member.getEmail()))
+                .name(PersonalDataMasker.maskName(member.getName()))
+                .phoneNumber(PersonalDataMasker.maskPhone(member.getPhoneNumber()))
                 .nickname(member.getNickname())
                 .build();
     }
@@ -334,11 +354,20 @@ public class MemberMyPageService {
         }
 
         // 프로필 정보 업데이트
-        member.updateProfile(request.getName(), request.getPhoneNumber(), request.getNickname());
+        String updatedName = hasText(request.getName()) ? request.getName() : member.getName();
+        String updatedPhone = hasText(request.getPhoneNumber()) ? request.getPhoneNumber() : member.getPhoneNumber();
+        member.updateProfile(updatedName, updatedPhone, request.getNickname());
 
         // 비밀번호 변경 처리
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            member.updatePassword(passwordEncoder.encode(request.getPassword()));
+            passwordLifecycleService.changePassword(
+                    member,
+                    request.getPassword(),
+                    passwordLifecycleService.resolveLevel(member.getRole()));
         }
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

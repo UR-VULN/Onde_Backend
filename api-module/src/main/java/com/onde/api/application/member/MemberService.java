@@ -22,6 +22,7 @@ public class MemberService {
     public Member createTestMember(Long id, MemberRole role, String email, String password) {
         Member member = Member.builder()
                 .id(id)
+                .authSubjectId(java.util.UUID.randomUUID().toString())
                 .role(role)
                 .email(email != null ? email : (role.name().toLowerCase() + (id != null ? id : "") + "@onde.com"))
                 .password(password != null ? password : "testpassword123")

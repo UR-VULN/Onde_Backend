@@ -1,5 +1,6 @@
 package com.onde.admin.security;
 
+import com.onde.core.security.RequiredSecretValidator;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -7,6 +8,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.List;
@@ -18,9 +20,10 @@ public class AdminJwtTokenProvider {
     private final long validityInMilliseconds;
 
     public AdminJwtTokenProvider(
-            @Value("${jwt.secret:defaultSecretKeyWithMoreThan256BitsLengthForHS256Algorithm}") String secretKey,
+            @Value("${jwt.secret}") String secretKey,
             @Value("${jwt.expire-length:3600000}") long validityInMilliseconds) {
-        this.key = Keys.hmacShaKeyFor(secretKey.getBytes());
+        String validatedSecret = RequiredSecretValidator.requireJwtSecret(secretKey);
+        this.key = Keys.hmacShaKeyFor(validatedSecret.getBytes(StandardCharsets.UTF_8));
         this.validityInMilliseconds = validityInMilliseconds;
     }
 
@@ -54,4 +57,3 @@ public class AdminJwtTokenProvider {
         return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
     }
 }
-

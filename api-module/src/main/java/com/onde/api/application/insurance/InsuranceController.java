@@ -6,6 +6,7 @@ import com.onde.api.application.insurance.dto.InsurancePolicyRequest;
 import com.onde.api.application.insurance.dto.InsurancePolicyResponse;
 import com.onde.api.security.LoginMember;
 import com.onde.core.support.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,7 @@ public class InsuranceController {
 
     @PostMapping({"/insurances/calculate", "/insurance/calculate"})
     public ResponseEntity<ApiResponse<InsuranceCalculateResponse>> calculatePremium(
-            @RequestBody InsuranceCalculateRequest req) {
+            @Valid @RequestBody InsuranceCalculateRequest req) {
         
         InsuranceCalculateResponse response = insuranceService.calculatePremium(req);
         return ResponseEntity.ok(ApiResponse.success(response, "실시간 동적 보험 요율 사전 계산 결과를 조회했습니다."));
@@ -28,7 +29,7 @@ public class InsuranceController {
 
     @PostMapping("/reservations/insurances")
     public ResponseEntity<ApiResponse<InsurancePolicyResponse>> applyPolicy(
-            @RequestBody InsurancePolicyRequest req,
+            @Valid @RequestBody InsurancePolicyRequest req,
             @LoginMember Long actualUserId) {
         
         InsurancePolicyResponse response = insuranceService.applyPolicy(req, actualUserId);

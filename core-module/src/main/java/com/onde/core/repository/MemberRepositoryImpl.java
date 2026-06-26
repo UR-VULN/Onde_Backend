@@ -12,7 +12,9 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 // static import로 QMember를 가져옵니다. (빌드 후 에러가 사라집니다)
 import static com.onde.core.entity.member.QMember.member;
@@ -48,7 +50,11 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
                         createdBetween(startDate, endDate)
                 );
 
-        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
+        List<Member> pageContent = new ArrayList<>();
+        if (content != null) {
+            pageContent.addAll(content);
+        }
+        return PageableExecutionUtils.getPage(pageContent, pageable, countQuery::fetchOne);
     }
 
     // --- 동적 쿼리를 위한 BooleanExpression 메서드들 ---
@@ -73,9 +79,12 @@ public class MemberRepositoryImpl implements MemberRepositoryCustom {
         if (startDate != null && endDate == null) {
             return member.createdAt.goe(startDate.atStartOfDay());
         }
-        if (startDate == null && endDate != null) {
-            return member.createdAt.loe(endDate.atTime(LocalTime.MAX));
+        if (startDate == null) {
+            return member.createdAt.loe(Objects.requireNonNull(endDate).atTime(LocalTime.MAX));
         }
-        return member.createdAt.between(startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX));
+        return member.createdAt.between(
+                Objects.requireNonNull(startDate).atStartOfDay(),
+                Objects.requireNonNull(endDate).atTime(LocalTime.MAX)
+        );
     }
 }

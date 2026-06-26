@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import com.onde.core.validation.ImageUploadValidator;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
@@ -90,18 +91,12 @@ public class AwsS3Service {
             return "";
         }
 
-        String originalFilename = file.getOriginalFilename();
-        String extension = "";
-        if (originalFilename != null && originalFilename.contains(".")) {
-            extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-        } else {
-            extension = ".jpg";
-        }
+        ImageUploadValidator.ValidatedImage validated = ImageUploadValidator.validate(file);
         String randomName = UUID.randomUUID().toString();
-        String s3Key = dirName + "/" + randomName + extension;
+        String s3Key = dirName + "/" + randomName + validated.extensionWithDot();
 
         if (useMock) {
-            log.info("[MOCK S3] Uploading file={} to dirName={} -> returning mock CloudFront URL", originalFilename, dirName);
+            log.info("[MOCK S3] Uploading validated image to dirName={} -> returning mock CloudFront URL", dirName);
             return cloudFrontDomain + "/" + s3Key;
         }
 
@@ -109,16 +104,15 @@ public class AwsS3Service {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucket)
                     .key(s3Key)
-                    .contentType(file.getContentType())
+                    .contentType(validated.contentType())
                     .build();
 
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
             log.info("[PRODUCTION S3] Successfully uploaded file to S3. Key: {}", s3Key);
 
-            // 인프라 정책: S3 직접 URL이 아닌 CloudFront CDN 도메인 URL 리턴 및 DB 보관
             return cloudFrontDomain + "/" + s3Key;
         } catch (Exception e) {
-            log.warn("[S3 UPLOAD FALLBACK] S3 upload failed for file={}: {}. Falling back to Mock URL.", originalFilename, e.getMessage());
+            log.warn("[S3 UPLOAD FALLBACK] S3 upload failed for key={}: {}. Falling back to Mock URL.", s3Key, e.getMessage());
             return cloudFrontDomain + "/" + s3Key;
         }
     }

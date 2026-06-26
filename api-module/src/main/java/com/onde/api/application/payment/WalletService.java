@@ -6,6 +6,8 @@ import com.onde.core.entity.payment.WalletTransaction;
 import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.UserWalletRepository;
 import com.onde.core.repository.WalletTransactionRepository;
+import com.onde.core.exception.ValidationException;
+import com.onde.core.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,9 @@ import java.math.BigDecimal;
 @Service
 @RequiredArgsConstructor
 public class WalletService {
+
+    /** 1회 지갑 충전 허용 최대 금액 (원) */
+    private static final BigDecimal MAX_CHARGE_AMOUNT = new BigDecimal("10000000");
 
     private final UserWalletRepository userWalletRepository;
     private final WalletTransactionRepository walletTransactionRepository;
@@ -29,8 +34,11 @@ public class WalletService {
 
     @Transactional
     public BigDecimal charge(Long userId, BigDecimal amount) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("충전 금액은 0보다 커야 합니다.");
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+        if (amount.compareTo(MAX_CHARGE_AMOUNT) > 0) {
+            throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
         }
         UserWallet wallet = getOrCreateWallet(userId);
         wallet.addBalance(amount);

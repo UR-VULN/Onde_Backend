@@ -4,7 +4,6 @@ import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.onde.admin.application.notification.dto.BroadcastRequest;
 import com.onde.admin.application.notification.dto.BroadcastResponse;
-import com.onde.core.entity.member.Member;
 import com.onde.core.entity.notification.FcmToken;
 import com.onde.core.repository.FcmTokenRepository;
 import org.junit.jupiter.api.DisplayName;

@@ -3,7 +3,6 @@ package com.onde.api.application.community;
 import com.onde.api.application.community.dto.PostLikeToggleResponse;
 import com.onde.core.entity.community.Post;
 import com.onde.core.entity.community.PostLike;
-import com.onde.core.entity.member.Member;
 import com.onde.core.exception.ErrorCode;
 import com.onde.core.exception.NotFoundException;
 import com.onde.core.repository.MemberRepository;

@@ -12,20 +12,20 @@ import java.time.LocalDateTime;
 public class CommentDto {
     private Long commentId;
     private Long postId;
-    private Long memberId;
     private String authorName;
     private String content;
     private Boolean isSecret;
+    private Boolean isMine;
     private LocalDateTime createdAt;
 
-    public static CommentDto of(Comment comment, String authorName, String displayContent) {
+    public static CommentDto of(Comment comment, String authorName, String displayContent, boolean isMine) {
         return CommentDto.builder()
                 .commentId(comment.getId())
                 .postId(comment.getPostId())
-                .memberId(comment.getMemberId())
                 .authorName(authorName)
                 .content(displayContent)
                 .isSecret(comment.getIsSecret())
+                .isMine(isMine)
                 .createdAt(comment.getCreatedAt())
                 .build();
     }

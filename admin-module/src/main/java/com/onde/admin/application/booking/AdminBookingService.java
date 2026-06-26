@@ -14,6 +14,7 @@ import com.onde.core.entity.flight.FlightBooking;
 import com.onde.core.entity.flight.SeatInventory;
 import com.onde.core.entity.reservation.Reservation;
 import com.onde.core.entity.reservation.ReservationStatus;
+import com.onde.core.security.PassportFieldCodec;
 import com.onde.core.exception.ErrorCode;
 import com.onde.core.exception.NotFoundException;
 import com.onde.core.exception.ValidationException;
@@ -44,6 +45,7 @@ public class AdminBookingService {
     private final com.onde.core.repository.RoomRepository roomRepository;
     private final com.onde.core.repository.CarRepository carRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final PassportFieldCodec passportFieldCodec;
 
     /**
      * 투숙객/이용자 명단 조회 (숙소/렌터카 도메인)
@@ -189,7 +191,8 @@ public class AdminBookingService {
                     String line = String.format("%s,%s,%s,%s,%s,%s,%s\n",
                             booking.getBookingCode(),
                             booking.getPassenger().getPassengerName(),
-                            booking.getPassenger().getPassengerPassport(),
+                            passportFieldCodec.decryptForAuthorizedRead(
+                                    booking.getPassenger().getPassengerPassport()),
                             booking.getPassenger().getPassengerBirthdate(),
                             booking.getSeatClass().name(),
                             booking.getTotalPrice(),
