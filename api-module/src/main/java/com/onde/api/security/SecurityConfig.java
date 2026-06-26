@@ -99,7 +99,7 @@ public class SecurityConfig {
                 "http://localhost:3000",
                 "https://onde.click",
                 "https://www.onde.click",
-                "https://admin.onde.click"
+                "https://rookies.onde.click"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
