@@ -93,4 +93,65 @@
 ### [6-1] 오류 응답 상세 스택 트레이스 정보 노출 조치
 * **취약점 원인:** 예측하지 못한 500 예외가 발생할 때 스프링 `GlobalExceptionHandler`에 구현된 예외 로직의 결과 객체가 에러 클래스 종류, 자바 패키지 정보, 오류 파싱 스택 내역(`systemMessage`)을 그대로 브라우저로 덤프하여 반환하고 있었습니다.
 * **수정된 코드:** [GlobalExceptionHandler.java](file:///c:/Onde/Onde_backend/Onde_Backend/api-module/src/main/java/com/onde/api/exception/GlobalExceptionHandler.java)
-  * **수정 내용:** 500 Internal Server Error 핸들러 응답의 `systemMessage` 값을 `"Internal Server Error"`라는 규격화된 메시지로 감추어 외부에 상세 동작 원리와 모듈 및 코드 구조가 유출되지 않도록 전면 마스킹 처리했습니다.
+  * **수정 내용:** 500 Internal Server Error 핸들러 응답의 `systemMessage` 값을 `"Internal Server Error"`라는 규격화된 메시지로 감추어 외부에 상세 동작 원리와 모듈 및 코드 구조가 유출되지 않도록 전면 마스킹 처리했습니다. 또한, `NoResourceFoundException` (404) 및 `HttpRequestMethodNotSupportedException` (405)에 대한 구체적 예외 매핑을 추가하여 프레임워크 스택 정보 유출 위험을 차단하였습니다.
+
+### [2-1] 악성코드 파일 업로드 검증 부재 조치
+* **취약점 원인:** 이미지 업로드 시 Content-Type 헤더 정보만 확인하고 파일 확장자 및 매직 바이트를 온전히 검사하지 않아, 우회 시도를 통해 악성 파일이 스토리지(S3 등)에 업로드되어 잠재적인 웹쉘 실행 및 Stored XSS 위협을 가할 수 있었습니다.
+* **수정된 코드:** [AwsS3Service.java](file:///c:/Onde/Onde_backend/Onde_Backend/api-module/src/main/java/com/onde/api/config/AwsS3Service.java)
+  * **수정 내용:** 업로드 허용 확장자 화이트리스트(`jpg, jpeg, png, gif`)를 지정하여 허용되지 않은 파일 형식은 업로드를 거부하고, 파일 내부 바이너리 헤더 시그니처를 검증하는 Magic Byte 판별 로직(`matchesMagicByte`)을 이식하여 확장자 조작 우회 공격을 차단했습니다.
+  ```java
+  // 수정 후 - Magic Byte 및 확장자 검증 로직 추가
+  private static final Set<String> ALLOWED_EXT = Set.of("jpg", "jpeg", "png", "gif");
+  private static final Map<String, byte[]> MAGIC_BYTES = Map.of(
+      "jpg", new byte[]{(byte)0xFF, (byte)0xD8, (byte)0xFF},
+      "png", new byte[]{(byte)0x89, 0x50, 0x4E, 0x47}
+      // ...
+  );
+
+  String extName = extension.replace(".", "").toLowerCase();
+  if (!ALLOWED_EXT.contains(extName)) {
+      throw new IllegalArgumentException("허용되지 않은 파일 형식입니다.");
+  }
+  if (!matchesMagicByte(file.getInputStream(), extName)) {
+      throw new IllegalArgumentException("파일 내용이 확장자와 일치하지 않습니다.");
+  }
+  ```
+
+### [5-2] 개인정보 평문 노출 조치
+* **취약점 원인:** 마이페이지 예약 조회 API 호출 시 응답 결과 데이터 필드에 승객의 실제 전체 이름과 예약 코드 정보가 마스킹 없이 평문 상태로 전달되고 있었습니다.
+* **수정된 코드:** [MaskingUtils.java](file:///c:/Onde/Onde_backend/Onde_Backend/api-module/src/main/java/com/onde/api/utils/MaskingUtils.java) (신규), [MemberMyPageService.java](file:///c:/Onde/Onde_backend/Onde_Backend/api-module/src/main/java/com/onde/api/application/member/MemberMyPageService.java)
+  * **수정 내용:** 이름(`홍*동`) 및 코드 중간 문자 마스킹 유틸리티를 설계하고, 마이페이지 항공 및 보험 예약 정보 조회 DTO 매핑부에 이를 적용하여 개인 데이터가 안전하게 가려져 전송되도록 조치했습니다.
+  ```java
+  // 수정 후 - Response mapping 시 마스킹 유틸리티 적용
+  .bookingCode(com.onde.api.utils.MaskingUtils.maskMiddle(fb.getBookingCode()))
+  .passengerName(fb.getPassenger() != null ? com.onde.api.utils.MaskingUtils.maskName(fb.getPassenger().getPassengerName()) : null)
+  ```
+
+### [8-1] 재고 무한 선점 비즈니스 로직 결함 조치
+* **취약점 원인:** 결제를 최종 처리하지 않고 임시 예약 상태(`RESERVED`)로 방치해두어도 데이터베이스의 실재고가 선차감되어, 의도적으로 재고를 모두 고갈시켜 정상 사용자의 예약을 방해할 수 있는 DoS 결함이 존재했습니다.
+* **수정된 코드:** [ReservationExpiryScheduler.java](file:///c:/Onde/Onde_backend/Onde_Backend/api-module/src/main/java/com/onde/api/scheduler/ReservationExpiryScheduler.java) (신규), [ReservationRepository.java](file:///c:/Onde/Onde_backend/Onde_Backend/core-module/src/main/java/com/onde/core/repository/ReservationRepository.java)
+  * **수정 내용:** 결제 대기 상태로 10분이 지난 숙소 및 렌터카 예약을 매 1분마다 주기적으로 추적하여 예약을 자동 취소(`CANCELLED`)하고, 선점되었던 차감 재고를 안전하게 원래대로 복원시키는 백그라운드 스케줄러 로직을 수립했습니다.
+  ```java
+  // 수정 후 - 1분 주기 TTL 및 재고 복원 스케줄러 구현
+  @Scheduled(cron = "0 */1 * * * *")
+  @Transactional
+  public void releaseExpiredHolds() {
+      LocalDateTime limitTime = LocalDateTime.now().minusMinutes(10);
+      List<Reservation> expiredReservations = reservationRepository
+              .findByStatusAndCreatedAtBefore(ReservationStatus.RESERVED, limitTime);
+      for (Reservation reservation : expiredReservations) {
+          reservation.setStatus(ReservationStatus.CANCELLED);
+          // 재고 복원 처리 로직...
+      }
+  }
+  ```
+
+### [8-1] 예약 입력값 경계 검증 부재 조치
+* **취약점 원인:** 객실 예약 생성 요청 시 예약 인원(`guests`)에 대해 최소 경계 검증이 누락되어 음수 등의 비정상적인 인원 데이터가 예약 파라미터로 유입되는 문제가 있었습니다.
+* **수정된 코드:** [RoomReservationRequest.java](file:///c:/Onde/Onde_backend/Onde_Backend/api-module/src/main/java/com/onde/api/application/accommodation/dto/RoomReservationRequest.java), [ReservationController.java](file:///c:/Onde/Onde_backend/Onde_Backend/api-module/src/main/java/com/onde/api/application/accommodation/ReservationController.java), [AccommodationController.java](file:///c:/Onde/Onde_backend/Onde_Backend/api-module/src/main/java/com/onde/api/application/accommodation/AccommodationController.java)
+  * **수정 내용:** DTO의 `guests` 필드에 `@Min(1)` 유효성 검증을 설정하고, 숙소 예약 관련 엔드포인트의 리퀘스트 파라미터 바인딩 직전에 `@Valid` 애너테이션을 선언하여 데이터 경계 처리를 강제화했습니다.
+  ```java
+  // 수정 후 - DTO 필드 검증 추가
+  @Min(value = 1, message = "예약 인원은 1명 이상이어야 합니다.")
+  private Integer guests;
+  ```

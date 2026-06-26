@@ -82,6 +82,30 @@ public class AwsS3Service {
         }
     }
 
+    private static final java.util.Set<String> ALLOWED_EXT = java.util.Set.of("jpg", "jpeg", "png", "gif");
+    private static final java.util.Map<String, byte[]> MAGIC_BYTES = java.util.Map.of(
+        "jpg", new byte[]{(byte)0xFF, (byte)0xD8, (byte)0xFF},
+        "jpeg", new byte[]{(byte)0xFF, (byte)0xD8, (byte)0xFF},
+        "png", new byte[]{(byte)0x89, 0x50, 0x4E, 0x47},
+        "gif", new byte[]{0x47, 0x49, 0x46, 0x38}
+    );
+
+    private boolean matchesMagicByte(java.io.InputStream is, String ext) {
+        try {
+            byte[] header = new byte[4];
+            int read = is.read(header);
+            if (read < 3) return false;
+            byte[] target = MAGIC_BYTES.get(ext);
+            if (target == null) return false;
+            for (int i = 0; i < target.length; i++) {
+                if (header[i] != target[i]) return false;
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     /**
      * S3 버킷에 파일을 업로드하고, S3 직접 주소가 아닌 인프라 정책에 명시된 CloudFront CDN 도메인 URL로 반환합니다.
      */
@@ -97,6 +121,20 @@ public class AwsS3Service {
         } else {
             extension = ".jpg";
         }
+        
+        String extName = extension.replace(".", "").toLowerCase();
+        if (!ALLOWED_EXT.contains(extName)) {
+            throw new IllegalArgumentException("허용되지 않은 파일 형식입니다.");
+        }
+
+        try {
+            if (!matchesMagicByte(file.getInputStream(), extName)) {
+                throw new IllegalArgumentException("파일 내용이 확장자와 일치하지 않습니다.");
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("파일을 읽는 중 오류가 발생했습니다.");
+        }
+
         String randomName = UUID.randomUUID().toString();
         String s3Key = dirName + "/" + randomName + extension;
 

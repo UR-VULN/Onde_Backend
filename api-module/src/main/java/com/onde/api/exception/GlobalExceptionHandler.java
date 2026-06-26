@@ -81,6 +81,30 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(ErrorCode.FORBIDDEN.getHttpStatus()).body(response);
         }
 
+        @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+        public ResponseEntity<ErrorResponse> handleNoResourceFoundException(org.springframework.web.servlet.resource.NoResourceFoundException e) {
+                log.warn("⚠️ [NoResourceFoundException] 리소스를 찾을 수 없음: {}", e.getMessage());
+                ErrorResponse response = ErrorResponse.of(
+                                ErrorCode.INTERNAL_SERVER_ERROR,
+                                "요청한 리소스를 찾을 수 없습니다.",
+                                "Resource Not Found",
+                                null
+                );
+                return ResponseEntity.status(404).body(response);
+        }
+
+        @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+        public ResponseEntity<ErrorResponse> handleHttpRequestMethodNotSupportedException(org.springframework.web.HttpRequestMethodNotSupportedException e) {
+                log.warn("⚠️ [HttpRequestMethodNotSupportedException] 허용되지 않은 메서드: {}", e.getMessage());
+                ErrorResponse response = ErrorResponse.of(
+                                ErrorCode.INVALID_INPUT_VALUE,
+                                "허용되지 않은 메서드입니다.",
+                                "Method Not Allowed",
+                                null
+                );
+                return ResponseEntity.status(405).body(response);
+        }
+
         /**
          * 3. 시스템 최상위 예외 (500 Internal Server Error 방어선)
          */

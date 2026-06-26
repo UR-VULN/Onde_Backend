@@ -37,7 +37,7 @@ public class AccommodationController {
     @PostMapping("/reservations/rooms")
     public ResponseEntity<ApiResponse<ReservationResponse>> reserveRoom(
             @LoginMember Long userId,
-            @RequestBody RoomReservationRequest req) {
+            @jakarta.validation.Valid @RequestBody RoomReservationRequest req) {
 
         req.setMemberId(userId);
         com.onde.core.entity.reservation.Reservation reservation = reservationService.reserveRoom(req);

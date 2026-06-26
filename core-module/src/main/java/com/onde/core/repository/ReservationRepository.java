@@ -53,6 +53,11 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             com.onde.core.entity.reservation.ReservationTarget targetType, 
             java.util.Collection<Long> targetIds
     );
+
+    java.util.List<Reservation> findByStatusAndCreatedAtBefore(
+            com.onde.core.entity.reservation.ReservationStatus status,
+            java.time.LocalDateTime createdAt
+    );
 }
 
 

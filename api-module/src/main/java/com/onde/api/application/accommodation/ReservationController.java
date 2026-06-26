@@ -28,7 +28,7 @@ public class ReservationController {
     @PostMapping("/rooms")
     public ResponseEntity<ApiResponse<ReservationResponse>> reserveRoom(
             @LoginMember Long memberId,
-            @RequestBody RoomReservationRequest req) {
+            @jakarta.validation.Valid @RequestBody RoomReservationRequest req) {
         if (req.getMemberId() == null) {
             req.setMemberId(memberId);
         }
