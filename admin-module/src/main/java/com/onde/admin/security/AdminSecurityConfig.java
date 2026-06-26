@@ -1,9 +1,11 @@
 package com.onde.admin.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -11,6 +13,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.IpAddressMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -21,6 +24,9 @@ public class AdminSecurityConfig {
     private final AdminJwtTokenProvider adminJwtTokenProvider;
     private final AdminAuthenticationEntryPoint adminAuthenticationEntryPoint;
     private final AdminAccessDeniedHandler adminAccessDeniedHandler;
+
+    @Value("${management.health.allowed-ip}")
+    private String allowedIp;
 
     /**
      * [1순위 필터 체인] 인프라 헬스 체크 전용 서브 시스템
@@ -42,6 +48,8 @@ public class AdminSecurityConfig {
 
         return http.build();
     }
+
+
 
     /**
      * [2순위 필터 체인] 일반 어드민 비즈니스 로직 시스템
