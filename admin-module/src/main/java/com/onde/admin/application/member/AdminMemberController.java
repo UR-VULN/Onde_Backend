@@ -68,7 +68,11 @@ public class AdminMemberController {
                                              @RequestBody RoleUpdateRequest request,
                                              Principal principal) {
         Long currentAdminId = getAdminIdFromPrincipal(principal);
-        MemberRole appliedRole = adminMemberService.updateMemberRole(id, currentAdminId, request.resolvePrimaryRole());
+        MemberRole targetRole = request.resolvePrimaryRole();
+        if (targetRole == MemberRole.SUPER_ADMIN || targetRole == MemberRole.USER_ADMIN || targetRole == MemberRole.SELLER_ADMIN) {
+            throw new IllegalArgumentException("허용되지 않은 권한 변경 요청입니다.");
+        }
+        MemberRole appliedRole = adminMemberService.updateMemberRole(id, currentAdminId, targetRole);
         Member member = memberRepository.findById(id).orElseThrow();
         List<String> roles = request.getRoles() != null && !request.getRoles().isEmpty()
                 ? request.getRoles().stream().map(MemberRole::name).toList()

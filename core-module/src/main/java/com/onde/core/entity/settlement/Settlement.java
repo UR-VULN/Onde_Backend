@@ -101,5 +101,8 @@ public class Settlement {
      */
     @Column(name = "finalized_at")
     private LocalDateTime finalizedAt;
+
+    @Version
+    private Long version;
 }
 

@@ -119,7 +119,7 @@ public class AdminSettlementController {
     }
 
     @PostMapping("/{settlementId}/approve")
-    @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> approve(
             @PathVariable("settlementId") Long settlementId,
             @RequestBody(required = false) Map<String, String> body) {
