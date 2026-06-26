@@ -27,7 +27,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.context.ApplicationEventPublisher;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -36,6 +40,16 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class AdminBookingService {
+
+    private static final Map<ReservationStatus, Set<ReservationStatus>> ALLOWED_TRANSITIONS;
+    static {
+        Map<ReservationStatus, Set<ReservationStatus>> m = new EnumMap<>(ReservationStatus.class);
+        m.put(ReservationStatus.RESERVED,   Set.of(ReservationStatus.CONFIRMED, ReservationStatus.CANCELLED));
+        m.put(ReservationStatus.CONFIRMED,  Set.of(ReservationStatus.COMPLETED, ReservationStatus.CANCELLED));
+        m.put(ReservationStatus.CANCELLED,  Collections.emptySet());
+        m.put(ReservationStatus.COMPLETED,  Collections.emptySet());
+        ALLOWED_TRANSITIONS = Collections.unmodifiableMap(m);
+    }
 
     private final ReservationRepository reservationRepository;
     private final FlightBookingRepository flightBookingRepository;
@@ -124,7 +138,16 @@ public class AdminBookingService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESERVATION_NOT_FOUND));
 
         ReservationStatus previousStatus = reservation.getStatus();
-        ReservationStatus nextStatus = ReservationStatus.valueOf(request.status().trim().toUpperCase());
+        ReservationStatus nextStatus;
+        try {
+            nextStatus = ReservationStatus.valueOf(request.status().trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+        Set<ReservationStatus> allowed = ALLOWED_TRANSITIONS.getOrDefault(previousStatus, Collections.emptySet());
+        if (!allowed.contains(nextStatus)) {
+            throw new ValidationException(ErrorCode.INVALID_INPUT_VALUE);
+        }
         reservation.setStatus(nextStatus);
         Reservation savedReservation = reservationRepository.save(reservation);
 

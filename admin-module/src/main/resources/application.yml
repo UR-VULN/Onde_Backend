@@ -33,6 +33,11 @@ spring:
 
 server:
   port: 8081
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
 
 jwt:
   secret: ${JWT_SECRET}
@@ -54,7 +59,7 @@ management:
         include: health
   endpoint:
     health:
-      show-details: always 
+      show-details: when-authorized
       probes:
         enabled: true       
       group:

@@ -94,15 +94,15 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
-                .sameSite("None")
-                .maxAge(30 * 60)
+                .sameSite("Lax")
+                .maxAge(10 * 60)
                 .build();
 
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", loginResponse.getRefreshToken())
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
-                .sameSite("None")
+                .sameSite("Lax")
                 .maxAge(14 * 24 * 60 * 60)
                 .build();
 

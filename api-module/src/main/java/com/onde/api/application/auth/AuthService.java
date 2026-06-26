@@ -13,18 +13,25 @@ import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.RefreshTokenRepository;
 import com.onde.core.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
+    private static final int MAX_LOGIN_ATTEMPTS = 5;
+    private static final long LOCK_DURATION_MINUTES = 5L;
+    private static final String LOGIN_FAIL_PREFIX = "LOGIN_FAIL:admin:";
+
     private final MemberRepository memberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final StringRedisTemplate redisTemplate;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -131,10 +138,20 @@ public class AuthService {
 
     @Transactional
     public LoginResponse adminLogin(LoginRequest request) {
+        String failKey = LOGIN_FAIL_PREFIX + request.getEmail();
+        String failCount = redisTemplate.opsForValue().get(failKey);
+        if (failCount != null && Integer.parseInt(failCount) >= MAX_LOGIN_ATTEMPTS) {
+            throw new BusinessException(ErrorCode.TOO_MANY_LOGIN_ATTEMPTS);
+        }
+
         Member member = memberRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UnauthorizedException(ErrorCode.UNAUTHORIZED));
+                .orElseThrow(() -> {
+                    recordAdminLoginFailure(failKey);
+                    return new UnauthorizedException(ErrorCode.UNAUTHORIZED);
+                });
 
         if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
+            recordAdminLoginFailure(failKey);
             throw new UnauthorizedException(ErrorCode.UNAUTHORIZED);
         }
 
@@ -161,14 +178,22 @@ public class AuthService {
         );
         refreshTokenRepository.save(refreshToken);
 
+        // 로그인 성공 시 실패 카운터 초기화
+        redisTemplate.delete(LOGIN_FAIL_PREFIX + member.getEmail());
+
         return LoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshTokenString)
                 .tokenType("Bearer")
-                .expiresIn(1800L) // 30분
+                .expiresIn(600L) // 10분
                 .memberId(member.getId())
                 .role(member.getRole().name())
                 .build();
+    }
+
+    private void recordAdminLoginFailure(String failKey) {
+        redisTemplate.opsForValue().increment(failKey);
+        redisTemplate.expire(failKey, LOCK_DURATION_MINUTES, TimeUnit.MINUTES);
     }
 
     @Transactional(readOnly = true)

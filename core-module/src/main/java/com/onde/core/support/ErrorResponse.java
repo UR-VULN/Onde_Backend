@@ -1,5 +1,6 @@
 package com.onde.core.support;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.onde.core.exception.ErrorCode;
 import lombok.Getter;
 import java.time.LocalDateTime;
@@ -11,25 +12,23 @@ public class ErrorResponse {
     private final boolean success = false;
     private final Object data = null;
     private final String message;
-    private final ErrorInfo error; // ErrorInfo 객체로 선언
+    private final ErrorInfo error;
     private final String timestamp;
 
-    // 내부 생성자
     private ErrorResponse(String message, String errorCode, String systemMessage, List<ErrorDetail> details) {
         this.message = message;
         this.error = new ErrorInfo(errorCode, systemMessage, details);
         this.timestamp = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME);
     }
 
-    /**
-     * 에러의 핵심 정보를 담는 내부 정적 클래스 (ErrorInfo)
-     * 이를 분리해 주어야 ErrorDetail 생성자가 안 깨집니다.
-     */
     @Getter
     public static class ErrorInfo {
         private final String code;
-        private final String systemMessage;
         private final List<ErrorDetail> details;
+
+        // systemMessage는 서버 내부 로깅 전용으로만 사용 — 클라이언트에 노출하지 않음
+        @JsonIgnore
+        private final String systemMessage;
 
         public ErrorInfo(String code, String systemMessage, List<ErrorDetail> details) {
             this.code = code;
@@ -43,7 +42,7 @@ public class ErrorResponse {
         return new ErrorResponse(errorCode.getMessage(), errorCode.getCode(), null, null);
     }
 
-    // [Overloading 2] 시스템 예외 메시지 추가용
+    // [Overloading 2] 시스템 예외 메시지 내부 기록용 (클라이언트에는 미노출)
     public static ErrorResponse of(ErrorCode errorCode, String systemMessage) {
         return new ErrorResponse(errorCode.getMessage(), errorCode.getCode(), systemMessage, null);
     }

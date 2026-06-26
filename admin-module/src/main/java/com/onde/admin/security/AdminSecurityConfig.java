@@ -22,6 +22,7 @@ import org.springframework.security.web.util.matcher.IpAddressMatcher;
 public class AdminSecurityConfig {
 
     private final AdminJwtTokenProvider adminJwtTokenProvider;
+    private final AdminTokenBlacklistService adminTokenBlacklistService;
     private final AdminAuthenticationEntryPoint adminAuthenticationEntryPoint;
     private final AdminAccessDeniedHandler adminAccessDeniedHandler;
 
@@ -78,7 +79,7 @@ public class AdminSecurityConfig {
             )
             
             // 4. 커스텀하게 통합한 AdminJwtAuthenticationFilter를 시큐리티 필터 흐름 앞에 주입
-            .addFilterBefore(new AdminJwtAuthenticationFilter(adminJwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(new AdminJwtAuthenticationFilter(adminJwtTokenProvider, adminTokenBlacklistService), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
