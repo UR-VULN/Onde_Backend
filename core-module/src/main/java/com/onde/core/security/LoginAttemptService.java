@@ -22,7 +22,7 @@ public class LoginAttemptService {
     private final LoginLockProperties loginLockProperties;
 
     public void assertNotLocked(Member member) {
-        Long memberId = requireMemberId(member.getId());
+        Long memberId = requireMemberId(Objects.requireNonNull(member.getId(), "member id must not be null"));
         clearExpiredLockIfNeeded(memberId);
         Member current = memberRepository.findById(memberId).orElse(member);
         if (current.isLoginLocked()) {
@@ -66,7 +66,7 @@ public class LoginAttemptService {
     }
 
     @NonNull
-    private static Long requireMemberId(Long memberId) {
+    private static Long requireMemberId(@NonNull Long memberId) {
         return Objects.requireNonNull(memberId, "memberId must not be null");
     }
 }

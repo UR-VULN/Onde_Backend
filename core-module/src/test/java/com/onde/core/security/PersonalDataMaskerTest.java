@@ -27,4 +27,10 @@ class PersonalDataMaskerTest {
         assertEquals("123-***-3456", PersonalDataMasker.maskAccountNumber("1234563456"));
         assertEquals("123-***-7890", PersonalDataMasker.maskAccountNumber("123-456-7890"));
     }
+
+    @Test
+    void maskNumericId_hidesMiddleDigits() {
+        assertEquals("1***8", PersonalDataMasker.maskNumericId(128L));
+        assertEquals("**", PersonalDataMasker.maskNumericId(12L));
+    }
 }

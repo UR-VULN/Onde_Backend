@@ -1,16 +1,27 @@
 package com.onde.admin.application.settlement;
 
+import com.onde.admin.application.settlement.dto.AdminSettlementCommentRequest;
+import com.onde.admin.application.settlement.dto.AdminSettlementRejectRequest;
 import com.onde.admin.application.settlement.dto.AdminSettlementDetailResponse;
+import com.onde.admin.application.settlement.dto.AdminSettlementRevealResponse;
+import com.onde.admin.security.AdminMemberIdentitySupport;
+import com.onde.core.entity.member.Member;
 import com.onde.core.entity.settlement.Settlement;
 import com.onde.core.entity.settlement.SettlementStatus;
 import com.onde.core.repository.PaymentRepository;
 import com.onde.core.repository.SettlementRepository;
+import com.onde.core.security.PersonalDataMasker;
+import com.onde.core.security.SensitiveRevealAuthService;
+import com.onde.core.security.dto.SensitiveRevealPasswordRequest;
 import com.onde.core.support.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -33,6 +44,8 @@ public class AdminSettlementController {
 
     private final AdminSettlementService adminSettlementService;
     private final SettlementRepository settlementRepository;
+    private final AdminMemberIdentitySupport adminMemberIdentitySupport;
+    private final SensitiveRevealAuthService sensitiveRevealAuthService;
 
     /**
      * [전체 판매자 대상 정산 내역 페이징 조회 API]
@@ -62,7 +75,8 @@ public class AdminSettlementController {
         java.util.List<Map<String, Object>> settlementList = new java.util.ArrayList<>();
         for (Settlement s : result.getContent()) {
             Map<String, Object> map = new HashMap<>();
-            map.put("settlementId", s.getId());
+            map.put("id", s.getId());
+            map.put("settlementId", PersonalDataMasker.maskNumericId(s.getId()));
             // 정산일자 문자열 변환 매핑
             map.put("settlementMonth", s.getSettlementDate().toString());
             // 매출 원금액 (판매 총액)
@@ -73,14 +87,12 @@ public class AdminSettlementController {
             map.put("netAmount", s.getNetAmount());
             // 정산 진행 단계 상태
             map.put("status", s.getStatus());
-            
-            // 2. 판매자(SellerId) 정보를 바탕으로 입금받을 금융 계좌 정보 매핑 및 결합
-            // (명세 요구사항에 따라 sellerName, bankName, accountNumber를 추가 반환함)
+            map.put("sellerId", s.getSellerId());
+
             com.onde.core.entity.settlement.SellerAccount account = adminSettlementService.getAccount(s.getSellerId());
-            map.put("sellerName", account.getAccountHolder()); // 대표 계좌 예금주명을 sellerName 대용으로 매핑
-            map.put("bankName", account.getBankName());
-            // 계좌 정보 오남용 방지를 위해 일부 마스킹 처리하여 반환
-            map.put("accountNumber", adminSettlementService.maskAccountNumber(account.getAccountNumber()));
+            map.put("sellerName", PersonalDataMasker.maskName(account.getAccountHolder()));
+            map.put("bankName", PersonalDataMasker.maskBankName(account.getBankName()));
+            map.put("accountNumber", PersonalDataMasker.maskAccountNumber(account.getAccountNumber()));
             
             settlementList.add(map);
         }
@@ -91,6 +103,28 @@ public class AdminSettlementController {
         data.put("totalCount", result.getTotalElements());
         
         return ResponseEntity.ok(ApiResponse.success(data));
+    }
+
+    @PostMapping("/{settlementId}/reveal")
+    @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<AdminSettlementRevealResponse>> revealSettlement(
+            @PathVariable("settlementId") Long settlementId,
+            @AuthenticationPrincipal UserDetails userDetails,
+            @Valid @RequestBody SensitiveRevealPasswordRequest request) {
+        Member admin = adminMemberIdentitySupport.requireMember(userDetails);
+        sensitiveRevealAuthService.requirePasswordVerifiedMember(admin.getId(), request.getPassword());
+
+        Settlement settlement = settlementRepository.findById(settlementId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 정산 건이 존재하지 않습니다."));
+
+        com.onde.core.entity.settlement.SellerAccount account = adminSettlementService.getAccount(settlement.getSellerId());
+        AdminSettlementRevealResponse response = AdminSettlementRevealResponse.builder()
+                .settlementId(settlement.getId())
+                .sellerName(account.getAccountHolder())
+                .bankName(account.getBankName())
+                .accountNumber(account.getAccountNumber())
+                .build();
+        return ResponseEntity.ok(ApiResponse.success(response, "정산 원문 조회 성공"));
     }
 
     /**
@@ -105,10 +139,10 @@ public class AdminSettlementController {
     @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> approveFirst(
             @PathVariable("settlementId") Long settlementId,
-            @RequestBody Map<String, String> body) {
-            
-        // 비즈니스 서비스 레이어로 넘겨 1차 승인 로직 격리 수행
-        Settlement updated = adminSettlementService.approveFirstSettlement(settlementId, body.get("comment"));
+            @Valid @RequestBody(required = false) AdminSettlementCommentRequest body) {
+
+        String comment = body != null ? body.getComment() : null;
+        Settlement updated = adminSettlementService.approveFirstSettlement(settlementId, comment);
 
         Map<String, Object> data = new HashMap<>();
         data.put("settlementId", updated.getId());
@@ -122,10 +156,10 @@ public class AdminSettlementController {
     @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> approve(
             @PathVariable("settlementId") Long settlementId,
-            @RequestBody(required = false) Map<String, String> body) {
+            @Valid @RequestBody(required = false) AdminSettlementCommentRequest body) {
         Settlement updated = adminSettlementService.approveSettlement(
                 settlementId,
-                body != null ? body.get("comment") : null);
+                body != null ? body.getComment() : null);
 
         Map<String, Object> data = new HashMap<>();
         data.put("settlementId", updated.getId());
@@ -139,8 +173,8 @@ public class AdminSettlementController {
     @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> reject(
             @PathVariable("settlementId") Long settlementId,
-            @RequestBody(required = false) Map<String, String> body) {
-        String rejectReason = body != null ? body.getOrDefault("rejectReason", body.get("comment")) : null;
+            @Valid @RequestBody(required = false) AdminSettlementRejectRequest body) {
+        String rejectReason = body != null ? body.resolveReason() : null;
         LocalDateTime rejectedAt = LocalDateTime.now();
         Settlement updated = adminSettlementService.rejectSettlement(
                 settlementId,
@@ -167,10 +201,10 @@ public class AdminSettlementController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> finalizeSettlement(
             @PathVariable("settlementId") Long settlementId,
-            @RequestBody Map<String, String> body) {
-            
-        // 비즈니스 서비스 레이어로 넘겨 2차/최종 정산 완료 처리 수행
-        Settlement updated = adminSettlementService.finalizeSettlement(settlementId, body.get("comment"));
+            @Valid @RequestBody(required = false) AdminSettlementCommentRequest body) {
+
+        String comment = body != null ? body.getComment() : null;
+        Settlement updated = adminSettlementService.finalizeSettlement(settlementId, comment);
 
         Map<String, Object> data = new HashMap<>();
         data.put("settlementId", updated.getId());
@@ -206,7 +240,7 @@ public class AdminSettlementController {
                 .collect(Collectors.toList());
 
         AdminSettlementDetailResponse response = AdminSettlementDetailResponse.builder()
-                .settlementId(settlement.getId())
+                .settlementId(PersonalDataMasker.maskNumericId(settlement.getId()))
                 .settlementDate(settlement.getSettlementDate())
                 .details(items)
                 .build();

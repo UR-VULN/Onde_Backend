@@ -2,8 +2,8 @@ package com.onde.api.application.dashboard;
 
 import com.onde.api.application.dashboard.dto.DashboardResponse;
 import com.onde.api.application.dashboard.dto.SellerDashboardRevealResponse;
-import com.onde.api.application.member.SensitiveRevealAuthService;
-import com.onde.api.application.member.dto.SensitiveRevealPasswordRequest;
+import com.onde.core.security.SensitiveRevealAuthService;
+import com.onde.core.security.dto.SensitiveRevealPasswordRequest;
 import com.onde.api.security.CustomUserDetails;
 import com.onde.core.support.ApiResponse;
 import jakarta.validation.Valid;

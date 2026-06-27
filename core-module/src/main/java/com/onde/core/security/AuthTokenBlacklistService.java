@@ -60,7 +60,6 @@ public class AuthTokenBlacklistService {
     }
 
     private static String md5Hex(@NonNull String value) {
-        byte[] bytes = Objects.requireNonNull(value.getBytes(StandardCharsets.UTF_8));
-        return DigestUtils.md5DigestAsHex(bytes);
+        return DigestUtils.md5DigestAsHex(Objects.requireNonNull(value.getBytes(StandardCharsets.UTF_8)));
     }
 }

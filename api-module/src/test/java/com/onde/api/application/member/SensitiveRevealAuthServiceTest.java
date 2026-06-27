@@ -1,5 +1,6 @@
 package com.onde.api.application.member;
 
+import com.onde.core.security.SensitiveRevealAuthService;
 import com.onde.core.entity.member.Member;
 import com.onde.core.exception.BusinessException;
 import com.onde.core.exception.ErrorCode;

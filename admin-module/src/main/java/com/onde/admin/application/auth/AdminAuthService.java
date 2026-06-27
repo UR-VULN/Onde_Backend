@@ -2,10 +2,12 @@ package com.onde.admin.application.auth;
 
 import com.onde.core.entity.member.Member;
 import com.onde.core.repository.MemberRepository;
+import com.onde.core.security.AuthSessionRevocationService;
 import com.onde.core.security.PasswordLifecycleService;
 import com.onde.core.validation.PasswordPolicyLevel;
+import com.onde.core.exception.ErrorCode;
+import com.onde.core.exception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminAuthService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
-    private final StringRedisTemplate redisTemplate;
+    private final AuthSessionRevocationService authSessionRevocationService;
     private final PasswordLifecycleService passwordLifecycleService;
 
     @Transactional
@@ -24,13 +26,10 @@ public class AdminAuthService {
                 .orElseThrow(() -> new IllegalArgumentException("관리자를 찾을 수 없습니다."));
 
         if (!passwordEncoder.matches(rawPassword, admin.getPassword())) {
-            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+            throw new UnauthorizedException(ErrorCode.LOGIN_CREDENTIALS_INVALID);
         }
 
         passwordLifecycleService.changePassword(admin, newRawPassword, PasswordPolicyLevel.ADMIN);
-
-        // 보안을 위해 기존 Refresh Token 삭제
-        String redisKey = "RT:" + admin.getEmail();
-        redisTemplate.delete(redisKey);
+        authSessionRevocationService.revokeAllSessions(admin);
     }
 }

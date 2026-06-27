@@ -1,10 +1,11 @@
-package com.onde.api.application.member;
+package com.onde.core.security;
 
 import com.onde.core.entity.member.Member;
 import com.onde.core.exception.BusinessException;
 import com.onde.core.exception.ErrorCode;
 import com.onde.core.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.lang.NonNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +18,7 @@ public class SensitiveRevealAuthService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
-    public Member requirePasswordVerifiedMember(Long userId, String rawPassword) {
+    public Member requirePasswordVerifiedMember(@NonNull Long userId, String rawPassword) {
         Member member = memberRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 

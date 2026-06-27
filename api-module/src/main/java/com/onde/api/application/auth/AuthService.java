@@ -1,7 +1,7 @@
 package com.onde.api.application.auth;
 
 import com.onde.api.application.auth.dto.*;
-import com.onde.api.application.auth.support.AuthClientContext;
+import com.onde.core.security.AuthClientContext;
 import com.onde.api.application.auth.support.AuthSessionIssuer;
 import com.onde.api.application.auth.support.SignupRolePolicy;
 import com.onde.core.entity.auth.RefreshToken;

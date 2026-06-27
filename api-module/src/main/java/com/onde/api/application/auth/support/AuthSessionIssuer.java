@@ -6,6 +6,7 @@ import com.onde.core.entity.auth.RefreshToken;
 import com.onde.core.entity.member.Member;
 import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.RefreshTokenRepository;
+import com.onde.core.security.AuthClientContext;
 import com.onde.core.security.AuthTokenBlacklistService;
 import com.onde.core.security.JwtTokenProvider;
 import com.onde.core.security.PasswordLifecycleService;

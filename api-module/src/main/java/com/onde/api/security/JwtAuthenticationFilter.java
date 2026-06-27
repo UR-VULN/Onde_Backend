@@ -1,6 +1,6 @@
 package com.onde.api.security;
 
-import com.onde.api.application.auth.support.AuthSessionValidator;
+import com.onde.core.security.AuthSessionValidator;
 import com.onde.core.security.JwtTokenProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

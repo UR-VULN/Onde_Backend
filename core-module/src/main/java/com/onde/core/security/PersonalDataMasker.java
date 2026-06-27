@@ -103,6 +103,18 @@ public final class PersonalDataMasker {
         return trimmed.substring(0, 2) + "***";
     }
 
+    /** DB 숫자 식별자 — 앞·뒤 1자리만 노출 */
+    public static String maskNumericId(Long id) {
+        if (id == null) {
+            return "";
+        }
+        String value = String.valueOf(id);
+        if (value.length() <= 2) {
+            return "*".repeat(value.length());
+        }
+        return value.charAt(0) + "*".repeat(value.length() - 2) + value.charAt(value.length() - 1);
+    }
+
     public static String maskPassport(String passport) {
         if (passport == null || passport.isBlank()) {
             return "";

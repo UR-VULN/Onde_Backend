@@ -6,6 +6,7 @@ import com.onde.admin.application.approval.dto.AdminPendingApprovalsResponse;
 import com.onde.admin.application.approval.dto.ApprovalProcessRequest;
 import com.onde.admin.application.approval.dto.ApprovalProcessResponse;
 import com.onde.core.support.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -41,7 +42,7 @@ public class AdminApprovalController {
     @PostMapping("/process")
     @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<ApprovalProcessResponse>> processApproval(
-            @RequestBody ApprovalProcessRequest request) {
+            @Valid @RequestBody ApprovalProcessRequest request) {
 
         log.info("🔑 Admin endpoint accessed: /process");
 
@@ -57,7 +58,7 @@ public class AdminApprovalController {
     @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<AdminApprovalResponse>> processApproval(
             @PathVariable("requestId") Long requestId,
-            @RequestBody AdminApprovalRequest req) {
+            @Valid @RequestBody AdminApprovalRequest req) {
 
         log.info("🔑 Admin endpoint accessed: /{}", requestId);
 

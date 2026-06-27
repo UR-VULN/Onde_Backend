@@ -1,4 +1,4 @@
-package com.onde.api.application.member.dto;
+package com.onde.core.security.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;

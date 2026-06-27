@@ -74,6 +74,12 @@ public class AdminGlobalExceptionHandler {
         return RestExceptionHandlerSupport.accessDenied(e);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
+        log.warn("Admin IllegalArgumentException: {}", e.getMessage());
+        return RestExceptionHandlerSupport.illegalArgument(e);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception e) {
         log.error("Admin Unhandled Exception", e);

@@ -1,10 +1,12 @@
-package com.onde.api.application.auth.support;
+package com.onde.core.security;
 
+import com.onde.core.entity.auth.RefreshToken;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.util.DigestUtils;
 import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 /** 토큰 발급·검증 시 클라이언트 환경 바인딩 */
 public final class AuthClientContext {
@@ -31,7 +33,8 @@ public final class AuthClientContext {
         if (!StringUtils.hasText(userAgent)) {
             return "";
         }
-        return DigestUtils.md5DigestAsHex(userAgent.getBytes(StandardCharsets.UTF_8));
+        return DigestUtils.md5DigestAsHex(
+                Objects.requireNonNull(userAgent.getBytes(StandardCharsets.UTF_8)));
     }
 
     public static String resolveClientIp(HttpServletRequest request) {
@@ -46,7 +49,7 @@ public final class AuthClientContext {
         return request.getRemoteAddr() != null ? request.getRemoteAddr() : "";
     }
 
-    public boolean matches(com.onde.core.entity.auth.RefreshToken session) {
+    public boolean matches(RefreshToken session) {
         if (session == null) {
             return true;
         }

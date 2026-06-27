@@ -1,14 +1,13 @@
-package com.onde.api.application.auth.support;
+package com.onde.core.security;
 
 import com.onde.core.entity.auth.RefreshToken;
 import com.onde.core.repository.RefreshTokenRepository;
-import com.onde.core.security.AuthTokenBlacklistService;
-import com.onde.core.security.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.util.Objects;
 import java.util.Optional;
 
 @Component
@@ -29,7 +28,10 @@ public class AuthSessionValidator {
 
         String subject = jwtTokenProvider.getSubject(accessToken);
         String jti = jwtTokenProvider.getJti(accessToken);
-        Optional<RefreshToken> session = refreshTokenRepository.findById(subject);
+        if (!StringUtils.hasText(subject)) {
+            return true;
+        }
+        Optional<RefreshToken> session = refreshTokenRepository.findById(Objects.requireNonNull(subject));
 
         if (session.isEmpty()) {
             // 레거시(이메일 subject) 또는 세션 레코드 만료 — 서명·블랙리스트만 검증

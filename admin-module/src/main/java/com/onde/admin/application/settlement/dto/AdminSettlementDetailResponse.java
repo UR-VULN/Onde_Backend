@@ -15,7 +15,7 @@ import java.util.List;
 @Builder
 public class AdminSettlementDetailResponse {
 
-    private Long settlementId;
+    private String settlementId;
     private LocalDate settlementDate;
     private List<DetailItem> details;
 

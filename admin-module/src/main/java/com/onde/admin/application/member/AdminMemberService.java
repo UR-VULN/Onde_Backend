@@ -15,7 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import com.onde.core.security.AuthSessionRevocationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +27,7 @@ import java.util.List;
 public class AdminMemberService {
 
     private final MemberRepository memberRepository;
-    private final StringRedisTemplate redisTemplate;
+    private final AuthSessionRevocationService authSessionRevocationService;
     private final FcmTokenRepository fcmTokenRepository;
     private final FirebaseMessaging firebaseMessaging;
 
@@ -58,9 +58,7 @@ public class AdminMemberService {
         member.updateRole(MemberRole.BLACKLIST);
         member.updateStatus(MemberStatus.BANNED);
 
-        // 3. Redis에서 Refresh Token 강제 삭제 -> 다음 토큰 재발급 시 401 발생 (강제 로그아웃 효과)
-        String redisKey = "RT:" + member.getEmail();
-        redisTemplate.delete(redisKey);
+        authSessionRevocationService.revokeAllSessions(member);
 
         sendSinglePush(memberId, "블랙리스트 처리 안내",
                 "계정이 블랙리스트 처리되어 모든 기기에서 로그아웃됩니다." +

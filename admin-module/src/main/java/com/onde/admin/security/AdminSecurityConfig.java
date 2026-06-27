@@ -25,7 +25,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 @RequiredArgsConstructor
 public class AdminSecurityConfig {
 
-    private final AdminJwtTokenProvider adminJwtTokenProvider;
+    private final AdminJwtAuthenticationFilter adminJwtAuthenticationFilter;
     private final AdminAuthenticationEntryPoint adminAuthenticationEntryPoint;
     private final AdminAccessDeniedHandler adminAccessDeniedHandler;
     private final AllowedHttpMethodFilter allowedHttpMethodFilter;
@@ -87,7 +87,7 @@ public class AdminSecurityConfig {
             
             // 4. 커스텀하게 통합한 AdminJwtAuthenticationFilter를 시큐리티 필터 흐름 앞에 주입
             .addFilterBefore(allowedHttpMethodFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(new AdminJwtAuthenticationFilter(adminJwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(adminJwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

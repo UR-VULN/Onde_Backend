@@ -1,78 +1,77 @@
 package com.onde.admin.security;
 
-import io.jsonwebtoken.Claims;
+import com.onde.core.security.AuthSessionValidator;
+import com.onde.core.security.JwtTokenProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
-import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
 
+import java.io.IOException;
+
+@Slf4j
+@Component
 @RequiredArgsConstructor
 public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final AdminJwtTokenProvider adminJwtTokenProvider;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final AuthSessionValidator authSessionValidator;
+    private final AdminUserDetailsService adminUserDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        
-        // 1. 헤더에서 Authorization (Bearer JWT) 추출
-        String token = resolveToken(request);
 
-        // 2. [우선순위 1] 진짜 JWT 토큰이 넘어왔고 검증이 성공한 경우
-        if (token != null && adminJwtTokenProvider.validateToken(token)) {
-            Claims claims = adminJwtTokenProvider.getClaims(token);
-            String email = claims.getSubject();
-            List<String> rolesList = extractRoles(claims);
+        try {
+            String token = resolveTokenFromHeader(request);
+            if (token == null) {
+                token = resolveTokenFromCookie(request, "accessToken");
+            }
 
-            List<SimpleGrantedAuthority> authorities = rolesList.stream()
-                    .map(role -> {
-                        String r = role.toUpperCase();
-                        return new SimpleGrantedAuthority(r.startsWith("ROLE_") ? r : "ROLE_" + r);
-                    })
-                    .collect(Collectors.toList());
+            if (token != null && authSessionValidator.isAccessTokenAllowed(token, request)) {
+                String identifier = jwtTokenProvider.getSubject(token);
+                UserDetails userDetails = adminUserDetailsService.loadUserByUsername(identifier);
 
-            UserDetails principal = new User(email, "", authorities);
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(principal, token, authorities);
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-        } 
-
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            } else if (token != null) {
+                log.warn("[AdminJwtAuthenticationFilter] 차단·만료·세션 불일치 토큰입니다.");
+            }
+        } catch (Exception e) {
+            log.warn("[AdminJwtAuthenticationFilter] JWT 필터 처리 중 에러 발생: {}", e.getMessage());
+        }
 
         filterChain.doFilter(request, response);
     }
 
-    private String resolveToken(HttpServletRequest request) {
+    private String resolveTokenFromHeader(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
         }
         return null;
     }
 
-    private List<String> extractRoles(Claims claims) {
-        Object rolesObject = claims.get("roles");
-        if (rolesObject instanceof List<?> rawRoles) {
-            return rawRoles.stream()
-                    .filter(String.class::isInstance)
-                    .map(String.class::cast)
-                    .collect(Collectors.toList());
+    private String resolveTokenFromCookie(HttpServletRequest request, String cookieName) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (cookieName.equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
         }
-
-        String singleRole = claims.get("role", String.class);
-        if (singleRole != null) {
-            return List.of(singleRole);
-        }
-        return List.of();
+        return null;
     }
 }
