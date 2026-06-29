@@ -16,6 +16,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.servlet.http.HttpServletRequest;
+import org.redisson.api.RedissonClient;
+import org.redisson.api.RRateLimiter;
+import org.redisson.api.RateType;
+import org.redisson.api.RateIntervalUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +30,7 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RedissonClient redissonClient; // 👈 Redis 분산 제어용 클라이언트 주입
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -83,7 +89,18 @@ public class AuthService {
 
 
     @Transactional
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponse login(LoginRequest request, HttpServletRequest httpServletRequest) {
+        // [보안 강화 - WEB-7] Redis 기반 분산 Rate Limit (Redisson) 적용 (5분당 5회 제한)
+        String ip = httpServletRequest.getRemoteAddr();
+        RRateLimiter rateLimiter = redissonClient.getRateLimiter("login_limit:" + ip);
+        
+        // 5분(300초)에 최대 5회 시도 가능하도록 분산 Rate Limit 속도 설정 수립
+        rateLimiter.trySetRate(RateType.OVERALL, 5, 300, RateIntervalUnit.SECONDS);
+        
+        if (!rateLimiter.tryAcquire(1)) {
+            throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS);
+        }
+
         Member member = memberRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UnauthorizedException(ErrorCode.UNAUTHORIZED));
 
@@ -130,7 +147,17 @@ public class AuthService {
     }
 
     @Transactional
-    public LoginResponse adminLogin(LoginRequest request) {
+    public LoginResponse adminLogin(LoginRequest request, HttpServletRequest httpServletRequest) {
+        // [보안 강화 - ADMIN-8] Redis 기반 분산 Rate Limit (Redisson) 적용 (5분당 5회 제한)
+        String ip = httpServletRequest.getRemoteAddr();
+        RRateLimiter rateLimiter = redissonClient.getRateLimiter("login_limit:" + ip);
+        
+        rateLimiter.trySetRate(RateType.OVERALL, 5, 300, RateIntervalUnit.SECONDS);
+        
+        if (!rateLimiter.tryAcquire(1)) {
+            throw new BusinessException(ErrorCode.TOO_MANY_REQUESTS);
+        }
+
         Member member = memberRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UnauthorizedException(ErrorCode.UNAUTHORIZED));
 

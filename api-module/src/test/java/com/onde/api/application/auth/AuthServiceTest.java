@@ -43,6 +43,12 @@ class AuthServiceTest {
     @Mock
     private JwtTokenProvider jwtTokenProvider;
 
+    @Mock
+    private org.redisson.api.RedissonClient redissonClient;
+
+    @Mock
+    private org.redisson.api.RRateLimiter rateLimiter;
+
     @InjectMocks
     private AuthService authService;
 
@@ -70,12 +76,14 @@ class AuthServiceTest {
                 .role(MemberRole.SELLER)
                 .status(MemberStatus.PENDING)
                 .build();
+        when(redissonClient.getRateLimiter(any(String.class))).thenReturn(rateLimiter);
+        when(rateLimiter.tryAcquire(1)).thenReturn(true);
         when(memberRepository.findByEmail("seller@onde.com")).thenReturn(Optional.of(pendingSeller));
         when(passwordEncoder.matches("password123", "encoded-password")).thenReturn(true);
 
         BusinessException exception = assertThrows(
                 BusinessException.class,
-                () -> authService.login(loginRequest("seller@onde.com", "password123"))
+                () -> authService.login(loginRequest("seller@onde.com", "password123"), new org.springframework.mock.web.MockHttpServletRequest())
         );
 
         assertEquals(ErrorCode.SELLER_PENDING_APPROVAL, exception.getErrorCode());

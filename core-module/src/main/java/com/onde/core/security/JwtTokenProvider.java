@@ -76,4 +76,22 @@ public class JwtTokenProvider {
             return false;
         }
     }
+
+    /**
+     * 토큰의 남은 만료 시간 (초)을 구합니다.
+     */
+    public long getRemainingExpirationTimeInSeconds(String token) {
+        try {
+            Date expiration = Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody()
+                    .getExpiration();
+            long now = new Date().getTime();
+            return Math.max(0, (expiration.getTime() - now) / 1000);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
 }

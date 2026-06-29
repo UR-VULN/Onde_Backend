@@ -54,8 +54,9 @@ public class AdminCommunityService {
                     .stream().map(com.onde.core.entity.community.PostImage::getImageUrl).toList();
             String authorName = memberRepository.findById(post.getMemberId())
                     .map(m -> {
-                        String nickname = m.getNickname();
-                        return (nickname != null && !nickname.isEmpty()) ? nickname : "User-" + post.getMemberId();
+                        String e = m.getEmail();
+                        String name = (e != null && e.contains("@")) ? e.split("@")[0] : m.getName();
+                        return (name != null && !name.isEmpty()) ? name : "User-" + post.getMemberId();
                     })
                     .orElse("탈퇴한 회원");
             return com.onde.admin.application.community.dto.AdminPostDetailResponse.of(post, imageUrls, authorName);
@@ -71,8 +72,9 @@ public class AdminCommunityService {
 
         String authorName = memberRepository.findById(post.getMemberId())
                 .map(m -> {
-                    String nickname = m.getNickname();
-                    return (nickname != null && !nickname.isEmpty()) ? nickname : "User-" + post.getMemberId();
+                    String e = m.getEmail();
+                    String name = (e != null && e.contains("@")) ? e.split("@")[0] : m.getName();
+                    return (name != null && !name.isEmpty()) ? name : "User-" + post.getMemberId();
                 })
                 .orElse("탈퇴한 회원");
 
@@ -95,10 +97,11 @@ public class AdminCommunityService {
         // 1. 블라인드 처리 (BLINDED)
         post.updateStatus(PostStatus.BLINDED);
 
-        // 2. 작성자 회원 FCM 알림 발송 (단건 푸시 발송)
+        // [보안 강화 - ADMIN-1 / XSS 방어] 관리자 블라인드 처리 사유 XSS HTML 이스케이프 소독
+        String escapedReason = org.springframework.web.util.HtmlUtils.htmlEscape(req.getReason());
         Long authorId = post.getMemberId();
         String title = "게시글 블라인드 안내";
-        String body = String.format("작성하신 게시글이 블라인드 처리되었습니다. (사유: %s)", req.getReason());
+        String body = String.format("작성하신 게시글이 블라인드 처리되었습니다. (사유: %s)", escapedReason);
         sendSinglePush(authorId, title, body);
 
         return AdminBlindResponse.builder()

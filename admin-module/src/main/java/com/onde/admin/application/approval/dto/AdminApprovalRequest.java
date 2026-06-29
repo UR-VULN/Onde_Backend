@@ -1,6 +1,7 @@
 package com.onde.admin.application.approval.dto;
 
 import com.onde.core.entity.flight.ApprovalStatus;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 
 @Getter
@@ -11,10 +12,14 @@ import lombok.*;
 @ToString
 public class AdminApprovalRequest {
     private String action; // APPROVE, REJECT
+    
+    @Size(max = 500, message = "반려 사유는 500자를 초과할 수 없습니다.")
     private String reason;
 
     private String category; // FLIGHT, INSURANCE
     private ApprovalStatus decision; // APPROVED, REJECTED
+    
+    @Size(max = 500, message = "반려 사유는 500자를 초과할 수 없습니다.")
     private String rejectReason;
 
     public ApprovalStatus getResolvedDecision() {
@@ -38,3 +43,4 @@ public class AdminApprovalRequest {
         return reason != null ? reason : rejectReason;
     }
 }
+

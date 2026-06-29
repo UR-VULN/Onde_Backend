@@ -14,7 +14,6 @@ import com.onde.core.exception.ValidationException;
 import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.PostImageRepository;
 import com.onde.core.repository.PostRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
@@ -38,19 +37,35 @@ public class PostService {
     private final MemberRepository memberRepository;
     private final MockS3Uploader s3Uploader;
     private final Executor imageUploadExecutor;
+    private final com.onde.core.config.XssFilter xssFilter;
 
     public PostService(
             PostRepository postRepository,
             PostImageRepository postImageRepository,
             MemberRepository memberRepository,
             MockS3Uploader s3Uploader,
-            @Qualifier("imageUploadExecutor") Executor imageUploadExecutor
+            @Qualifier("imageUploadExecutor") Executor imageUploadExecutor,
+            com.onde.core.config.XssFilter xssFilter
     ) {
         this.postRepository = postRepository;
         this.postImageRepository = postImageRepository;
         this.memberRepository = memberRepository;
         this.s3Uploader = s3Uploader;
         this.imageUploadExecutor = imageUploadExecutor;
+        this.xssFilter = xssFilter;
+    }
+
+    private String getSafeAuthorName(Member member) {
+        if (member == null) return "탈퇴한 회원";
+        String nickname = member.getNickname();
+        if (nickname != null && !nickname.isEmpty()) {
+            return nickname;
+        }
+        String name = member.getName();
+        if (name != null && !name.isEmpty()) {
+            return name;
+        }
+        return "User-" + member.getId();
     }
 
     @Transactional
@@ -64,16 +79,14 @@ public class PostService {
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
 
-        String authorName = member.getNickname();
-        if (authorName == null || authorName.isEmpty()) {
-            authorName = "User-" + memberId;
-        }
+        // [보안 강화 - WEB-8] 이메일 유출 차단을 위해 이메일 대신 닉네임 또는 실명을 노출함
+        String authorName = getSafeAuthorName(member);
 
-        // 3. 게시글 저장
+        // 3. 게시글 저장 (Stored XSS 방어 적용)
         Post post = Post.builder()
                 .memberId(memberId)
-                .title(req.getTitle())
-                .content(req.getContent())
+                .title(xssFilter.clean(req.getTitle()))
+                .content(xssFilter.clean(req.getContent()))
                 .type(req.getType())
                 .status(PostStatus.ACTIVE)
                 .likeCount(0)
@@ -100,7 +113,7 @@ public class PostService {
             postImageRepository.saveAll(postImages);
         }
 
-        return PostCreateResponse.of(savedPost, imageUrls, authorName);
+        return PostCreateResponse.of(savedPost, imageUrls, authorName, com.onde.core.util.MaskingUtil.maskEmail(member.getEmail()));
     }
 
     public PostSearchResponse getPosts(PostType type, PostStatus status, Pageable pageable) {
@@ -119,24 +132,17 @@ public class PostService {
             List<PostImage> postImages = postImageRepository.findByPostIdOrderBySortOrderAsc(post.getId());
             String thumbnailUrl = postImages.isEmpty() ? null : postImages.get(0).getImageUrl();
 
-            String authorName = memberRepository.findById(post.getMemberId())
-                    .map(m -> {
-                        String nickname = m.getNickname();
-                        return (nickname != null && !nickname.isEmpty()) ? nickname : "User-" + post.getMemberId();
-                    })
-                    .orElse("탈퇴한 회원");
+            Member author = memberRepository.findById(post.getMemberId()).orElse(null);
+            String authorName = getSafeAuthorName(author);
+            String authorEmail = author != null ? com.onde.core.util.MaskingUtil.maskEmail(author.getEmail()) : "";
 
-            return PostDto.of(post, thumbnailUrl, authorName);
+            return PostDto.of(post, thumbnailUrl, authorName, authorEmail);
         }).toList();
 
         return PostSearchResponse.builder()
                 .posts(postDtos)
                 .totalCount(postPage.getTotalElements())
                 .build();
-    }
-
-    public List<Post> getVulnerablePostsByStatus(String status) {
-        return postRepository.findByStatus(status);
     }
 
     @Transactional
@@ -184,8 +190,8 @@ public class PostService {
             throw new ForbiddenException(ErrorCode.POST_NOT_OWNER);
         }
 
-        post.setTitle(req.getTitle());
-        post.setContent(req.getContent());
+        post.setTitle(xssFilter.clean(req.getTitle()));
+        post.setContent(xssFilter.clean(req.getContent()));
         if (req.getRating() != null) {
             post.setRating(req.getRating());
         }
@@ -217,11 +223,10 @@ public class PostService {
 
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.MEMBER_NOT_FOUND));
-        String authorName = member.getNickname();
-        if (authorName == null || authorName.isEmpty()) {
-            authorName = "User-" + memberId;
-        }
+        
+        // [보안 강화 - WEB-8] 이메일 유출 차단을 위해 이메일 대신 닉네임 또는 실명을 노출함
+        String authorName = getSafeAuthorName(member);
 
-        return PostCreateResponse.of(post, imageUrls, authorName);
+        return PostCreateResponse.of(post, imageUrls, authorName, com.onde.core.util.MaskingUtil.maskEmail(member.getEmail()));
     }
 }

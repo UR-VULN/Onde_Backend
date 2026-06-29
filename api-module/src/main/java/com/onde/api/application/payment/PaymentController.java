@@ -30,7 +30,7 @@ public class PaymentController {
     @PostMapping("/prepare")
     public ResponseEntity<ApiResponse<PaymentPrepareResponse>> preparePayment(
             @LoginMember Long userId,
-            @RequestBody PaymentPrepareRequest body) {
+            @RequestBody @jakarta.validation.Valid PaymentPrepareRequest body) {
 
         PaymentPrepareResponse result = paymentService.preparePayment(userId, body);
         return ResponseEntity.ok(ApiResponse.success(result, "결제 사전 검증 완료. merchantUid로 결제를 진행하세요."));
@@ -47,7 +47,7 @@ public class PaymentController {
     @PostMapping("/validate")
     public ResponseEntity<ApiResponse<PaymentValidateResponse>> validatePayment(
             @LoginMember Long userId,
-            @RequestBody PaymentValidateRequest body) {
+            @RequestBody @jakarta.validation.Valid PaymentValidateRequest body) {
 
         PaymentValidateResponse result = paymentService.validatePayment(userId, body);
         return ResponseEntity.ok(ApiResponse.success(result, "결제가 최종 승인되었습니다."));
@@ -65,7 +65,7 @@ public class PaymentController {
     public ResponseEntity<ApiResponse<PaymentCancelResponse>> cancelPayment(
             @LoginMember Long userId,
             @PathVariable("paymentId") Long paymentId,
-            @RequestBody PaymentCancelRequest body) {
+            @RequestBody @jakarta.validation.Valid PaymentCancelRequest body) {
 
         PaymentCancelResponse result = paymentService.cancelPayment(userId, paymentId, body);
         return ResponseEntity.ok(ApiResponse.success(result, "결제가 취소되었습니다."));

@@ -37,13 +37,25 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                // [보안 강화 - WEB-13] 클릭재킹, XSS 방어 및 HTTPS 강제를 위한 전역 보안 헤더 HSTS, CSP, X-Frame-Options 추가
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.deny())
+                        .xssProtection(xss -> xss.headerValue(org.springframework.security.web.header.writers.XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+                        .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'"))
+                        .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
+                )
+
                 // 1. 우리의 커스텀 CORS 설정을 등록하여 프론트 통신 차단 해제 (이식 완료)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 .csrf(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        // [보안 지침 보완 - WEB-9] JWT Stateless 아키텍처이므로 서블릿 세션 고정 방지(.sessionFixation().newSession())는 실제로 작동하지 않아 제거했습니다.
+                        // 세션 고정 공격 및 토큰 재사용 대응은 TokenBlacklistService(Redis 블랙리스트 필터)와 Refresh Token 회전으로 철저히 제어됩니다.
+                )
 
                 // 2. [팀원 스펙] 401, 403 예외 처리 핸들러 등록 유지
                 .exceptionHandling(exception -> exception
@@ -52,6 +64,10 @@ public class SecurityConfig {
 
                 // 3. URL 경로별 접근 권한 세팅 (두 코드의 허용 경로 대통합)
                 .authorizeHttpRequests(auth -> auth
+                        // [보안 강화 - WEB-15] 불필요하거나 취약한 HTTP TRACE 메서드는 차단하고 OPTIONS는 Preflight 용도로만 명시적 허용
+                        .requestMatchers(org.springframework.http.HttpMethod.TRACE, "/**").denyAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+
                         // ALL (누구나 접근 가능한 공개 경로)
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/v1/health").permitAll()
@@ -98,8 +114,7 @@ public class SecurityConfig {
                 "http://localhost:5173",
                 "http://localhost:3000",
                 "https://onde.click",
-                "https://www.onde.click",
-                "https://rookies.onde.click"
+                "https://www.onde.click"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

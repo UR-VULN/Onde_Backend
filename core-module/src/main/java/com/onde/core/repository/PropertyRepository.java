@@ -22,7 +22,5 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
     );
 
     long countByIsVerified(Boolean isVerified);
-
-    List<Property> findByAddressName(String addressName);
 }
 

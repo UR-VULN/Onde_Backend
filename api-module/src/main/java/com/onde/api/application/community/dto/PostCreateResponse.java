@@ -19,9 +19,10 @@ public class PostCreateResponse {
     private List<String> imageUrls;
     private LocalDateTime createdAt;
     private String authorName;
+    private String authorEmail;
     private Integer rating;
 
-    public static PostCreateResponse of(Post post, List<String> imageUrls, String authorName) {
+    public static PostCreateResponse of(Post post, List<String> imageUrls, String authorName, String authorEmail) {
         return PostCreateResponse.builder()
                 .postId(post.getId())
                 .title(post.getTitle())
@@ -30,6 +31,7 @@ public class PostCreateResponse {
                 .imageUrls(imageUrls)
                 .createdAt(post.getCreatedAt())
                 .authorName(authorName)
+                .authorEmail(authorEmail)
                 .rating(post.getRating())
                 .build();
     }
@@ -61,6 +63,10 @@ public class PostCreateResponse {
 
     public String getAuthorName() {
         return authorName;
+    }
+
+    public String getAuthorEmail() {
+        return authorEmail;
     }
 
     public Integer getRating() {

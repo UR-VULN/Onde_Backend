@@ -1,11 +1,13 @@
 package com.onde.admin.application.settlement;
 
 import com.onde.admin.application.settlement.dto.AdminSettlementDetailResponse;
+import com.onde.admin.application.settlement.dto.SettlementRejectRequest;
 import com.onde.core.entity.settlement.Settlement;
 import com.onde.core.entity.settlement.SettlementStatus;
 import com.onde.core.repository.PaymentRepository;
 import com.onde.core.repository.SettlementRepository;
 import com.onde.core.support.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -139,8 +141,8 @@ public class AdminSettlementController {
     @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> reject(
             @PathVariable("settlementId") Long settlementId,
-            @RequestBody(required = false) Map<String, String> body) {
-        String rejectReason = body != null ? body.getOrDefault("rejectReason", body.get("comment")) : null;
+            @Valid @RequestBody SettlementRejectRequest req) {
+        String rejectReason = req.getRejectReason();
         LocalDateTime rejectedAt = LocalDateTime.now();
         Settlement updated = adminSettlementService.rejectSettlement(
                 settlementId,
@@ -186,10 +188,20 @@ public class AdminSettlementController {
     @GetMapping("/{settlementId}/details")
     @PreAuthorize("hasAnyRole('SELLER_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<AdminSettlementDetailResponse>> getSettlementDetails(
-            @PathVariable("settlementId") Long settlementId) {
+            @PathVariable("settlementId") Long settlementId,
+            @com.onde.admin.security.LoginAdmin Long requesterId) {
 
         Settlement settlement = settlementRepository.findById(settlementId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 정산 건이 존재하지 않습니다."));
+
+        // [보안 강화 - ADMIN-3 / IDOR 방어] 본사 최고 관리자(SUPER_ADMIN)가 아닌 경우 정산 소유권(sellerId) 교차 검증 강제
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean isSuperAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN"));
+
+        if (!isSuperAdmin && !settlement.getSellerId().equals(requesterId)) {
+            throw new com.onde.core.exception.ForbiddenException(com.onde.core.exception.ErrorCode.FORBIDDEN);
+        }
 
         List<PaymentRepository.SettlementDetailProjection> projections =
                 adminSettlementService.getSettlementDetails(settlementId);

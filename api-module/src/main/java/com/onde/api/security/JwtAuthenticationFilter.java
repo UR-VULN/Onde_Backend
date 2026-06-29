@@ -24,6 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService customUserDetailsService;
+    private final com.onde.core.security.TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -40,6 +41,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             // 3. 토큰 검증 및 인증 처리
             if (token != null) {
+                log.info("[JwtAuthenticationFilter] Extracted token: {}, Checking blacklist...", token.substring(0, Math.min(token.length(), 15)) + "...");
+                // [보안 강화 - WEB-9] 로그아웃된 블랙리스트 토큰 차단
+                if (tokenBlacklistService.isBlacklisted(token)) {
+                    log.warn("[JwtAuthenticationFilter] 로그아웃된 토큰으로 접근을 시도하여 차단합니다. Token: {}", token.substring(0, Math.min(token.length(), 15)) + "...");
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "로그아웃된 토큰입니다.");
+                    return;
+                }
+                log.info("[JwtAuthenticationFilter] Token is not blacklisted. Proceeding to validate...");
+
                 boolean isValid = jwtTokenProvider.validateToken(token);
 
                 if (isValid) {

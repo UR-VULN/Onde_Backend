@@ -16,19 +16,21 @@ public class PostDto {
     private String content; // 본문 내용 추가
     private PostType type;
     private String authorName;
+    private String authorEmail;
     private int likeCount;
     private int commentCount;
     private String thumbnailUrl;
     private LocalDateTime createdAt;
     private Integer rating;
 
-    public static PostDto of(Post post, String thumbnailUrl, String authorName) {
+    public static PostDto of(Post post, String thumbnailUrl, String authorName, String authorEmail) {
         return PostDto.builder()
                 .postId(post.getId())
                 .title(post.getTitle())
                 .content(post.getContent()) // 빌더 매핑 추가
                 .type(post.getType())
                 .authorName(authorName)
+                .authorEmail(authorEmail)
                 .likeCount(post.getLikeCount() != null ? post.getLikeCount() : 0)
                 .commentCount(post.getCommentCount() != null ? post.getCommentCount() : 0)
                 .thumbnailUrl(thumbnailUrl)

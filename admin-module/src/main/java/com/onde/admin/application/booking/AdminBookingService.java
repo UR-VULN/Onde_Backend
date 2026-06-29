@@ -43,6 +43,7 @@ public class AdminBookingService {
     private final com.onde.core.repository.MemberRepository memberRepository;
     private final com.onde.core.repository.RoomRepository roomRepository;
     private final com.onde.core.repository.CarRepository carRepository;
+    private final com.onde.core.repository.FlightScheduleRepository flightScheduleRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -175,25 +176,49 @@ public class AdminBookingService {
         );
     }
 
+    // [보안 강화 - ADMIN-14] CSV 수식 주입 공격 (Excel Formula Injection) 방어를 위해 이스케이프 적용
+    public String sanitizeCsvCell(Object value) {
+        if (value == null) return "";
+        String str = String.valueOf(value);
+        if (str.startsWith("=") || str.startsWith("+") || str.startsWith("-") || str.startsWith("@")) {
+            return "\t" + str; // 탭 문자를 삽입하여 엑셀 실행 수식 트리거 차단
+        }
+        return str;
+    }
+
     /**
      * 대용량 탑승객 CSV 명단 스트리밍 (항공 도메인)
      */
-    public void exportPassengerListCsv(Long scheduleId, Writer writer) throws IOException {
-        log.info("📊 Starting CSV stream generation for scheduleId={}", scheduleId);
+    public void exportPassengerListCsv(Long scheduleId, Long requesterId, Writer writer) throws IOException {
+        log.info("📊 Starting CSV stream generation for scheduleId={} by requesterId={}", scheduleId, requesterId);
+
+        // 1. 스케줄 정보 조회
+        com.onde.core.entity.flight.FlightSchedule schedule = flightScheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.FLIGHT_SCHEDULE_NOT_FOUND));
+
+        // 2. [보안 강화 - ADMIN-3 / IDOR 방어] 최고 관리자(SUPER_ADMIN)가 아닌 경우, 스케줄의 노선 소유자(sellerId) 교차 검증 강제
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        boolean isSuperAdmin = auth != null && auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SUPER_ADMIN"));
+
+        if (!isSuperAdmin && schedule.getRoute() != null && !schedule.getRoute().getSellerId().equals(requesterId)) {
+            throw new com.onde.core.exception.ForbiddenException(com.onde.core.exception.ErrorCode.FORBIDDEN);
+        }
 
         writer.write("예약번호,탑승객명,여권번호,생년월일,좌석등급,결제금액,상태\n");
 
         try (Stream<FlightBooking> bookingStream = flightBookingRepository.streamByFlightScheduleId(scheduleId)) {
             bookingStream.forEach(booking -> {
                 try {
+                    // [보안 강화 - ADMIN-14] CSV Injection 방어를 위해 각 데이터에 sanitizeCsvCell() 적용
                     String line = String.format("%s,%s,%s,%s,%s,%s,%s\n",
-                            booking.getBookingCode(),
-                            booking.getPassenger().getPassengerName(),
-                            booking.getPassenger().getPassengerPassport(),
-                            booking.getPassenger().getPassengerBirthdate(),
-                            booking.getSeatClass().name(),
-                            booking.getTotalPrice(),
-                            booking.getStatus().name()
+                            sanitizeCsvCell(booking.getBookingCode()),
+                            sanitizeCsvCell(booking.getPassenger().getPassengerName()),
+                            sanitizeCsvCell(booking.getPassenger().getPassengerPassport()),
+                            sanitizeCsvCell(booking.getPassenger().getPassengerBirthdate()),
+                            sanitizeCsvCell(booking.getSeatClass().name()),
+                            sanitizeCsvCell(booking.getTotalPrice()),
+                            sanitizeCsvCell(booking.getStatus().name())
                     );
                     writer.write(line);
                 } catch (IOException e) {

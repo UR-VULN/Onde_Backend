@@ -45,16 +45,17 @@ public class AdminBookingController {
      */
     @GetMapping("/flights/{scheduleId}/export") // 👈 카멜케이스 변수명 정돈 및 중복 패스 정리
     public ResponseEntity<StreamingResponseBody> exportPassengerList(
-            @PathVariable("scheduleId") Long scheduleId) {
+            @PathVariable("scheduleId") Long scheduleId,
+            @com.onde.admin.security.LoginAdmin Long requesterId) {
 
-        log.info("🔑 Admin booking endpoint accessed for exporting passenger list: {}", scheduleId);
+        log.info("🔑 Admin booking endpoint accessed for exporting passenger list: {} by admin: {}", scheduleId, requesterId);
 
         StreamingResponseBody responseBody = outputStream -> {
             // Excel 한글 깨짐 방지를 위해 UTF-8 BOM (\uFEFF) 3바이트를 전두 스트림 출력
             outputStream.write(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
 
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(outputStream, StandardCharsets.UTF_8))) {
-                adminBookingService.exportPassengerListCsv(scheduleId, writer);
+                adminBookingService.exportPassengerListCsv(scheduleId, requesterId, writer);
             } catch (Exception e) {
                 log.error("❌ CSV export stream error for scheduleId={}: {}", scheduleId, e.getMessage());
                 throw new RuntimeException("CSV 파일 스트리밍 중 오류 발생", e);

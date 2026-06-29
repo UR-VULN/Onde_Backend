@@ -12,8 +12,6 @@ import com.onde.core.entity.reservation.ReservationTarget;
 import com.onde.core.repository.AccommodationRepository;
 import com.onde.core.repository.InventoryRepository;
 import com.onde.core.repository.RoomRepository;
-import com.onde.core.repository.PropertyRepository;
-import com.onde.core.entity.lbs.Property;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +27,6 @@ public class SellerAccommodationService {
     private final AccommodationRepository accommodationRepository;
     private final RoomRepository roomRepository;
     private final InventoryRepository inventoryRepository;
-    private final PropertyRepository propertyRepository;
 
     /**
      * 1.7. 판매자 숙소 신규 등록 비즈니스 로직 (주소 규격 포함)
@@ -47,45 +44,21 @@ public class SellerAccommodationService {
         accommodation.setDescription(request.getDescription());
         accommodation.setCategory(request.getCategory());
         accommodation.setLocation(request.getLocation());
-        
-        String license = request.getBusinessLicense();
-        if (license == null || license.isBlank()) {
-            license = "LIC-00000";
-        }
-        accommodation.setBusinessLicense(license);
+        accommodation.setBusinessLicense(request.getBusinessLicense());
         accommodation.setThumbnailUrl(request.getThumbnailUrl());
         accommodation.setApprovalStatus(ApprovalStatus.PENDING);
         accommodation.setSubmitDate(LocalDateTime.now());
 
         Accommodation savedAccommodation = accommodationRepository.save(accommodation);
 
-        List<SellerAccommodationRegisterRequest.RoomRegisterRequest> roomsList = request.getRooms();
-        if (roomsList == null || roomsList.isEmpty()) {
-            Room room = new Room();
-            room.setAccommodation(savedAccommodation);
-            room.setName(request.getName()); // name defaults to accommodation name
-            room.setCapacity(2);
-            roomRepository.save(room);
-        } else {
-            for (SellerAccommodationRegisterRequest.RoomRegisterRequest roomReq : roomsList) {
+        if (request.getRooms() != null) {
+            for (SellerAccommodationRegisterRequest.RoomRegisterRequest roomReq : request.getRooms()) {
                 Room room = new Room();
                 room.setAccommodation(savedAccommodation);
-                room.setName(roomReq.getName() == null || roomReq.getName().isBlank() ? request.getName() : roomReq.getName());
-                room.setCapacity(roomReq.getCapacity() == null ? 2 : roomReq.getCapacity());
+                room.setName(roomReq.getName());
+                room.setCapacity(roomReq.getCapacity());
                 roomRepository.save(room);
             }
-        }
-
-        // Save map property marker if latitude & longitude are present
-        if (request.getLatitude() != null && request.getLongitude() != null) {
-            Property property = Property.builder()
-                    .sellerId(request.getSellerId())
-                    .addressName(request.getName())
-                    .latitude(request.getLatitude())
-                    .longitude(request.getLongitude())
-                    .isVerified(false)
-                    .build();
-            propertyRepository.save(property);
         }
 
         return savedAccommodation.getId();

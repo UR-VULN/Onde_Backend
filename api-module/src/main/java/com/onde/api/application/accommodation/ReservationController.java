@@ -28,7 +28,7 @@ public class ReservationController {
     @PostMapping("/rooms")
     public ResponseEntity<ApiResponse<ReservationResponse>> reserveRoom(
             @LoginMember Long memberId,
-            @RequestBody RoomReservationRequest req) {
+            @RequestBody @jakarta.validation.Valid RoomReservationRequest req) {
         if (req.getMemberId() == null) {
             req.setMemberId(memberId);
         }
@@ -54,7 +54,7 @@ public class ReservationController {
     @PostMapping("/cars")
     public ResponseEntity<ApiResponse<CarReservationResponse>> reserveCar(
             @LoginMember Long memberId,
-            @RequestBody CarReservationRequest req) {
+            @RequestBody @jakarta.validation.Valid CarReservationRequest req) {
         if (req.getMemberId() == null) {
             req.setMemberId(memberId);
         }

@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final AdminJwtTokenProvider adminJwtTokenProvider;
+    private final com.onde.core.security.TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -29,31 +30,39 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
         String token = resolveToken(request);
 
         // 2. [우선순위 1] 진짜 JWT 토큰이 넘어왔고 검증이 성공한 경우
-        if (token != null && adminJwtTokenProvider.validateToken(token)) {
-            Claims claims = adminJwtTokenProvider.getClaims(token);
-            String email = claims.getSubject();
-            List<String> rolesList = claims.get("roles", List.class);
-            if (rolesList == null) {
-                String singleRole = claims.get("role", String.class);
-                if (singleRole != null) {
-                    rolesList = List.of(singleRole);
-                } else {
-                    rolesList = List.of();
-                }
+        if (token != null) {
+            // [보안 강화 - ADMIN-9] 로그아웃된 블랙리스트 토큰 차단
+            if (tokenBlacklistService.isBlacklisted(token)) {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "로그아웃된 토큰입니다.");
+                return;
             }
 
-            List<SimpleGrantedAuthority> authorities = rolesList.stream()
-                    .map(role -> {
-                        String r = role.toUpperCase();
-                        return new SimpleGrantedAuthority(r.startsWith("ROLE_") ? r : "ROLE_" + r);
-                    })
-                    .collect(Collectors.toList());
+            if (adminJwtTokenProvider.validateToken(token)) {
+                Claims claims = adminJwtTokenProvider.getClaims(token);
+                String email = claims.getSubject();
+                List<String> rolesList = claims.get("roles", List.class);
+                if (rolesList == null) {
+                    String singleRole = claims.get("role", String.class);
+                    if (singleRole != null) {
+                        rolesList = List.of(singleRole);
+                    } else {
+                        rolesList = List.of();
+                    }
+                }
 
-            UserDetails principal = new User(email, "", authorities);
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(principal, token, authorities);
+                List<SimpleGrantedAuthority> authorities = rolesList.stream()
+                        .map(role -> {
+                            String r = role.toUpperCase();
+                            return new SimpleGrantedAuthority(r.startsWith("ROLE_") ? r : "ROLE_" + r);
+                        })
+                        .collect(Collectors.toList());
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+                UserDetails principal = new User(email, "", authorities);
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(principal, token, authorities);
+
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
         } 
 
 

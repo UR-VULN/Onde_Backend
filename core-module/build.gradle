@@ -50,6 +50,12 @@ dependencies {
     // 테스트 라이브러리
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Stored XSS 방어 (AntiSamy)
+    implementation 'org.owasp.antisamy:antisamy:1.7.5'
+
+    // 로그인 시도 횟수 제한 (Bucket4j)
+    implementation 'com.bucket4j:bucket4j-core:8.10.1'
 }
 
 // 인코딩 및 UTF-8 설정

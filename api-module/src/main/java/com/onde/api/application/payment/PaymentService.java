@@ -47,6 +47,7 @@ public class PaymentService {
     private final InsurancePolicyRepository insurancePolicyRepository;
     private final com.onde.core.repository.AccommodationRepository accommodationRepository;
     private final com.onde.core.repository.CarRepository carRepository;
+    private final com.onde.core.repository.MemberRepository memberRepository;
     private final WalletService walletService;
 
     /**
@@ -60,6 +61,15 @@ public class PaymentService {
      */
     @Transactional
     public PaymentPrepareResponse preparePayment(Long userId, PaymentPrepareRequest req) {
+        // [보안 강화 - WEB-16] 마일리지 음수 사용 주입 차단
+        if (req.getUsedMileage() != null && req.getUsedMileage() < 0) {
+            throw new IllegalArgumentException("마일리지는 0 이상이어야 합니다.");
+        }
+
+        // [보안 강화 - WEB-16] 마일리지 동시성(Race Condition) 제어를 위해 사용자 데이터에 비관적 락(PESSIMISTIC_WRITE) 획득
+        memberRepository.findByIdWithLock(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+
         // 1. 현재 사용자가 보유한 사용 가능한 실시간 마일리지 잔액 조회
         int currentMileage = mileageService.getCurrentMileage(userId);
         if (req.getUsedMileage() != null && req.getUsedMileage() > currentMileage) {
@@ -69,7 +79,26 @@ public class PaymentService {
         // 지갑 잔액 검증 로직 추가
         BigDecimal walletBalance = walletService.getBalance(userId);
         BigDecimal verifiedTotalAmount = resolveServerTotalAmount(req);
+
+        if (verifiedTotalAmount == null) {
+            throw new IllegalArgumentException("결제 대상 금액을 확인할 수 없습니다.");
+        }
+        if (req.getTotalAmount() == null) {
+            throw new IllegalArgumentException("결제 요청 금액이 누락되었습니다.");
+        }
+
+        // [보안 강화] 결제 금액 위변조 차단 검증
+        if (verifiedTotalAmount.compareTo(req.getTotalAmount()) != 0) {
+            throw new IllegalArgumentException("결제 요청 금액이 실제 상품 가격과 일치하지 않습니다.");
+        }
+
         Integer usedMileage = req.getUsedMileage() != null ? req.getUsedMileage() : 0;
+
+        // [보안 강화] 사용 마일리지가 결제 대상 총 금액을 초과할 수 없도록 검증
+        if (BigDecimal.valueOf(usedMileage).compareTo(verifiedTotalAmount) > 0) {
+            throw new IllegalArgumentException("사용할 마일리지가 결제 총 금액을 초과할 수 없습니다.");
+        }
+
         BigDecimal pgAmount = verifiedTotalAmount.subtract(BigDecimal.valueOf(usedMileage));
         
         if (walletBalance.compareTo(pgAmount) < 0) {

@@ -75,7 +75,6 @@ public class AccommodationService {
                         .thumbnailUrl(a.getThumbnailUrl())
                         .minPrice(resolveMinPrice(a, request))
                         .availableRooms(countAvailableRooms(a, request, stayDays))
-                        .description(a.getDescription())
                         .build())
                 .collect(Collectors.toList());
 

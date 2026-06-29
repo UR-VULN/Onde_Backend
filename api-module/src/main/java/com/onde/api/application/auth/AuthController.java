@@ -21,11 +21,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@lombok.extern.slf4j.Slf4j
 @RestController
 @RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
+    private final com.onde.core.security.TokenBlacklistService tokenBlacklistService;
+    private final com.onde.core.security.JwtTokenProvider jwtTokenProvider;
+    private final com.onde.core.repository.RefreshTokenRepository refreshTokenRepository; // 👈 추가 주입
+
+    @org.springframework.beans.factory.annotation.Value("${jwt.cookie.secure:false}")
+    private boolean cookieSecure;
 
     @PostMapping("/api/v1/auth/signup")
     public ResponseEntity<ApiResponse<SignupResponse>> signup(@Valid @RequestBody SignupRequest request) {
@@ -58,13 +65,15 @@ public class AuthController {
 
 
     @PostMapping("/api/v1/auth/login")
-    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
-        LoginResponse loginResponse = authService.login(request);
+    public ResponseEntity<ApiResponse<LoginResponse>> login(
+            @Valid @RequestBody LoginRequest request,
+            jakarta.servlet.http.HttpServletRequest httpServletRequest) {
+        LoginResponse loginResponse = authService.login(request, httpServletRequest);
 
         // Access Token 쿠키 설정 (30분)
         ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", loginResponse.getAccessToken())
                 .httpOnly(true)
-                .secure(true) // HTTPS 통신 강제
+                .secure(cookieSecure) // 환경에 따른 HTTPS 통신 제어
                 .path("/")
                 .sameSite("None") // 크로스 도메인 요청 허용
                 .maxAge(30 * 60)
@@ -73,7 +82,7 @@ public class AuthController {
         // Refresh Token 쿠키 설정 (14일)
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", loginResponse.getRefreshToken())
                 .httpOnly(true)
-                .secure(true)
+                .secure(cookieSecure)
                 .path("/")
                 .sameSite("None")
                 .maxAge(14 * 24 * 60 * 60)
@@ -87,12 +96,14 @@ public class AuthController {
     }
 
     @PostMapping("/api/v1/auth/admin/login")
-    public ResponseEntity<ApiResponse<LoginResponse>> adminLogin(@Valid @RequestBody LoginRequest request) {
-        LoginResponse loginResponse = authService.adminLogin(request);
+    public ResponseEntity<ApiResponse<LoginResponse>> adminLogin(
+            @Valid @RequestBody LoginRequest request,
+            jakarta.servlet.http.HttpServletRequest httpServletRequest) {
+        LoginResponse loginResponse = authService.adminLogin(request, httpServletRequest);
 
         ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", loginResponse.getAccessToken())
                 .httpOnly(true)
-                .secure(true)
+                .secure(cookieSecure)
                 .path("/")
                 .sameSite("None")
                 .maxAge(30 * 60)
@@ -100,7 +111,7 @@ public class AuthController {
 
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", loginResponse.getRefreshToken())
                 .httpOnly(true)
-                .secure(true)
+                .secure(cookieSecure)
                 .path("/")
                 .sameSite("None")
                 .maxAge(14 * 24 * 60 * 60)
@@ -140,6 +151,77 @@ public class AuthController {
 
         TokenRefreshResponse response = authService.refresh(refreshToken);
         return ResponseEntity.ok(ApiResponse.success(response, "Access Token이 재발급되었습니다."));
+    }
+
+    @PostMapping("/api/v1/auth/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
+            jakarta.servlet.http.HttpServletRequest httpServletRequest) {
+        
+        log.info("[Logout] Logout requested. Authorization header present: {}, Cookies present: {}", 
+                authorization != null ? "Yes" : "No", 
+                httpServletRequest.getCookies() != null ? "Yes (" + httpServletRequest.getCookies().length + ")" : "No");
+        
+        String token = extractBearerToken(authorization);
+        if (token == null) {
+            token = resolveTokenFromCookie(httpServletRequest, "accessToken");
+            log.info("[Logout] Extracted token from cookie: {}", token != null ? token.substring(0, Math.min(token.length(), 15)) + "..." : "null");
+        } else {
+            log.info("[Logout] Extracted token from Authorization header: {}", token.substring(0, Math.min(token.length(), 15)) + "...");
+        }
+
+        if (token != null && !token.isBlank()) {
+            long remainingTime = jwtTokenProvider.getRemainingExpirationTimeInSeconds(token);
+            log.info("[Logout] Token remaining time: {} seconds. Registering to blacklist.", remainingTime);
+            tokenBlacklistService.blacklistToken(token, remainingTime);
+
+            // [보안 강화 - WEB-9] 로그아웃 시 Redis 내 저장된 Refresh Token도 완벽 소거(무효화)
+            try {
+                String email = jwtTokenProvider.getSubject(token);
+                if (email != null) {
+                    refreshTokenRepository.deleteById(email);
+                    log.info("[Logout] Successfully deleted Refresh Token for email: {}", email);
+                }
+            } catch (Exception e) {
+                log.warn("[Logout] Failed to delete Refresh Token during logout: {}", e.getMessage());
+            }
+        } else {
+            log.warn("[Logout] No token found in header or cookie for logout.");
+        }
+
+        // 쿠키 삭제 설정
+        ResponseCookie deleteAccessCookie = ResponseCookie.from("accessToken", "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("None")
+                .maxAge(0)
+                .build();
+
+        ResponseCookie deleteRefreshCookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .path("/")
+                .sameSite("None")
+                .maxAge(0)
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, deleteAccessCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, deleteRefreshCookie.toString())
+                .body(ApiResponse.success(null, "로그아웃 되었습니다."));
+    }
+
+    private String resolveTokenFromCookie(jakarta.servlet.http.HttpServletRequest request, String cookieName) {
+        jakarta.servlet.http.Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : cookies) {
+                if (cookieName.equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
     }
 
     private String extractBearerToken(String authorization) {

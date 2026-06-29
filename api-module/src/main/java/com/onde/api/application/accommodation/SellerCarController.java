@@ -16,8 +16,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.web.multipart.MultipartFile;
-
 @RestController
 @RequestMapping("/api/v1/seller")
 @RequiredArgsConstructor
@@ -26,7 +24,6 @@ public class SellerCarController {
     private final CarService carService;
     private final CarRepository carRepository;
     private final InventoryRepository inventoryRepository;
-    private final com.onde.api.config.MockS3Uploader s3Uploader;
 
     @GetMapping("/cars")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCars(
@@ -54,52 +51,6 @@ public class SellerCarController {
         return ResponseEntity.ok(ApiResponse.success(data, "판매자 등록 렌터카 목록 조회가 성공적으로 완료되었습니다."));
     }
 
-    @PostMapping(value = "/cars", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<Long>> registerCarMultipart(
-            @RequestParam(required = false) MultipartFile thumbnail,
-            @RequestParam String licensePlate,
-            @RequestParam String modelName,
-            @RequestParam String carType,
-            @RequestParam(required = false) String dailyPrice,
-            @RequestParam(required = false) String location,
-            @LoginMember Long sellerId) {
-        if (licensePlate == null || licensePlate.isBlank()) {
-            throw new IllegalArgumentException("licensePlate은 필수입니다.");
-        }
-        if (carRepository.existsByLicensePlate(licensePlate)) {
-            throw new IllegalArgumentException("이미 등록된 차량 번호입니다.");
-        }
-
-        Car car = new Car();
-        car.setSellerId(sellerId);
-        car.setModelName(modelName);
-        car.setCarType(carType);
-        car.setLicensePlate(licensePlate);
-        car.setLocation(location == null || location.isBlank() ? "제주" : location);
-        car.setApprovalStatus(com.onde.core.entity.accommodation.ApprovalStatus.PENDING);
-        if (thumbnail != null && !thumbnail.isEmpty()) {
-            car.setThumbnailUrl(s3Uploader.upload(thumbnail, "cars"));
-        }
-        Car saved = carRepository.save(car);
-
-        if (dailyPrice != null && !dailyPrice.isBlank()) {
-            try {
-                BigDecimal priceVal = new BigDecimal(dailyPrice);
-                Inventory inventory = new Inventory();
-                inventory.setTargetType(ReservationTarget.CAR);
-                inventory.setTargetId(saved.getId());
-                inventory.setDate(LocalDate.now());
-                inventory.setBasePrice(priceVal);
-                inventory.setStock(1);
-                inventoryRepository.save(inventory);
-            } catch (Exception e) {
-                // ignore
-            }
-        }
-
-        return ResponseEntity.ok(ApiResponse.success(saved.getId(), "렌터카 등록 신청이 완료되었습니다."));
-    }
-
     @PostMapping("/cars")
     public ResponseEntity<ApiResponse<Long>> registerCar(
             @RequestBody Map<String, Object> request,
@@ -118,12 +69,6 @@ public class SellerCarController {
         car.setCarType(stringValue(request.get("carType")));
         car.setLicensePlate(licensePlate);
         car.setApprovalStatus(com.onde.core.entity.accommodation.ApprovalStatus.PENDING);
-        
-        Object thumbnailUrl = request.get("thumbnailUrl");
-        if (thumbnailUrl != null) {
-            car.setThumbnailUrl(stringValue(thumbnailUrl));
-        }
-        
         Car saved = carRepository.save(car);
 
         Object dailyPrice = request.get("dailyPrice");

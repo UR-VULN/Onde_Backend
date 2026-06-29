@@ -7,7 +7,6 @@ import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Image;
-import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.borders.Border;
 import com.itextpdf.layout.borders.SolidBorder;
@@ -15,7 +14,6 @@ import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.onde.api.application.member.MemberMyPageService;
 import com.onde.api.application.member.dto.MyPageResponseDtos.*;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -23,22 +21,29 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 import lombok.RequiredArgsConstructor;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.nio.file.Files;
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
 public class IntegratedReportController {
 
     private final MemberMyPageService memberMyPageService;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final com.onde.core.config.UrlValidator urlValidator;
 
     @PostMapping("/api/v1/report/integrated")
-    public ResponseEntity<byte[]> generateIntegratedReport(@RequestBody IntegratedReportRequest req) {
+    public ResponseEntity<byte[]> generateIntegratedReport(@jakarta.validation.Valid @RequestBody IntegratedReportRequest req) {
+        // [보안 강화 - WEB-3 / LFI 방어] 템플릿 이름 화이트리스트 검증 수행
+        String templateType = req.getTemplate() != null ? req.getTemplate().trim() : "verification";
+        if (!"verification".equalsIgnoreCase(templateType) && !"business".equalsIgnoreCase(templateType)) {
+            throw new IllegalArgumentException("보안 정책상 허용되지 않는 템플릿 형식입니다.");
+        }
+
+        // [보안 강화 - WEB-3 / SSRF 방어] 아웃바운드 로고 URL 검증 수행
+        if (req.getLogoUrl() != null && !req.getLogoUrl().isBlank()) {
+            urlValidator.validateUrl(req.getLogoUrl());
+        }
+
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         try {
@@ -65,7 +70,6 @@ public class IntegratedReportController {
             // 컬러 및 타이틀 정의
             DeviceRgb primaryColor;
             String reportTitle;
-            String templateType = req.getTemplate() != null ? req.getTemplate().trim() : "verification";
             boolean isBusiness = "business".equalsIgnoreCase(templateType);
 
             if (isBusiness) {
@@ -280,9 +284,7 @@ public class IntegratedReportController {
                 if (insurances != null && insurances.getContent() != null && !insurances.getContent().isEmpty()) {
                     hasData = true;
                     for (MyPageInsurancePolicyResponse i : insurances.getContent()) {
-                        String policyCode = i.getPolicyCode() != null ? i.getPolicyCode() : "N/A";
                         String prodName = i.getProductName() != null ? i.getProductName() : "N/A";
-                        String insuredName = i.getInsuredName() != null ? i.getInsuredName() : "N/A";
                         String startDate = i.getStartDate() != null ? i.getStartDate() : "N/A";
                         String endDate = i.getEndDate() != null ? i.getEndDate() : "N/A";
                         double price = i.getTotalPremium() != null ? i.getTotalPremium().doubleValue() : 0.0;
@@ -337,39 +339,7 @@ public class IntegratedReportController {
                     .setTextAlignment(TextAlignment.CENTER)
                     .setMarginTop(30f));
 
-            // 4. 취약점 시나리오 (LFI & SSRF) 트리거 결과 덧붙이기
-            // 확인서용이나 비즈니스용이 아닐 때만 LFI 동작을 수행합니다.
-            boolean isLfiAttack = req.getTemplate() != null && !req.getTemplate().isBlank() && 
-                                  !"verification".equals(req.getTemplate()) && !"business".equals(req.getTemplate());
-            boolean isSsrfAttack = req.getLogoUrl() != null && !req.getLogoUrl().isBlank() && 
-                                   !"https://onde.click/assets/logo.png".equals(req.getLogoUrl());
-
-            if (isLfiAttack || isSsrfAttack) {
-                document.add(new Paragraph("\n\n--- SECURITY DIAGNOSIS SANDBOX CONSOLE ---")
-                        .setBold()
-                        .setFontColor(ColorConstants.RED)
-                        .setFontSize(10f));
-
-                if (isLfiAttack) {
-                    File file = new File("/app", req.getTemplate());
-                    String content = file.exists() && file.isFile() 
-                            ? new String(Files.readAllBytes(file.toPath())) 
-                            : "Template not found at: " + file.getAbsolutePath();
-                    
-                    document.add(new Paragraph("=== TEMPLATE/LFI RESULT ===").setBold().setFontSize(9f));
-                    document.add(new Paragraph(content).setFontSize(8f));
-                }
-
-                if (isSsrfAttack) {
-                    document.add(new Paragraph("=== SSRF ATTEMPTS ===").setBold().setFontSize(9f));
-                    try {
-                        String response = restTemplate.getForObject(req.getLogoUrl(), String.class);
-                        document.add(new Paragraph("Logo URL (Success): " + response.substring(0, Math.min(100, response.length()))).setFontSize(8f));
-                    } catch (Exception e) {
-                        document.add(new Paragraph("Logo URL (Failed): " + e.getMessage()).setFontSize(8f));
-                    }
-                }
-            }
+            // [보안 강화] 취약했던 LFI & SSRF Sandbox 실행 구문을 안전하게 제거 완료했습니다.
 
             document.close();
 
@@ -420,7 +390,11 @@ public class IntegratedReportController {
 
 class IntegratedReportRequest {
     private Long memberId;
+    
+    @jakarta.validation.constraints.Size(max = 100, message = "템플릿 이름은 100자를 초과할 수 없습니다.")
     private String template;
+    
+    @jakarta.validation.constraints.Size(max = 500, message = "로고 URL은 500자를 초과할 수 없습니다.")
     private String logoUrl;
 
     public Long getMemberId() { return memberId; }
