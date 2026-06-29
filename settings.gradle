@@ -1,0 +1,5 @@
+rootProject.name = 'onde-backend'
+
+include 'core-module'
+include 'api-module'
+include 'admin-module'

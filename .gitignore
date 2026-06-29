@@ -1,0 +1,21 @@
+# 빌드 결과물 제외
+.gradle/
+build/
+bin/
+*.class
+*.jar
+*.war
+
+# IDE 설정 제외
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# 하지만 Gradle Wrapper의 jar는 반드시 포함 (가장 아래에 두세요)
+!gradle/wrapper/gradle-wrapper.jar
+
+# 환경 변수 파일 제외
+.env
+.env.local
+.env.*.local
