@@ -77,7 +77,7 @@ public class AdminSecurityConfig {
                 .anyRequest().permitAll() 
             )
             
-            // 4. 커스텀하게 통합한 AdminJwtAuthenticationFilter를 시큐리티 필터 흐름 앞에 주입
+            // 4. 어드민 전용 JWT 검증 필터를 UsernamePasswordAuthenticationFilter 앞에 배치
             .addFilterBefore(new AdminJwtAuthenticationFilter(adminJwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

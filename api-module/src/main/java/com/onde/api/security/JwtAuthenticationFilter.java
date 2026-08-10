@@ -54,7 +54,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     log.warn("[JwtAuthenticationFilter] 유효하지 않거나 만료된 토큰입니다.");
                 }
             } 
-            // 테스트 헬퍼(우회 로직) 전체 삭제 완료
 
         } catch (Exception e) {
             log.warn("[JwtAuthenticationFilter] JWT 필터 처리 중 에러 발생: {}", e.getMessage());

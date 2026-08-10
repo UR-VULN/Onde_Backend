@@ -41,7 +41,7 @@ public class AwsS3Service {
         try {
             // AWS Credentials가 환경 변수나 프로필 등에 존재할 때만 정상 초기화 시도
             DefaultCredentialsProvider credentialsProvider = DefaultCredentialsProvider.create();
-            // 자격 증명 실존 여부 즉석 점검 (예외 발생 시 catch 블록으로 이동하여 Mock 가동)
+            // 자격 증명을 실제로 해석해 보고, 실패하면 catch 블록에서 로컬(MinIO) 설정으로 전환
             credentialsProvider.resolveCredentials();
 
             this.s3Client = S3Client.builder()
@@ -73,7 +73,7 @@ public class AwsS3Service {
                         .endpointOverride(java.net.URI.create(s3Endpoint))
                         .build();
 
-                this.useMock = false; // Mock 대신 실제 Local MinIO로 쓰기 로직 활성화
+                this.useMock = false; // 로컬 MinIO로 실제 업로드가 가능하므로 Mock 응답을 사용하지 않음
                 log.info("S3Client and S3Presigner initialized successfully for Local MinIO.");
             } catch (Exception ex) {
                 this.useMock = true;

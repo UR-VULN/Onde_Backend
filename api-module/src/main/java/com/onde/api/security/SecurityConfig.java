@@ -37,7 +37,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // 1. 우리의 커스텀 CORS 설정을 등록하여 프론트 통신 차단 해제 (이식 완료)
+                // 1. 프론트엔드 도메인에서의 요청을 허용하기 위한 CORS 설정 등록 (허용 목록은 corsConfigurationSource() 참고)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 .csrf(AbstractHttpConfigurer::disable)
@@ -45,12 +45,12 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 2. [팀원 스펙] 401, 403 예외 처리 핸들러 등록 유지
+                // 2. 인증 실패(401)와 권한 부족(403)을 공통 JSON 에러 응답으로 내려주는 핸들러 등록
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                         .accessDeniedHandler(jwtAccessDeniedHandler))
 
-                // 3. URL 경로별 접근 권한 세팅 (두 코드의 허용 경로 대통합)
+                // 3. URL 경로별 접근 권한 설정 (인증 없이 열어야 하는 경로만 아래에 명시)
                 .authorizeHttpRequests(auth -> auth
                         // ALL (누구나 접근 가능한 공개 경로)
                         .requestMatchers("/error").permitAll()
@@ -69,26 +69,28 @@ public class SecurityConfig {
 
 
 
-                        // [보안 강화] 그 외의 모든 예약, 정산 등 핵심 요청은 무조건 로그인(인증)된 사용자만 접근 허용
-                        // 원래 우리 코드의 .anyRequest().permitAll()은 보안 멍청이 코드가 될 위험이 커서 팀원의
-                        // .authenticated()로 잠갔습니다.
+                        // [보안 강화] 그 외의 모든 예약, 정산 등 핵심 요청은 인증된 사용자만 접근 허용
+                        // 기본값을 permitAll()로 두면 신규 엔드포인트를 추가할 때 인증 설정을 누락해도 그대로 공개되므로,
+                        // 기본값은 authenticated()로 막고 공개가 필요한 경로만 위에 명시
                         .anyRequest().authenticated())
 
-                // 4. [팀원 스펙] OAuth2 소셜 로그인 파이프라인 조립 완벽 유지
+                // 4. OAuth2 소셜 로그인 처리 (사용자 정보 조회 후 인증 성공 시 토큰 발급 및 리다이렉트)
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService))
                         .successHandler(oAuth2AuthenticationSuccessHandler))
 
-                // 5. 스프링 빈 컨테이너가 안전하게 관리하는 필터를 UsernamePasswordAuthenticationFilter 앞에 배치
-                // (new 키워드로 수동 생성하면 의존성 주입이 다 깨지므로 팀원 방식이 100% 맞습니다)
+                // 5. JWT 인증 필터를 UsernamePasswordAuthenticationFilter 앞에 배치
+                // 필터를 new로 직접 생성하면 의존성 주입을 받지 못하므로, 스프링 빈으로 주입받아 등록
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     /**
-     * 프론트엔드(React, Vite 등) 연동을 위한 CORS 설정 구성 (우리 코드 이식 완료)
+     * 프론트엔드(React, Vite 등) 연동을 위한 CORS 설정 구성.
+     * 인증 쿠키를 주고받아야 하므로 allowCredentials(true)를 사용하며,
+     * 이 경우 와일드카드 오리진을 쓸 수 없어 허용 도메인을 직접 명시합니다.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

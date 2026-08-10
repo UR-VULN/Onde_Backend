@@ -42,7 +42,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         if ("google".equals(registrationId)) {
             email = (String) attributes.get("email");
             name = (String) attributes.get("name");
-            providerId = String.valueOf(attributes.get("sub")); // Google uses "sub"
+            providerId = String.valueOf(attributes.get("sub")); // 구글은 고유 식별자를 "sub" 클레임으로 내려줌
             provider = AuthProvider.GOOGLE;
         } else if ("kakao".equals(registrationId)) {
             Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
@@ -67,7 +67,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         
         Member member = memberRepository.findByProviderAndProviderId(finalProvider, finalProviderId)
                 .orElseGet(() -> {
-                    // 소셜 유저는 더미 패스워드를 인코딩하여 테이블 제약 조건 우회
+                    // 소셜 계정은 비밀번호가 없지만 password 컬럼이 nullable = false 이므로,
+                    // 로그인에 쓰이지 않는 임의 값을 인코딩해 저장
                     String dummyPassword = passwordEncoder.encode(UUID.randomUUID().toString());
                     
                     // 이메일이 없으면 GUEST, 있으면 USER로 분기 처리

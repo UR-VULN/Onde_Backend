@@ -44,7 +44,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         );
         refreshTokenRepository.save(refreshToken);
 
-        // 3. 브라우저 보안 쿠키 베이킹 (HttpOnly, Secure)
+        // 3. 토큰을 HttpOnly + Secure 쿠키로 전달 (스크립트 접근 차단, 크로스 도메인 전송을 위해 SameSite=None)
         ResponseCookie accessTokenCookie = ResponseCookie.from("accessToken", accessToken)
                 .httpOnly(true).secure(true).path("/").sameSite("None").maxAge(30 * 60).build();
 

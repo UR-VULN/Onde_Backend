@@ -28,7 +28,8 @@ public class AdminJwtAuthenticationFilter extends OncePerRequestFilter {
         // 1. 헤더에서 Authorization (Bearer JWT) 추출
         String token = resolveToken(request);
 
-        // 2. [우선순위 1] 진짜 JWT 토큰이 넘어왔고 검증이 성공한 경우
+        // 2. 토큰이 있고 검증에 성공한 경우에만 SecurityContext에 인증 정보 저장
+        //    토큰이 없거나 검증에 실패하면 인증 없이 다음 필터로 넘기고, 접근 차단은 인가 규칙이 담당
         if (token != null && adminJwtTokenProvider.validateToken(token)) {
             Claims claims = adminJwtTokenProvider.getClaims(token);
             String email = claims.getSubject();

@@ -18,10 +18,12 @@ public class DistributedLockExecutor {
     private RedissonClient redissonClient;
 
     /**
-     * [Day 9] Redisson 분산 락 라이프사이클 실행기 (Dynamic Fallback 모의 우회 기동 포함)
+     * Redisson 분산 락을 획득한 뒤 콜백을 실행하고, 완료 여부와 무관하게 락을 해제합니다.
+     * 대기 시간 내에 락을 얻지 못하면 SEAT_SOLD_OUT 예외로 처리합니다.
      */
     public <T> T executeWithLock(String key, long waitTimeSeconds, long leaseTimeSeconds, Callable<T> callback) {
-        // 로컬 개발 환경 및 Redis 미가동 시 Dynamic Fallback 작동 (무장애 모의 락 실행 우회)
+        // Redis를 띄우지 않는 로컬 환경에서도 기동되도록, RedissonClient가 없으면 락 없이 콜백만 실행
+        // (이 경로에서는 동시성 제어가 적용되지 않으므로 운영 환경에서는 Redis 연결이 필수)
         if (redissonClient == null) {
             log.warn("⚠️ [DISTRIBUTED LOCK FALLBACK] RedissonClient is not initialized. 우회하여 비즈니스 로직을 동적으로 직접 실행합니다.");
             try {
