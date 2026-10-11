@@ -8,6 +8,7 @@ import com.onde.core.repository.MemberRepository;
 import com.onde.core.repository.RefreshTokenRepository;
 import com.onde.core.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailAuthService {
@@ -49,7 +51,8 @@ public class EmailAuthService {
         redisTemplate.opsForValue().set(REDIS_PREFIX + email, code, CODE_TTL, TimeUnit.SECONDS);
 
         // TODO: 실제 메일 발송 로직 (JavaMailSender)
-        System.out.println("인증번호 발송 - Email: " + email + ", Code: " + code);
+        // 인증번호 자체는 로그에 남기지 않는다. 로컬 확인은 Redis 키 EMAIL_VERIFY:<email> 로 한다.
+        log.debug("이메일 인증번호 발급 완료 - email={}", email);
     }
 
     @Transactional
