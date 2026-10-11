@@ -16,11 +16,15 @@ public class JwtTokenProvider {
 
     @Value("${jwt.secret}")
     private String secretKey;
-    
+
     private Key key;
 
-    private final long accessTokenValidTime = 30 * 60 * 1000L; // 30분 유효기간
-    private final long refreshTokenValidTime = 14 * 24 * 60 * 60 * 1000L; // 14일 유효기간
+    // 만료 시간(ms)은 application.yml의 jwt.* 값을 따르고, 없으면 30분 / 14일을 기본값으로 사용
+    @Value("${jwt.access-token-expiration:1800000}")
+    private long accessTokenValidTime;
+
+    @Value("${jwt.refresh-token-expiration:1209600000}")
+    private long refreshTokenValidTime;
 
     // 서버 실행 시 환경변수의 키를 바이트 배열로 변환하여 Key 객체 초기화
     @PostConstruct

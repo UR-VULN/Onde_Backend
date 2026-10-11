@@ -1,7 +1,8 @@
-# 빌드 결과물 제외
+# 빌드 결과물 제외 (bin/ 은 IDE(Eclipse/VS Code) 컴파일 산출물 - 루트와 각 모듈 모두 제외)
 .gradle/
 build/
 bin/
+**/bin/
 *.class
 *.jar
 *.war
@@ -15,7 +16,11 @@ bin/
 # 하지만 Gradle Wrapper의 jar는 반드시 포함 (가장 아래에 두세요)
 !gradle/wrapper/gradle-wrapper.jar
 
-# 환경 변수 파일 제외
+# 환경 변수 파일 제외 (예시 파일만 커밋)
 .env
 .env.local
 .env.*.local
+!.env.example
+
+# 로컬 실행 로그
+*.log
