@@ -1,10 +1,14 @@
 name: Backend CI/CD
 
+# 프로젝트 종료 후 AWS 환경(ECR/S3/EC2)이 정리되어 push 시 자동 배포는 비활성화했습니다.
+# 다시 배포하려면 AWS 시크릿을 등록한 뒤 Actions 탭에서 수동 실행(Run workflow)하거나
+# 아래 push 트리거 주석을 풀면 됩니다.
 on:
-  push:
-    branches:
-      - main
-      - feat/infra_cicd
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - main
+  #     - feat/infra_cicd
 
 env:
   AWS_REGION: ap-northeast-2
