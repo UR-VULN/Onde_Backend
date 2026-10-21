@@ -20,11 +20,11 @@
 ## 2. 주요 기능
 ### 👤 인증 / 인가 (Spring Security + JWT + OAuth2)
 * **JWT 인증 모듈**: 회원가입 · 로그인 · 토큰 재발급 API (`/api/v1/auth/**`).
-  * Access Token 30분 / Refresh Token 14일 (`jwt.*` 설정으로 조정 가능).
+  * Access Token 30분 / Refresh Token 14일 (토큰 만료와 Redis TTL은 `jwt.*` 설정값을 따르고, 응답의 `expiresIn`과 쿠키 만료 시간은 30분 / 14일로 고정).
   * Refresh Token은 **Redis**(`@RedisHash`, TTL 자동 만료)에 이메일 단위로 저장해 중복 로그인과 재발급을 관리합니다.
   * 토큰은 `Authorization: Bearer` 헤더 또는 HttpOnly 쿠키 두 경로 모두에서 읽습니다.
 * **OAuth2 소셜 로그인 (Google / Kakao)**: `spring-boot-starter-oauth2-client` 기반.
-  * 소셜 계정에 이메일이 없으면 `GUEST`로 가입시킨 뒤 이메일 인증(`/api/v1/auth/email/**`, Redis 3분 TTL 인증번호 발급·검증)을 거쳐 `USER`로 승격하는 **단계적 온보딩 플로우**. (인증번호 발급·검증 API까지 구현되어 있고, 실제 메일 발송 연동은 미구현 상태입니다.)
+  * 소셜 계정에 이메일이 없으면 `GUEST`로 임시 가입시키고, 이메일 인증(`/api/v1/auth/email/**`, Redis 3분 TTL 인증번호 발급·검증)을 통과하면 해당 이메일의 `USER` 계정으로 토큰을 발급하는 **단계적 온보딩 플로우**. (인증번호 발급·검증 API까지 구현되어 있고, 실제 메일 발송 연동은 미구현 상태입니다.)
 * **역할 기반 접근 제어**: `USER`, `SELLER`, `SUPER_ADMIN`, `USER_ADMIN`, `SELLER_ADMIN` 권한별로 사용자 / 판매자 / 관리자 API 접근 범위를 분리. 기본값은 `authenticated()`로 막고 공개 경로만 명시적으로 허용합니다.
 * 401 / 403 응답은 공통 JSON 에러 포맷(`JwtAuthenticationEntryPoint`, `JwtAccessDeniedHandler`)으로 통일.
 
@@ -139,7 +139,7 @@ Onde_Backend/
 ├── api-module/           # 사용자/판매자용 REST API
 │   └── src/main/java/com/onde/api/
 │       ├── security/     # Spring Security 설정, JWT 필터, OAuth2(Google/Kakao) 핸들러
-│       └── application/  # auth, accommodation, booking, payment, settlement, community, notification ...
+│       └── application/  # auth, accommodation, flight, payment, settlement, community, notification ...
 ├── admin-module/         # 관리자 백오피스 API 및 통계
 ├── docs/api-test/        # VS Code REST Client 용 .http 요청 모음 (로컬 호스트 기준)
 ├── scripts/              # 로컬 데이터 시딩 / 스모크 테스트 파이썬 스크립트
@@ -215,31 +215,38 @@ sequenceDiagram
   ```json
   { "email": "user@example.com", "password": "********" }
   ```
-* 응답
+* 응답 (공통 `ApiResponse` 형식)
   ```json
   {
-    "accessToken": "<jwt>",
-    "refreshToken": "<jwt>",
-    "tokenType": "Bearer",
-    "expiresIn": 1800,
-    "memberId": 1,
-    "role": "USER"
+    "success": true,
+    "data": {
+      "accessToken": "<jwt>",
+      "refreshToken": "<jwt>",
+      "tokenType": "Bearer",
+      "expiresIn": 1800,
+      "memberId": 1,
+      "role": "USER"
+    },
+    "message": "로그인에 성공하였습니다.",
+    "timestamp": "2026-06-10T01:00:00.123Z"
   }
   ```
+* 같은 토큰이 `Set-Cookie` 헤더로도 내려갑니다 (`accessToken` 30분, `refreshToken` 14일, HttpOnly · Secure · SameSite=None).
 
 ### 🚗 렌터카 검색
 * `GET /api/v1/cars/search?pickup=2026-06-10T10:00:00&returnTime=2026-06-12T10:00:00&location=제주&carType=전기 SUV`
 * 응답
   ```json
   {
-    "status": "SUCCESS",
-    "message": "렌터카 조회가 완료되었습니다.",
+    "success": true,
     "data": {
       "cars": [
         { "carId": 1, "modelName": "Audi A4", "carType": "럭셔리 세단", "dailyPrice": 75000, "location": "제주", "available": true }
       ],
       "totalCount": 1
-    }
+    },
+    "message": "렌터카 조회가 완료되었습니다.",
+    "timestamp": "2026-06-10T01:00:00.123Z"
   }
   ```
 
@@ -257,6 +264,6 @@ JUnit 5 + Mockito 기반 테스트가 `api-module`, `admin-module`에 있습니�
 # 전체 테스트
 ./gradlew test
 ```
-* `api-module`의 테스트(`AuthServiceTest`, `SettlementServiceAccountTest`, `NtsBusinessVerificationServiceTest`, `PropertyServiceTest`, `PostServiceTest`)와 `admin-module`의 서비스 테스트는 Mockito 단위 테스트라 DB 없이 실행됩니다.
+* `api-module`의 테스트(`AuthServiceTest`, `SettlementServiceAccountTest`, `NtsBusinessVerificationServiceTest`, `PropertyServiceTest`, `PostServiceTest`)와 `admin-module`의 서비스 테스트는 단위 테스트라 DB 없이 실행됩니다. (`NtsBusinessVerificationServiceTest`는 Mockito 대신 JDK 내장 `HttpServer`로 국세청 API 응답을 스텁하고, 나머지는 Mockito 기반입니다.)
 * `admin-module`의 `AdminSecurityTest`는 `@SpringBootTest`로 전체 컨텍스트를 띄우므로, 실행 전에 위의 환경 변수와 MariaDB · Redis가 준비되어 있어야 합니다.
 * Docker 빌드(`Dockerfile`)는 `-x test`로 테스트를 건너뜁니다.
