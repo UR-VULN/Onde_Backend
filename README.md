@@ -1,180 +1,59 @@
-# ✈️ Onde (온데) Backend - 통합 여행 및 예약 플랫폼
+# ✈️ Onde Backend · 관리자 영역 이행 점검 브랜치
 
-> **Onde**는 항공권, 숙박, 렌터카 등 여행에 필요한 모든 서비스를 한곳에서 편리하게 예약하고 관리할 수 있는 차세대 통합 여행 플랫폼입니다.  
-> 확장성과 독립성을 위해 **Spring Boot 멀티 모듈 아키텍처**를 채택하였으며, 대규모 트래픽 처리를 위한 분산 캐싱 및 정산 스케줄링을 지원합니다.
-
----
-
-## 1. 프로젝트 소개
-* **프로젝트 명**: Onde (온데)
-* **개발 목적**: 항공, 숙박, 렌터카 서비스를 유기적으로 연결하여 끊김 없는 사용자 여행 경험을 제공하고, 관리자에게는 매출 관리 및 파트너 어드민 도구를 지원합니다.
-* **핵심 지향점**:
-  * **멀티 모듈 구조**: 공통 도메인 영역과 사용자.판매자/관리자 서비스를 완전히 분리하여 각 모듈의 독립적인 진화 가능.
-  * **안정적인 예약 관리**: 동시성 제어 및 실시간 재고 관리 시스템 구축.
-  * **인프라 자동화**: Docker Compose 환경 구축을 통한 빠른 개발 환경 구성 및 데이터 초기 시딩 자동화.
+> 브랜치: `audit/admin-remediation/yr`
+>
+> 진단 기준 시점인 `audit/initial`(2026-06-17)에서 분기해, 수동 진단에서 나온 **관리자 영역(admin-module)** 취약점의 조치와 관련 공통 설정(api-module)의 조치를 반영한 이행 점검 브랜치입니다.
+> 진단 기준은 SK쉴더스 Web/API 개발보안 가이드(2022)이며, 이행 점검은 팀원별 `audit/user-remediation/*`, `audit/admin-remediation/*` 브랜치로 나눠 진행했습니다.
+> 사용자 영역 브랜치와는 따로 분기했기 때문에, 그쪽 변경은 이 브랜치에 들어 있지 않습니다.
+>
+> 서비스 전체 소개와 실행 방법은 [main 브랜치 README](https://github.com/UR-VULN/Onde_Backend/tree/main)를 참고하세요.
 
 ---
 
-## 2. 주요 기능
-### 🚗 실시간 렌터카 검색 및 예약
-* **위치 기반 차량 검색**: 프론트엔드에 정의된 25개 주요 도시별 차량 목록 필터링.
-* **재고 및 요금 실시간 조회**: 렌터카 재고(Inventory) 테이블과의 일자별 조인을 통한 실시간 예약 가능 여부 및 최저 가격 연동.
-* **예약 흐름**: 차량 선택 -> 대여 및 반납 일자 입력 -> 결제 및 예약 상태 생성.
+## 1. 변경 범위
 
-### 🏨 숙소 및 객실 예약
-* **숙소 검색**: 카테고리, 지역별 필터링 기능 제공.
-* **실시간 객실 재고 제어**: 동시 예약 발생 시 초과 예약(Overbooking)을 방지하기 위한 트랜잭션 관리.
+`audit/initial` 대비 커밋 1개, 파일 20개가 바뀌었습니다.
 
-### 🛫 실시간 항공권 검색 및 예약 (진행 중)
-* **스케줄 및 노선 조회**: 판매자 승인 상태가 완료된 항공 노선 및 상세 스케줄 필터링.
-* **실시간 타임아웃 스케줄러**: 결제 대기 시간 초과 시 자동으로 예약을 취소하는 스케줄러 구동.
-
-### 👤 권한 기반 인증/인가 (Spring Security + JWT)
-* **통합 회원 가입 및 로그인**: 일반 사용자 및 관리자 통합 JWT 발급.
-* **어드민 허브**: 권한(`USER`, `SELLER`, `SUPER_ADMIN`, `USER_ADMIN`, `SELLER_ADMIN`)에 따른 접근 통제 및 백오피스 대시보드 API.
+* 비교: [audit/initial...audit/admin-remediation/yr](https://github.com/UR-VULN/Onde_Backend/compare/audit/initial...audit/admin-remediation/yr)
+* 대상 모듈: `admin-module`(관리자 API), `api-module`(보안 설정 · 예외 처리), `core-module`(JWT)
+* `admin-module`이 로그인 요청 DTO를 재사용하도록 `api-module`을 의존합니다 (`admin-module/build.gradle`).
 
 ---
 
-## 3. 기술 스택
+## 2. 관리자 영역 (admin-module)
 
-### Cores
-* **Java 17**
-* **Spring Boot 3.2.5**
-* **Gradle 8.7**
-
-### Database & Storage
-* **MariaDB 11.4** (메인 RDBMS)
-* **Redis 7.2** (분산 락, 캐싱, 세션 관리)
-* **MinIO** (로컬 S3 Mock 오브젝트 스토리지)
-* **Flyway 9.22** (데이터베이스 스키마 마이그레이션 버전 관리)
-
-### Dev & Ops
-* **Docker / Docker Compose** (컨테이너 오케스트레이션)
-* **Lombok / SLF4J (Logback)**
+| 진단 항목 | 조치 | 주요 파일 |
+|---|---|---|
+| 3-2 인증 실패 횟수 제한 | 관리자 로그인 API `POST /api/v1/admin/auth/login` 추가. 실패 횟수를 Redis에 기록하고 5회 실패하면 30분 동안 잠금 (잠금 중 로그인은 403) | `AdminAuthController`, `AdminAuthService` |
+| 3-3 계정 정보 파악 | 없는 계정과 틀린 비밀번호에 같은 메시지("아이디 또는 비밀번호가 일치하지 않습니다.")로 401 응답 | `AdminGlobalExceptionHandler` |
+| 4-1 쿠키 조작 | 관리자 로그인 토큰을 HttpOnly · Secure · `SameSite=Lax` 쿠키로 전달 | `AdminAuthController` |
+| 4-5 일반계정 권한 상승 | 역할 변경 API로 `SUPER_ADMIN`을 부여하지 못하게 차단 | `RoleUpdateRequest`, `AdminMemberService` |
+| 1-3 파라미터 조작 | 마커 API가 관리자 식별값을 요청 헤더(`X-Admin-Id`) 대신 JWT 검증을 마친 `Authentication`에서 가져옴 | `AdminMarkerController` |
+| 1-6 입력 값 크기 및 무결성 | 마커 위도(-90 ~ 90) · 경도(-180 ~ 180) 범위, 게시글 블라인드 사유 255자 제한 | `AdminMarkerRequest`, `AdminBlindRequest` |
+| 6-1 · 6-2 오류 처리 | 중복된 예외 처리기(`GlobalAdminExceptionHandler`)를 `AdminGlobalExceptionHandler` 하나로 합치고 적용 범위를 `com.onde.admin`으로 지정. 400 · 401 · 403 · 404 · 405 · 415 · 500을 내부 메시지 없이 공통 형식으로 응답하고, 없는 경로도 JSON 404로 응답 | `AdminGlobalExceptionHandler`, `application.yml` |
+| 7-4 취약한 보안 설정 | CORS 허용 출처를 `http://localhost:5173`, `https://onde.click`으로 제한하고 CSP(`default-src 'self'; script-src 'self'; object-src 'none'`) · X-XSS-Protection 헤더 추가 | `AdminSecurityConfig` |
 
 ---
 
-## 4. 빠른 시작 (Quick Start)
+## 3. 공통 설정 (api-module · core-module)
 
-### 필수 요구사항
-* 로컬 환경에 **Docker Desktop**이 설치되어 있어야 합니다.
+| 진단 항목 | 조치 | 주요 파일 |
+|---|---|---|
+| 1-1 CSRF | CSRF 보호를 켜고 토큰을 `XSRF-TOKEN` 쿠키(`CookieCsrfTokenRepository`)로 전달. `/api/v1/admin/login`, `/api/v1/health`는 제외 | `SecurityConfig` |
+| 4-1 쿠키 조작 | 로그인 응답의 토큰 쿠키를 `SameSite=None` → `Lax`로 변경 | `AuthController` |
+| 4-2 인증 값 안전성 | 유효하지 않은 토큰이면 `SecurityContext`를 비우고, 서명 · 형식 · 만료 오류를 구분해 기록 | `JwtAuthenticationFilter`, `JwtTokenProvider` |
+| 4-3 접근제어 우회 | `StrictHttpFirewall`로 백슬래시 · 인코딩된 슬래시 · 세미콜론이 들어간 경로 차단. 관리자 경로 규칙을 가장 먼저 검사하고, 공개 경로는 `/api/v1/health`, `/api/v1/auth/**`, `/error`만 남김 | `SecurityConfig` |
+| 6-1 오류 페이지 정보 노출 | 오류 응답에서 예외 클래스명 · 내부 메시지를 제거하고 적용 범위를 `com.onde.api`로 지정 | `GlobalExceptionHandler` |
 
-### 실행 방법
-1. **프로젝트 루트 디렉토리로 이동**
-   ```bash
-   cd c:/Users/user/Desktop/onde
-   ```
-
-2. **도커 컨테이너 전체 빌드 및 기동**
-   ```bash
-   # 데이터베이스, 레디스, 미니오, 백엔드(API/Admin), 프론트엔드가 한 번에 실행됩니다.
-   docker compose up --build -d
-   ```
-
-3. **로컬 데이터 시드(Seed) 확인**
-   * 서버 기동 완료 후, `db-seeder` 컨테이너가 동작하여 `/DB_Seed` 내에 있는 기초 데이터(회원, 숙소, 객실, 렌터카 270대 등)를 MariaDB에 자동으로 로딩합니다.
-
-4. **로컬 접속 정보**
-   * **사용자 API (api-module)**: `http://localhost:8080`
-   * **관리자 API (admin-module)**: `http://localhost:8081`
-   * **데이터베이스 (MariaDB)**: `localhost:3306`
+> 참고: 이 브랜치의 api-module `SecurityConfig`에는 OAuth2 소셜 로그인 설정과 숙소 · 렌터카 · 항공 검색 등 비로그인 조회 경로가 포함되어 있지 않습니다.
 
 ---
 
-## 5. 폴더 구조
-본 프로젝트는 관심사 분리를 극대화하기 위해 멀티 모듈 프로젝트로 관리되고 있습니다.
+## 4. 브랜치 구성
 
-```text
-Onde_Backend/
-├── core-module/          # 공통 도메인 엔티티, 리포지토리 및 공통 비즈니스 로직
-│   └── src/main/resources/db/migration/  # Flyway 마이그레이션 SQL 파일 보관함
-├── api-module/           # 일반 사용자용 REST API 및 인증(Security) 계층
-│   └── src/main/java/com/onde/api/application/
-│       ├── accommodation/ # 숙소 및 렌터카 컨트롤러/서비스
-│       └── notification/  # 알림 및 푸시 기능 (Firebase Cloud Messaging)
-├── admin-module/         # 백오피스 관리자용 전용 API 및 통계 비즈니스 계층
-├── gradle/               # Gradle 래퍼 환경 설정 파일
-├── build.gradle          # 루트 멀티 모듈 전체 빌드 스크립트
-└── settings.gradle       # 하위 모듈(core, api, admin) 정의 설정 파일
-```
-
----
-
-## 6. 아키텍처 개요
-```mermaid
-graph TD
-    subgraph Client["Client"]
-        FE[Frontend - Vite/React]
-    end
-
-    subgraph ServiceLayer["Service Layer (Multi-Module)"]
-        API[api-module: Port 8080]
-        ADMIN[admin-module: Port 8081]
-        CORE[core-module: Shared Entities/Repos]
-    end
-
-    subgraph DataLayer["Data Layer"]
-        DB[(MariaDB)]
-        RD[(Redis Cache)]
-        S3[(MinIO Storage)]
-    end
-
-    FE -->|User Requests| API
-    FE -->|Admin Requests| ADMIN
-    API -.->|Depends on| CORE
-    ADMIN -.->|Depends on| CORE
-    CORE --> DB
-    CORE --> RD
-    CORE --> S3
-```
-* **도메인 격리**: `core-module`은 데이터베이스 및 데이터 스토리지 액세스 기술과 결합하고, 외부 서비스 모듈(`api-module`, `admin-module`)은 `core-module`을 라이브러리 형태로 의존하여 API 설계에만 집중할 수 있게 분리하였습니다.
-
----
-
-## 7. API 엔드포인트 예제
-### 🚗 렌터카 검색 API
-* **요청 (Request)**
-  * `GET /api/v1/cars/search`
-  * Query parameters:
-    * `pickup`: 대여 일시 (예: `2026-06-10T10:00:00`)
-    * `returnTime`: 반납 일시 (예: `2026-06-12T10:00:00`)
-    * `location`: 대여 도시 (예: `제주`, `서울`, `도쿄` 등)
-    * `carType`: 차량 유형 (예: `전기 SUV`, `스포츠카` 등)
-* **응답 (Response)**
-  ```json
-  {
-    "status": "SUCCESS",
-    "message": "렌터카 조회가 완료되었습니다.",
-    "data": {
-      "cars": [
-        {
-          "carId": 1,
-          "modelName": "Audi A4",
-          "carType": "럭셔리 세단",
-          "licensePlate": "QA-227-CK",
-          "dailyPrice": 75000,
-          "location": "제주",
-          "available": true
-        }
-      ],
-      "totalCount": 1
-    }
-  }
-  ```
-
----
-
-## 8. 테스트
-### 테스트 구동 방법
-로컬 개발 환경의 변경 사항을 비즈니스 로직별로 검증하기 위해 JUnit 5 기반의 단위/통합 테스트 환경이 준비되어 있습니다.
-
-```bash
-# 전체 빌드 및 테스트 수행
-./gradlew clean build
-
-# 특정 모듈(예: api-module)의 테스트만 따로 실행
-./gradlew :api-module:test
-```
-* **통합 테스트**: 테스트 컨테이너 또는 테스트용 인메모리 DB(H2) 설정을 활용해 실제 데이터 연동 검증을 안전하게 수행합니다.
-
----
+| 브랜치 | 내용 |
+|---|---|
+| `audit/initial` | 진단 기준 시점 |
+| `audit/user-remediation/*` | 사용자 · 판매자 영역 이행 점검 (팀원별) |
+| `audit/admin-remediation/*` | 관리자 영역 이행 점검 (팀원별) |
+| `main` | 서비스 기준 브랜치 |
